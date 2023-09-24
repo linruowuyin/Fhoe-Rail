@@ -25,7 +25,7 @@ class Map:
             result = self.calculated.scan_screenshot(target)
             if result['max_val'] > 0.97:
                 points = self.calculated.calculated(result, target.shape)
-                log.info("成功识别地图初始化图标。")  
+                log.info("成功识别地图初始化图标")  
                 pyautogui.click(points, clicks=5, interval=0.1)
                 break
             else:
