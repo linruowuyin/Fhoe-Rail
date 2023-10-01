@@ -364,7 +364,7 @@ class Calculated:
         pyautogui.scroll(clicks)
         time.sleep(0.5)
 
-    def is_blackscreen(self, threshold=30):
+    def is_blackscreen(self, threshold=25):
         # 判断是否为黑屏，避免光标、加载画面或其他因素影响，不设为0，threshold范围0-255
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
         return cv.mean(screenshot)[0] < threshold
