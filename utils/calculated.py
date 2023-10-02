@@ -349,8 +349,8 @@ class Calculated:
         ts = int(time.mktime(time.strptime(dt, "%Y-%m-%d %H:%M:%S")))
         ns = int(start_time)
         if -60 < ns - ts <= 60:
-            log.info(_("点击月卡"))
-            pos = self.ocr_click(_("今日补给"))
+            log.info("点击月卡")
+            pos = self.ocr_click("今日补给")
             time.sleep(0.5)
             self.click(pos)
 

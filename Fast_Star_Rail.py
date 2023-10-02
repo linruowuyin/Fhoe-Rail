@@ -1,3 +1,4 @@
+import os
 import traceback
 import time
 import ctypes
@@ -30,6 +31,7 @@ def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
     return content.replace(keyword, "")
 
+
 def main():
     main_start()
     map_instance = Map()
@@ -50,7 +52,6 @@ def main():
     else:
         log.info("错误编号，请尝试检查更新")
         webhook_and_log("运行完成")
-
 
 
 def main_start():
