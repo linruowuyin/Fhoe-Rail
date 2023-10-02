@@ -28,6 +28,7 @@ import locale
 
 locale.setlocale(locale.LC_ALL, 'zh_CN.UTF-8')  # 设置为中文环境
 
+
 class Calculated:
     def __init__(self):
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
@@ -182,7 +183,6 @@ class Calculated:
                 time.sleep(3)
                 break
 
-
     def fightE(self):
         start_time = time.time()
         attack = cv.imread("./picture/attack.png")
@@ -190,13 +190,13 @@ class Calculated:
         warn = cv.imread("./picture/warn.png")
         image_A = cv.imread("./picture/eat.png")  # 修改
         image_B = cv.imread("./picture/cancel.png")  # 修改
-        
+
         while True:
             log.info("识别中")
             attack_result = self.scan_screenshot(attack)
             doubt_result = self.scan_screenshot(doubt)
             warn_result = self.scan_screenshot(warn)
-            
+
             if attack_result["max_val"] > 0.9:
                 pyautogui.press('f')
                 time.sleep(1)
@@ -204,17 +204,17 @@ class Calculated:
                 result_A = None
                 while result_A is None and time.time() - start_time_A < 3:
                     result_A = self.scan_screenshot(image_A)
-                    
+
                 if result_A is not None and result_A["max_val"] > 0.9:
                     while True:
                         result_B = self.scan_screenshot(image_B)
                         points_B = self.calculated(result_B, image_B.shape)
                         self.click(points_B)
                         if result_B is None or result_B["max_val"] < 0.9:  # 修改条件判断语句
-                           break
+                            break
                         else:
                             break
-                        
+
                 points = self.calculated(attack_result, attack.shape)
                 time.sleep(3)
                 self.click(points)
@@ -292,7 +292,7 @@ class Calculated:
                     time.sleep(random_interval)  # 使用随机间隔
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
-                    time.sleep(remaining_time) 
+                    time.sleep(remaining_time)
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
@@ -350,8 +350,8 @@ class Calculated:
         ts = int(time.mktime(time.strptime(dt, "%Y-%m-%d %H:%M:%S")))
         ns = int(start_time)
         if -60 < ns - ts <= 60:
-            log.info(_("点击月卡"))
-            pos = self.ocr_click(_("今日补给"))
+            log.info("点击月卡")
+            pos = self.ocr_click("今日补给")
             time.sleep(0.5)
             self.click(pos)
 
