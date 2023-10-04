@@ -1,4 +1,4 @@
-原项目地址：https://github.com/Night-stars-1/StarRailAssistant
+原项目地址：https://github.com/Starry-Wind/StarRailAssistant
 
 ### 免责声明
 
