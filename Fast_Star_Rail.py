@@ -1,7 +1,9 @@
 import os
+import sys
 import traceback
 import time
 import ctypes
+import questionary
 import pyuac
 from utils.log import log, webhook_and_log, fetch_php_file_content
 from get_width import get_width, check_mult_screen
@@ -27,6 +29,35 @@ def choose_map(map_instance: Map):
     return f"{main_map}-{side_map}"
 
 
+def choose_map_debug(map_instance: Map):
+    is_selecting_main_map = True
+    main_map = None
+    side_map = None
+
+    while True:
+        if is_selecting_main_map:
+            title_ = "请选择起始星球："
+            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3"}
+            option_ = questionary.select(title_, list(options_map.keys())).ask()
+            if option_ is None:
+                return None  # 用户选择了返回上一级菜单
+            main_map = options_map.get(option_)
+            is_selecting_main_map = False
+        else:
+            title_ = "请选择起始地图："
+            options_map = map_instance.map_list_map.get(main_map)
+            if not options_map:
+                return None
+            keys = list(options_map.keys())
+            values = list(options_map.values()) + ["【返回】"]
+            option_ = questionary.select(title_, values).ask()
+            if option_ == "【返回】":
+                is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
+            else:
+                side_map = keys[values.index(option_)]
+                return f"{main_map}-{side_map}"
+
+
 def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
     return content.replace(keyword, "")
@@ -35,7 +66,10 @@ def filter_content(content, keyword):
 def main():
     main_start()
     map_instance = Map()
-    start = choose_map(map_instance)
+    if len(sys.argv) > 1 and sys.argv[1] == "--debug":
+        start = choose_map_debug(map_instance)
+    else:
+        start = choose_map(map_instance)
     if start:
         php_content = fetch_php_file_content()  # 获取PHP文件的内容
         filtered_content = filter_content(php_content, "舔狗日记")  # 过滤关键词
