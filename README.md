@@ -1,4 +1,5 @@
 原项目地址：https://github.com/Starry-Wind/StarRailAssistant
+聚合使用请去：https://github.com/moesnow/March7thAssistant
 
 ### 免责声明
 
