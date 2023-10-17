@@ -27,7 +27,7 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3"}
+            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
@@ -74,8 +74,8 @@ def main():
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         map_instance.auto_map(start)  # 读取配置
     else:
-        log.info("错误编号，请尝试检查更新")
-        webhook_and_log("运行完成")
+        log.info("错误编号，地图可能未更新")
+        return choose_map(map_instance)
 
 
 def main_start():
