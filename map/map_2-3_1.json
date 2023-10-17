@@ -1,0 +1,56 @@
+{
+    "name": "残响回廊-1",
+    "author": "Starry-Wind,小明",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_3.png": 1.5
+        },
+        {
+            "picture\\map_2-3.png": 2
+        },
+        {
+            "picture\\map_2-3_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "fighting": 2
+        },
+        {
+            "w": 1.54
+        },
+        {
+            "d": 1.58
+        },
+        {
+            "w": 5
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "w": 3.52
+        },
+        {
+            "a": 1.06
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "w": 2
+        },
+        {
+            "fighting": 1
+        }
+    ]
+}
