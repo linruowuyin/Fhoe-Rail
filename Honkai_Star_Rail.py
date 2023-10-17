@@ -75,7 +75,7 @@ def main():
         map_instance.auto_map(start)  # 读取配置
     else:
         log.info("错误编号，地图可能未更新")
-        return choose_map(map_instance)
+        return choose_map_debug(map_instance)
 
 
 def main_start():
