@@ -28,8 +28,6 @@ tqdm
 
 pynput
 
-aiohttp
-
 questionary
 
 pyuac
