@@ -23,10 +23,6 @@ from pynput.keyboard import Controller as KeyboardController
 from .config import read_json_file, CONFIG_FILE_NAME
 from .exceptions import Exception
 from .log import log
-import locale
-
-
-locale.setlocale(locale.LC_ALL, 'zh_CN.UTF-8')  # 设置为中文环境
 
 class Calculated:
     def __init__(self):
@@ -174,11 +170,8 @@ class Calculated:
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.0f}秒"
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
                 current_system_time = time.localtime()
-                formatted_system_time = time.strftime("%H点%M分%S秒", current_system_time)
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
-                time_message = f"系统时间：{formatted_system_time}"
                 log.info(colored_message)
-                log.info(time_message)
                 time.sleep(3)
                 break
 
@@ -260,11 +253,8 @@ class Calculated:
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.0f}秒"
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
                 current_system_time = time.localtime()
-                formatted_system_time = time.strftime("%H点%M分%S秒", current_system_time)
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
-                time_message = f"系统时间：{formatted_system_time}"
                 log.info(colored_message)
-                log.info(time_message)
                 time.sleep(3)
                 break
 
