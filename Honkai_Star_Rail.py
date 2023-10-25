@@ -79,10 +79,15 @@ def main():
 
 
 def main_start():
+    new_option_title = "想要跑完自动关机吗？"
+    new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
+    new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
+    new_option_value = new_option_choice == '↑↑↓↓←→←→BABA'
+    modify_json_file(CONFIG_FILE_NAME, "auto_shutdown", new_option_value)
     if not read_json_file(CONFIG_FILE_NAME, False).get('start'):
-        title = "你游戏里开启了连续自动战斗吗？："
-        options = ['没打开', '打开了', '李在说神魔']
-        option = options[1]
+        title = "开启连续自动战斗了吗喵？："
+        options = ['没打开', '打开了', '我啷个晓得嘛']
+        option = questionary.select(title, options).ask()
         modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", options.index(option))
         modify_json_file(CONFIG_FILE_NAME, "start", True)
 
