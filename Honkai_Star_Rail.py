@@ -5,6 +5,7 @@ import time
 import ctypes
 import questionary
 import pyuac
+import json
 from utils.log import log, webhook_and_log, fetch_php_file_content
 from get_width import get_width, check_mult_screen
 from utils.config import read_json_file, modify_json_file, init_config_file, CONFIG_FILE_NAME
@@ -12,12 +13,12 @@ from utils.map import Map
 from utils.switch_window import switch_window
 from utils.exceptions import Exception
 
+CONFIG_FILE_NAME = "config.json"  # 你的配置文件名
 
 def choose_map(map_instance: Map):
     main_map = "1-1"  # 选择第一张地图
     side_map = "0"  # 选择第一张地图的第一个子地图
     return f"{main_map}_{side_map}"
-
 
 def choose_map_debug(map_instance: Map):
     is_selecting_main_map = True
@@ -47,11 +48,9 @@ def choose_map_debug(map_instance: Map):
                 side_map = keys[values.index(option_)]
                 return f"{main_map}-{side_map}"
 
-
 def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
     return content.replace(keyword, "")
-
 
 def main():
     main_start()
@@ -60,6 +59,7 @@ def main():
         start = choose_map_debug(map_instance)
     else:
         start = choose_map(map_instance)
+    
     if start:
         php_content = fetch_php_file_content()  # 获取PHP文件的内容
         filtered_content = filter_content(php_content, "舔狗日记")  # 过滤关键词
@@ -77,25 +77,52 @@ def main():
         log.info("错误编号，地图可能未更新")
         return choose_map_debug(map_instance)
 
-
 def main_start():
-    new_option_title = "想要跑完自动关机吗？"
-    new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
-    new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
-    new_option_value = new_option_choice == '↑↑↓↓←→←→BABA'
-    modify_json_file(CONFIG_FILE_NAME, "auto_shutdown", new_option_value)
     if not read_json_file(CONFIG_FILE_NAME, False).get('start'):
         title = "开启连续自动战斗了吗喵？："
         options = ['没打开', '打开了', '我啷个晓得嘛']
         option = questionary.select(title, options).ask()
         modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", options.index(option))
         modify_json_file(CONFIG_FILE_NAME, "start", True)
+        new_option_title = "想要跑完自动关机吗？"
+        new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
+        new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
+        new_option_value = new_option_choice == '↑↑↓↓←→←→BABA'
+        modify_json_file(CONFIG_FILE_NAME, "auto_shutdown", new_option_value)
 
+def main_start_rewrite():
+    title = "开启连续自动战斗了吗喵？："
+    options = ['没打开', '打开了', '我啷个晓得嘛']
+    option = questionary.select(title, options).ask()
+
+    new_option_title = "想要跑完自动关机吗？"
+    new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
+    new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
+    new_option_value = new_option_choice == '↑↑↓↓←→←→BABA'
+
+    # 读取配置文件（如果存在）
+    try:
+        with open(CONFIG_FILE_NAME, 'r') as file:
+            config = json.load(file)
+    except FileNotFoundError:
+        config = {}
+
+    # 更新配置文件
+    config['auto_battle_persistence'] = options.index(option)
+    config['auto_shutdown'] = new_option_value
+
+    # 写入配置文件
+    with open(CONFIG_FILE_NAME, 'w') as file:
+        json.dump(config, file, indent=4)
 
 if __name__ == "__main__":
     try:
-        if not pyuac.isUserAdmin():
-            pyuac.runAsAdmin()
+        if len(sys.argv) > 1 and sys.argv[1] == "--config":
+            main_start_rewrite()
+            map_instance = Map()
+            start = choose_map_debug(map_instance)
+            if start:
+                main()
         else:
             main()
     except ModuleNotFoundError as e:
