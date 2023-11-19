@@ -57,6 +57,9 @@ def main():
     map_instance = Map()
     if len(sys.argv) > 1 and sys.argv[1] == "--debug":
         start = choose_map_debug(map_instance)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--config":
+        main_start_rewrite()  
+        start = choose_map_debug(map_instance) 
     else:
         start = choose_map(map_instance)
     
@@ -117,12 +120,8 @@ def main_start_rewrite():
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) > 1 and sys.argv[1] == "--config":
-            main_start_rewrite()
-            map_instance = Map()
-            start = choose_map_debug(map_instance)
-            if start:
-                main()
+        if not pyuac.isUserAdmin():
+            pyuac.runAsAdmin()
         else:
             main()
     except ModuleNotFoundError as e:
