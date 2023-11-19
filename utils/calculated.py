@@ -355,6 +355,14 @@ class Calculated:
         time.sleep(0.5)
 
     def is_blackscreen(self, threshold=25):
-        # 判断是否为黑屏，避免光标、加载画面或其他因素影响，不设为0，threshold范围0-255
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
+        
+        if cv.mean(screenshot)[0] > threshold:  # 如果平均像素值大于阈值
+            target = cv.imread("./picture/finish_fighting.png")
+            while True:
+                result = self.scan_screenshot(target)
+                if result["max_val"] > 0.9:
+                    return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
+
         return cv.mean(screenshot)[0] < threshold
+
