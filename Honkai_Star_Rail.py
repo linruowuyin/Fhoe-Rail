@@ -77,7 +77,7 @@ def main():
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         map_instance.auto_map(start)  # 读取配置
     else:
-        log.info("错误编号，地图可能未更新")
+        log.info("前面的区域，以后再来探索吧（未知编号错误）")
         return choose_map_debug(map_instance)
 
 def main_start():
