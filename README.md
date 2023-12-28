@@ -82,7 +82,7 @@ This software is open source, free of charge and for learning and exchange purpo
 
 ### 关于识别问题
 
-识图为截取游戏画面，所以不能有任何覆盖
+识图为截取游戏画面，所以不能有任何覆盖（小心各类弹窗）
 
 ### 关于秘技
 
