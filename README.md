@@ -48,6 +48,7 @@ This software is open source, free of charge and for learning and exchange purpo
 | e          | 只有键值为1时有意义，使用秘技并追加普通攻击            |
 
 ### 关于地图录制
+感谢[@AlisaCat](https://github.com/AlisaCat-S)
 
 禁止用鼠标移动视角，只能使用方向键左右来移动视角（脚本运行后方向键左右会映射鼠标移动）
 
