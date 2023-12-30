@@ -154,7 +154,7 @@ class Calculated:
                 elif time.time() - start_time > 15:
                     break
         else:
-            log.info("不点击自动(沿用配置)")
+            log.info("不点击自动(沿用config.json配置)")
             time.sleep(5)
 
         start_time = time.time()  # 开始计算战斗时间
