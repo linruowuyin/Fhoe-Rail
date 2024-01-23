@@ -15,6 +15,7 @@ import pyautogui
 import win32api
 import win32con
 import win32gui
+import pyautogui
 import random
 from datetime import datetime
 from PIL import ImageGrab
@@ -30,19 +31,15 @@ class Calculated:
         self.keyboard = KeyboardController()
 
     def click(self, points):
-        """
-        说明：
-            点击坐标
-        参数：
-            :param points: 坐标
-        """
         x, y = int(points[0]), int(points[1])
-        log.debug((x, y))
+        screen_width, screen_height = win32api.GetSystemMetrics(0), win32api.GetSystemMetrics(1)
+        x = max(0, min(x, screen_width - 1))
+        y = max(0, min(y, screen_height - 1))
         win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        # pyautogui.click(x,y, clicks=5, interval=0.1)
         time.sleep(0.5)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        pyautogui.mouseDown(x, y, button='left')
+        time.sleep(0.4)
+        pyautogui.mouseUp(x, y, button='left')
 
     def relative_click(self, points):
         """
@@ -154,7 +151,7 @@ class Calculated:
                 elif time.time() - start_time > 15:
                     break
         else:
-            log.info("不点击自动(沿用config.json配置)")
+            log.info("不点击自动(沿用配置)")
             time.sleep(5)
 
         start_time = time.time()  # 开始计算战斗时间
