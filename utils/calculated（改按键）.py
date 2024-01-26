@@ -1,12 +1,3 @@
-'''
-Author: Night-stars-1 nujj1042633805@gmail.com
-Date: 2023-05-24 10:56:11
-LastEditors: Night-stars-1 nujj1042633805@gmail.com
-LastEditTime: 2023-05-24 10:57:36
-Description: 
-
-Copyright (c) 2023 by Night-stars-1, All Rights Reserved. 
-'''
 import time
 
 import cv2 as cv
@@ -15,34 +6,55 @@ import pyautogui
 import win32api
 import win32con
 import win32gui
+import pyautogui
 import random
 from datetime import datetime
 from PIL import ImageGrab
 from pynput.keyboard import Controller as KeyboardController
+from pynput.mouse import Listener as MouseListener
 
 from .config import read_json_file, CONFIG_FILE_NAME
 from .exceptions import Exception
 from .log import log
-
 class Calculated:
     def __init__(self):
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
         self.keyboard = KeyboardController()
 
+    def on_move(self, x, y):
+        pass
+
+    def wait_for_mouse_stop(self, initial_pos):
+        current_pos = win32api.GetCursorPos()
+        while current_pos != initial_pos:
+            time.sleep(0.1)
+            initial_pos = current_pos
+            current_pos = win32api.GetCursorPos()
+
+    def move_to_and_click(self, x, y):
+        initial_pos = win32api.GetCursorPos()
+        with MouseListener(on_move=self.on_move) as listener:
+            win32api.SetCursorPos((x, y))
+            self.wait_for_mouse_stop(initial_pos)
+            current_pos = win32api.GetCursorPos()
+            if current_pos == (x, y):
+                pyautogui.mouseDown(x, y, button='left')
+                time.sleep(0.4)
+                pyautogui.mouseUp(x, y, button='left')
+            else:
+                win32api.SetCursorPos((x, y))
+                pyautogui.mouseDown(x, y, button='left')
+                time.sleep(0.4)
+                pyautogui.mouseUp(x, y, button='left')
+
     def click(self, points):
-        """
-        说明：
-            点击坐标
-        参数：
-            :param points: 坐标
-        """
         x, y = int(points[0]), int(points[1])
-        log.debug((x, y))
-        win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        # pyautogui.click(x,y, clicks=5, interval=0.1)
-        time.sleep(0.5)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        screen_width, screen_height = win32api.GetSystemMetrics(0), win32api.GetSystemMetrics(1)
+        x = max(0, min(x, screen_width - 1))
+        y = max(0, min(y, screen_height - 1))
+
+        # 确保鼠标点击位置不超出屏幕边界
+        self.move_to_and_click(x, y)
 
     def relative_click(self, points):
         """
