@@ -26,16 +26,15 @@ class Map:
             if result['max_val'] > 0.97:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
+                log.info(f'地图最小化')
                 pyautogui.click(points, clicks=5, interval=0.1)
                 break
             else:
                 attempts += 1
+                log.info(f'打开地图')
             pyautogui.keyDown(self.open_map)
             pyautogui.keyUp(self.open_map)
             time.sleep(3)  # 3秒延迟
-
-        if attempts == max_attempts:
-            log.warning("未能识别到地图初始化图标，可能出现了问题")
 
     def read_maps(self):
         # 从'./map'目录获取地图文件列表（排除'old'）
