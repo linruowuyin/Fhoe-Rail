@@ -42,6 +42,7 @@ class Calculated:
                 time.sleep(0.4)
                 pyautogui.mouseUp(x, y, button='left')
             else:
+                log.info("检测到鼠标偏移，已自动更正")
                 win32api.SetCursorPos((x, y))
                 pyautogui.mouseDown(x, y, button='left')
                 time.sleep(0.4)
