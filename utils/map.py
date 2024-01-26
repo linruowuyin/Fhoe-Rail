@@ -93,12 +93,13 @@ class Map:
                     else:
                         time.sleep(value)
                         self.calculated.click_target(key, 0.93)
+                        log.info(f'执行传送点击')
                 time.sleep(3)
                 count = 0
                 while self.calculated.is_blackscreen():
                     count += 1
                     time.sleep(1)
-                log.info(f'地图加载完毕，用时 {count} 秒')
+                log.info(f'地图载毕，用时 {count} 秒')
                 time.sleep(2)  # 增加2秒等待防止人物未加载错轴
 
                 # 记录处理开始时间
