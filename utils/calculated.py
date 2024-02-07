@@ -1,12 +1,10 @@
 import time
-
 import cv2 as cv
 import numpy as np
 import pyautogui
 import win32api
 import win32con
 import win32gui
-import pyautogui
 import random
 from datetime import datetime
 from PIL import ImageGrab
@@ -16,6 +14,7 @@ from pynput.mouse import Listener as MouseListener
 from .config import read_json_file, CONFIG_FILE_NAME
 from .exceptions import Exception
 from .log import log
+
 class Calculated:
     def __init__(self):
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
@@ -126,76 +125,23 @@ class Calculated:
             if not flag:
                 return
 
-    def fighting(self):
-        start_time = time.time()
-        attack = cv.imread("./picture/attack.png")
-        doubt = cv.imread("./picture/doubt.png")
-        warn = cv.imread("./picture/warn.png")
-        while True:
-            log.info("识别中")
-            attack_result = self.scan_screenshot(attack)
-            doubt_result = self.scan_screenshot(doubt)
-            warn_result = self.scan_screenshot(warn)
-            if attack_result["max_val"] > 0.9:
-                points = self.calculated(attack_result, attack.shape)
-                self.click(points)
-                break
-            elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
-                log.info("識別到疑問或警告，等待怪物開戰")
-                points = self.calculated(attack_result, attack.shape)
-                self.click(points)
-                time.sleep(5)
-                target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
-                result = self.scan_screenshot(target)
-                if result["max_val"] < 0.9:
-                    break
-            elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
-                log.info("识别超时,此处可能无敌人")
-                return
-        time.sleep(6)
-        target = cv.imread("./picture/auto.png")
-        start_time = time.time()
-        if self.CONFIG["auto_battle_persistence"] != 1:
-            while True:
-                result = self.scan_screenshot(target)
-                if result["max_val"] > 0.9:
-                    points = self.calculated(result, target.shape)
-                    self.click(points)
-                    log.info("开启自动战斗")
-                    break
-                elif time.time() - start_time > 15:
-                    break
-        else:
-            log.info("不点击自动(沿用配置)")
-            time.sleep(5)
-
-        start_time = time.time()  # 开始计算战斗时间
+    def end_battle(self, start_time):
         target = cv.imread("./picture/finish_fighting.png")
         while True:
             result = self.scan_screenshot(target)
             if result["max_val"] > 0.9:
                 points = self.calculated(result, target.shape)
-                log.debug(points)
                 elapsed_time = time.time() - start_time
                 elapsed_minutes = int(elapsed_time // 60)
                 elapsed_seconds = elapsed_time % 60
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.0f}秒"
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
-                current_system_time = time.localtime()
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
                 time.sleep(3)
                 break
 
-
-    def fightE(self):
+    def common_fight_logic(self, attack, doubt, warn, target):
         start_time = time.time()
-        attack = cv.imread("./picture/attack.png")
-        doubt = cv.imread("./picture/doubt.png")
-        warn = cv.imread("./picture/warn.png")
-        image_A = cv.imread("./picture/eat.png")  # 修改
-        image_B = cv.imread("./picture/cancel.png")  # 修改
-        
         while True:
             log.info("识别中")
             attack_result = self.scan_screenshot(attack)
@@ -203,40 +149,39 @@ class Calculated:
             warn_result = self.scan_screenshot(warn)
             
             if attack_result["max_val"] > 0.9:
-                pyautogui.press('e')
-                time.sleep(1)
-                start_time_A = time.time()
-                result_A = None
-                while result_A is None and time.time() - start_time_A < 3:
-                    result_A = self.scan_screenshot(image_A)
-                    
-                if result_A is not None and result_A["max_val"] > 0.9:
-                    while True:
-                        result_B = self.scan_screenshot(image_B)
-                        points_B = self.calculated(result_B, image_B.shape)
-                        self.click(points_B)
-                        if result_B is None or result_B["max_val"] < 0.9:  # 修改条件判断语句
-                           break
-                        else:
-                            break
-                        
-                points = self.calculated(attack_result, attack.shape)
-                time.sleep(3)
-                self.click(points)
-                break
+                return True, attack_result
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
-                log.info("識別到疑問或警告，等待怪物開戰")
-                self.click(points)
-                time.sleep(3)
-                target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
-                result = self.scan_screenshot(target)
-                if result["max_val"] < 0.9:
-                    break
-            elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
-                log.info("识别超时,此处可能无敌人")
-                return
-        time.sleep(6)
+                log.info("识别到疑问或警告，等待怪物开战")
+                break  # 退出循环以点击屏幕中间位置
+            elif time.time() - start_time > 10:
+                log.info("识别超时，此处可能无敌人")
+                return False, None
+
+        # 点击屏幕中间位置
+        screen_width, screen_height = win32api.GetSystemMetrics(0), win32api.GetSystemMetrics(1)
+        middle_x, middle_y = screen_width // 2, screen_height // 2
+        self.click((middle_x, middle_y))  # 点击屏幕中间位置
+
+        # 继续等待目标出现
+        while True:
+            time.sleep(3)
+            target_result = self.scan_screenshot(target)
+            if target_result["max_val"] < 0.9:
+                break
+
+
+    def fighting(self):
+        attack = cv.imread("./picture/attack.png")
+        doubt = cv.imread("./picture/doubt.png")
+        warn = cv.imread("./picture/warn.png")
         target = cv.imread("./picture/auto.png")
+        
+        found, result = self.common_fight_logic(attack, doubt, warn, target)
+        if found:
+            points = self.calculated(result, attack.shape)
+            self.click(points)
+
+        # 开始自动战斗逻辑
         start_time = time.time()
         if self.CONFIG["auto_battle_persistence"] != 1:
             while True:
@@ -251,24 +196,46 @@ class Calculated:
         else:
             log.info("不点击自动(沿用配置)")
             time.sleep(5)
+        
+        # 计算战斗时间和输出战斗完成信息
+        self.end_battle(start_time)
 
-        start_time = time.time()  # 开始计算战斗时间
-        target = cv.imread("./picture/finish_fighting.png")
-        while True:
-            result = self.scan_screenshot(target)
-            if result["max_val"] > 0.9:
-                points = self.calculated(result, target.shape)
-                log.debug(points)
-                elapsed_time = time.time() - start_time
-                elapsed_minutes = int(elapsed_time // 60)
-                elapsed_seconds = elapsed_time % 60
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.0f}秒"
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
-                current_system_time = time.localtime()
-                colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
-                log.info(colored_message)
-                time.sleep(3)
-                break
+    def fightE(self):
+        attack = cv.imread("./picture/attack.png")
+        doubt = cv.imread("./picture/doubt.png")
+        warn = cv.imread("./picture/warn.png")
+        target = cv.imread("./picture/auto.png")
+        eat = cv.imread("./picture/eat.png")  
+        cancel = cv.imread("./picture/cancel.png")
+        
+        found, result = self.common_fight_logic(attack, doubt, warn, target)
+        if found:
+            start_time = time.time() 
+            pyautogui.press('e')
+            time.sleep(1)
+            start_time_eat = time.time()
+            result_eat = None
+            while result_eat is None and time.time() - start_time_eat < 3:
+                result_eat = self.scan_screenshot(eat)
+
+            if result_eat is not None and result_eat["max_val"] > 0.9:
+                while True:
+                    result_cancel = self.scan_screenshot(cancel)
+                    points_cancel = self.calculated(result_cancel, cancel.shape)
+                    self.click(points_cancel)
+                    if result_cancel is None or result_cancel["max_val"] < 0.9:
+                        break
+                    else:
+                        break
+
+            points = self.calculated(result, attack.shape)
+            time.sleep(3)
+            self.click(points)
+        
+        # 计算战斗时间和输出战斗完成信息
+        self.end_battle(start_time)
+
+
 
     def auto_map(self, map, old=True):
         map_data = (
