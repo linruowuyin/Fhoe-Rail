@@ -242,58 +242,58 @@ class Calculated:
         # 计算战斗时间和输出战斗完成信息
         self.end_battle(start_time)
 
-def auto_map(self, map, old=True):
-    map_data = (
-        read_json_file(f"map\\old\\{map}.json")
-        if old
-        else read_json_file(f"map\\{map}.json")
-    )
-    map_filename = map
-    # 开始寻路
-    log.info("开始寻路")
-    for map_index, map in enumerate(map_data["map"]):
-        log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
-        key = list(map.keys())[0]
-        value = map[key]
-        if key == "f" or key == "space" or key == "r":  # 修改处：添加 "f"、"space" 和 "r" 键的处理条件
-            # 生成0.3到0.7之间的随机浮点数
-            random_interval = random.uniform(0.3, 0.7)
-            num_repeats = int(value / random_interval)
-            for i in range(num_repeats):
+    def auto_map(self, map, old=True):
+        map_data = (
+            read_json_file(f"map\\old\\{map}.json")
+            if old
+            else read_json_file(f"map\\{map}.json")
+        )
+        map_filename = map
+        # 开始寻路
+        log.info("开始寻路")
+        for map_index, map in enumerate(map_data["map"]):
+            log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
+            key = list(map.keys())[0]
+            value = map[key]
+            if key == "f" or key == "space" or key == "r":  # 修改处：添加 "f"、"space" 和 "r" 键的处理条件
+                # 生成0.3到0.7之间的随机浮点数
+                random_interval = random.uniform(0.3, 0.7)
+                num_repeats = int(value / random_interval)
+                for i in range(num_repeats):
+                    self.keyboard.press(key)
+                    self.keyboard.release(key)
+                    time.sleep(random_interval)  # 使用随机间隔
+                remaining_time = value - (num_repeats * random_interval)
+                if remaining_time > 0:
+                    time.sleep(remaining_time)
+            elif key == "mouse_move":
+                self.mouse_move(value)
+            elif key == "fighting":
+                if value == 1:  # 进战斗
+                    self.fighting()
+                elif value == 2:  # 障碍物
+                    self.click(win32api.GetCursorPos())
+                    time.sleep(1)
+                else:
+                    raise Exception((f"map数据错误, fighting参数异常:{map_filename}", map))
+            elif key == "scroll":
+                self.scroll(value)
+            elif key == "shutdown":
+                if self.CONFIG["auto_shutdown"] is True:
+                    log.info("下班喽！I'm free!")
+                    import os
+                    os.system("shutdown /s /f /t 0")
+                else:
+                    log.info("锄地结束！")
+            elif key == "e":
+                if value == 1:  # 进战斗
+                    self.fightE()
+            else:
                 self.keyboard.press(key)
+                start_time = time.perf_counter()
+                while time.perf_counter() - start_time < value:
+                    pass
                 self.keyboard.release(key)
-                time.sleep(random_interval)  # 使用随机间隔
-            remaining_time = value - (num_repeats * random_interval)
-            if remaining_time > 0:
-                time.sleep(remaining_time)
-        elif key == "mouse_move":
-            self.mouse_move(value)
-        elif key == "fighting":
-            if value == 1:  # 进战斗
-                self.fighting()
-            elif value == 2:  # 障碍物
-                self.click(win32api.GetCursorPos())
-                time.sleep(1)
-            else:
-                raise Exception((f"map数据错误, fighting参数异常:{map_filename}", map))
-        elif key == "scroll":
-            self.scroll(value)
-        elif key == "shutdown":
-            if self.CONFIG["auto_shutdown"] is True:
-                log.info("下班喽！I'm free!")
-                import os
-                os.system("shutdown /s /f /t 0")
-            else:
-                log.info("锄地结束！")
-        elif key == "e":
-            if value == 1:  # 进战斗
-                self.fightE()
-        else:
-            self.keyboard.press(key)
-            start_time = time.perf_counter()
-            while time.perf_counter() - start_time < value:
-                pass
-            self.keyboard.release(key)
 
 
     def mouse_move(self, x):
