@@ -53,7 +53,7 @@ cen_mouse_pos = mouseController().position
 print("中心点坐标", cen_mouse_pos)
 mouse_watch = True
 
-key_list = ['w', 's', 'a', 'd', 'f', 'x']  # 匹配锄大地
+key_list = ['w', 's', 'a', 'd', 'f', 'x', 'r']  # 匹配锄大地
 # 输出列表
 event_list = []
 # 不同操作间延迟记录
