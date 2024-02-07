@@ -190,6 +190,7 @@ class Calculated:
                 time.sleep(3)
                 break
 
+
     def fightE(self):
         start_time = time.time()
         attack = cv.imread("./picture/attack.png")
@@ -285,7 +286,7 @@ class Calculated:
             log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
             key = list(map.keys())[0]
             value = map[key]
-            if key == "f":
+            if key == "f" or key == "space" or key == "r":  # 修改处：添加 "f"、"space" 和 "r" 键的处理条件
                 # 生成0.3到0.7之间的随机浮点数
                 random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
@@ -324,6 +325,7 @@ class Calculated:
                 while time.perf_counter() - start_time < value:
                     pass
                 self.keyboard.release(key)
+
 
     def mouse_move(self, x):
         scaling = 1.0
