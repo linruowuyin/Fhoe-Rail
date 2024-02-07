@@ -71,8 +71,10 @@ class Map:
         else:
             return f"{seconds:.1f}秒"
 
+
     def auto_map(self, start):
         total_processing_time = 0
+        teleport_click_count = 0  
 
         if f'map_{start}.json' in self.map_list:
             map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
@@ -92,14 +94,20 @@ class Map:
                     else:
                         time.sleep(value)
                         self.calculated.click_target(key, 0.93)
-                        log.info(f'执行传送点击')
-                time.sleep(3)
+                        teleport_click_count += 1 
+                        log.info(f'执行传送点击（{teleport_click_count}）')
+                        time.sleep(3)  # 传送点击后等待3秒
+
+                start_time = time.time()  
                 count = 0
                 while self.calculated.is_blackscreen():
                     count += 1
                     time.sleep(1)
-                log.info(f'地图载毕，用时 {count} 秒')
+                end_time = time.time()  # 记录地图加载完成的时间
+                loading_time = end_time - start_time + 3  
+                log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
                 time.sleep(2)  # 增加2秒等待防止人物未加载错轴
+                teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
                 # 记录处理开始时间
                 start_time = time.time()
