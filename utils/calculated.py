@@ -129,19 +129,6 @@ class Calculated:
             if not flag:
                 return
 
-    def start_battle(self):
-        start_time = time.time()
-        target = cv.imread("./picture/start_fighting.png")  # 用于识别是否已经进入战斗
-        while True:
-            result = self.scan_screenshot(target)
-            if result["max_val"] > 0.9:
-                log.info("已经进入战斗")
-                return True
-            elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
-                log.info("识别超时，未能进入战斗")
-                return False
-            time.sleep(1)  # 每隔1秒进行一次检测
-
     def end_battle(self, start_time):
         target = cv.imread("./picture/finish_fighting.png")
         while True:
@@ -152,16 +139,15 @@ class Calculated:
                 elapsed_minutes = int(elapsed_time // 60)
                 elapsed_seconds = elapsed_time % 60
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
-                colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
+                colored_message = (f"战斗完成, 单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
                 time.sleep(3)
                 break
+            else:
+                time.sleep(3)
+
 
     def common_fight_logic(self, attack, doubt, warn, target):
-        if not self.start_battle():  # 检测是否已经进入战斗
-            return False, None
-
-        # 以下逻辑保持不变
         start_time = time.time()
         while True:
             log.info("识别中")
@@ -190,6 +176,74 @@ class Calculated:
             if target_result["max_val"] < 0.9:
                 break
 
+    def fighting(self):
+        attack = cv.imread("./picture/attack.png")
+        doubt = cv.imread("./picture/doubt.png")
+        warn = cv.imread("./picture/warn.png")
+        target = cv.imread("./picture/auto.png")
+
+        found, result = self.common_fight_logic(attack, doubt, warn, target)
+        if found:
+            points = self.calculated(result, attack.shape)
+            if points is not None:
+                self.click(points)
+
+        # 开始自动战斗逻辑
+        start_time = time.time()
+        if self.CONFIG["auto_battle_persistence"] != 1:
+            while True:
+                result = self.scan_screenshot(target)
+                if result["max_val"] > 0.9:
+                    points = self.calculated(result, target.shape)
+                    if points is not None:
+                        self.click(points)
+                        log.info("开启自动战斗")
+                        break
+                elif time.time() - start_time > 15:
+                    break
+        else:
+            log.info("不点击自动(沿用配置)")
+            time.sleep(5)
+
+        # 计算战斗时间和输出战斗完成信息
+        self.end_battle(start_time)
+
+    def fightE(self):
+        attack = cv.imread("./picture/attack.png")
+        doubt = cv.imread("./picture/doubt.png")
+        warn = cv.imread("./picture/warn.png")
+        target = cv.imread("./picture/auto.png")
+        eat = cv.imread("./picture/eat.png")
+        cancel = cv.imread("./picture/cancel.png")
+
+        found, result = self.common_fight_logic(attack, doubt, warn, target)
+        if found:
+            start_time = time.time()
+            pyautogui.press('e')
+            time.sleep(1)
+            start_time_eat = time.time()
+            result_eat = None
+            while result_eat is None and time.time() - start_time_eat < 3:
+                result_eat = self.scan_screenshot(eat)
+
+            if result_eat is not None and result_eat["max_val"] > 0.9:
+                while True:
+                    result_cancel = self.scan_screenshot(cancel)
+                    points_cancel = self.calculated(result_cancel, cancel.shape)
+                    if points_cancel is not None:
+                        self.click(points_cancel)
+                    if result_cancel is None or result_cancel["max_val"] < 0.9:
+                        break
+                    else:
+                        break
+
+            points = self.calculated(result, attack.shape)
+            if points is not None:
+                time.sleep(3)
+                self.click(points)
+
+        # 计算战斗时间和输出战斗完成信息
+        self.end_battle(start_time)
 
     def auto_map(self, map, old=True):
         map_data = (
