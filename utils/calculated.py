@@ -99,19 +99,22 @@ class Calculated:
             "screenshot": screenshot,
             "min_val": min_val,
             "max_val": max_val,
-            "min_loc": (min_loc[0] + left, min_loc[1] + top),
-            "max_loc": (max_loc[0] + left, max_loc[1] + top),
+            "min_loc": (min_loc[0] + left, min_loc[1] + top) if min_loc else None,
+            "max_loc": (max_loc[0] + left, max_loc[1] + top) if max_loc else None,
         }
 
     def calculated(self, result, shape):
         mat_top, mat_left = result["max_loc"]
-        prepared_height, prepared_width, prepared_channels = shape
+        if mat_top is not None and mat_left is not None:
+            prepared_height, prepared_width, prepared_channels = shape
 
-        x = int((mat_top + mat_top + prepared_width) / 2)
+            x = int((mat_top + mat_top + prepared_width) / 2)
 
-        y = int((mat_left + mat_left + prepared_height) / 2)
+            y = int((mat_left + mat_left + prepared_height) / 2)
 
-        return x, y
+            return x, y
+        else:
+            return None
 
     # flag为true一定要找到
     def click_target(self, target_path, threshold, flag=True):
@@ -120,8 +123,9 @@ class Calculated:
             result = self.scan_screenshot(target)
             if result["max_val"] > threshold:
                 points = self.calculated(result, target.shape)
-                self.click(points)
-                return
+                if points is not None:
+                    self.click(points)
+                    return
             if not flag:
                 return
 
@@ -147,7 +151,7 @@ class Calculated:
             attack_result = self.scan_screenshot(attack)
             doubt_result = self.scan_screenshot(doubt)
             warn_result = self.scan_screenshot(warn)
-            
+
             if attack_result["max_val"] > 0.9:
                 return True, attack_result
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
@@ -169,17 +173,17 @@ class Calculated:
             if target_result["max_val"] < 0.9:
                 break
 
-
     def fighting(self):
         attack = cv.imread("./picture/attack.png")
         doubt = cv.imread("./picture/doubt.png")
         warn = cv.imread("./picture/warn.png")
         target = cv.imread("./picture/auto.png")
-        
+
         found, result = self.common_fight_logic(attack, doubt, warn, target)
         if found:
             points = self.calculated(result, attack.shape)
-            self.click(points)
+            if points is not None:
+                self.click(points)
 
         # 开始自动战斗逻辑
         start_time = time.time()
@@ -188,15 +192,16 @@ class Calculated:
                 result = self.scan_screenshot(target)
                 if result["max_val"] > 0.9:
                     points = self.calculated(result, target.shape)
-                    self.click(points)
-                    log.info("开启自动战斗")
-                    break
+                    if points is not None:
+                        self.click(points)
+                        log.info("开启自动战斗")
+                        break
                 elif time.time() - start_time > 15:
                     break
         else:
             log.info("不点击自动(沿用配置)")
             time.sleep(5)
-        
+
         # 计算战斗时间和输出战斗完成信息
         self.end_battle(start_time)
 
@@ -205,12 +210,12 @@ class Calculated:
         doubt = cv.imread("./picture/doubt.png")
         warn = cv.imread("./picture/warn.png")
         target = cv.imread("./picture/auto.png")
-        eat = cv.imread("./picture/eat.png")  
+        eat = cv.imread("./picture/eat.png")
         cancel = cv.imread("./picture/cancel.png")
-        
+
         found, result = self.common_fight_logic(attack, doubt, warn, target)
         if found:
-            start_time = time.time() 
+            start_time = time.time()
             pyautogui.press('e')
             time.sleep(1)
             start_time_eat = time.time()
@@ -222,20 +227,20 @@ class Calculated:
                 while True:
                     result_cancel = self.scan_screenshot(cancel)
                     points_cancel = self.calculated(result_cancel, cancel.shape)
-                    self.click(points_cancel)
+                    if points_cancel is not None:
+                        self.click(points_cancel)
                     if result_cancel is None or result_cancel["max_val"] < 0.9:
                         break
                     else:
                         break
 
             points = self.calculated(result, attack.shape)
-            time.sleep(3)
-            self.click(points)
-        
+            if points is not None:
+                time.sleep(3)
+                self.click(points)
+
         # 计算战斗时间和输出战斗完成信息
         self.end_battle(start_time)
-
-
 
     def auto_map(self, map, old=True):
         map_data = (
@@ -260,7 +265,7 @@ class Calculated:
                     time.sleep(random_interval)  # 使用随机间隔
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
-                    time.sleep(remaining_time) 
+                    time.sleep(remaining_time)
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
