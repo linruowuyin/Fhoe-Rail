@@ -40,22 +40,32 @@ class Map:
         # 从'./map'目录获取地图文件列表（排除'old'）
         map_dir = './map'
         json_files = [f for f in os.listdir(map_dir) if f.endswith('.json') and not f.startswith('old')]
-    
+        
         self.map_list = json_files
         self.map_list_map.clear()
-    
+        
+        map_name_list = {}  # 使用字典存储地图名称，以前缀为键，对应的地图列表为值
+        
         for map_ in json_files:
             map_data = read_json_file(f"map/{map_}")
             key1 = map_[map_.index('_') + 1:map_.index('-')]
             key2 = map_[map_.index('-') + 1:map_.index('.')]
-            value = self.map_list_map.get(key1)
+            map_name = map_data["name"]
+            prefix = key1
+            if prefix not in map_name_list:
+                map_name_list[prefix] = []  # 初始化以前缀为键的地图列表
+            map_name_list[prefix].append((int(key2), map_name))  # 将地图名称及其对应的文件名添加到对应前缀的地图列表中
         
-            if value is None:
-                value = {}
+        # 对每个前缀对应的地图列表按照地图名称中的数值大小排序
+        for prefix in map_name_list:
+            map_name_list[prefix].sort(key=lambda x: x[0])
         
-            value[key2] = map_data["name"]
-            self.map_list_map[key1] = value
-    
+        for prefix in sorted(map_name_list.keys(), key=lambda x: int(x)):  # 对前缀按照数值大小排序
+            value = {}
+            for key2, map_name in map_name_list[prefix]:
+                value[str(key2)] = map_name
+            self.map_list_map[str(prefix)] = value
+        
         log.debug(self.map_list)
         log.debug(self.map_list_map)
 
