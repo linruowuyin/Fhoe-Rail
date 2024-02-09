@@ -73,7 +73,8 @@ def main():
         switch_window()
         time.sleep(0.5)
         log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
-        log.info("1.2版本，均衡6锄满单角色收益62900经验")
+        log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
+        log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         map_instance.auto_map(start)  # 读取配置
     else:
