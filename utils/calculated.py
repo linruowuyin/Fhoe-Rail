@@ -38,12 +38,12 @@ class Calculated:
             current_pos = win32api.GetCursorPos()
             if current_pos == (x, y):
                 pyautogui.mouseDown(x, y, button='left')
-                time.sleep(0.4)
+                time.sleep(0.3)
                 pyautogui.mouseUp(x, y, button='left')
             else:
                 win32api.SetCursorPos((x, y))
                 pyautogui.mouseDown(x, y, button='left')
-                time.sleep(0.4)
+                time.sleep(0.3)
                 pyautogui.mouseUp(x, y, button='left')
 
     def click(self, points):
