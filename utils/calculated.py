@@ -1,12 +1,3 @@
-'''
-Author: Night-stars-1 nujj1042633805@gmail.com
-Date: 2023-05-24 10:56:11
-LastEditors: Night-stars-1 nujj1042633805@gmail.com
-LastEditTime: 2023-05-24 10:57:36
-Description: 
-
-Copyright (c) 2023 by Night-stars-1, All Rights Reserved. 
-'''
 import time
 
 import cv2 as cv
@@ -271,7 +262,7 @@ class Calculated:
             log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
             key = list(map.keys())[0]
             value = map[key]
-            if key == "f":
+            if key == "f" or key == "space" or key == "r":  # 修改处：添加 "f"、"space" 和 "r" 键的处理条件
                 # 生成0.3到0.7之间的随机浮点数
                 random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
@@ -281,7 +272,7 @@ class Calculated:
                     time.sleep(random_interval)  # 使用随机间隔
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
-                    time.sleep(remaining_time) 
+                    time.sleep(remaining_time)
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
@@ -310,6 +301,7 @@ class Calculated:
                 while time.perf_counter() - start_time < value:
                     pass
                 self.keyboard.release(key)
+
 
     def mouse_move(self, x):
         scaling = 1.0
@@ -356,13 +348,25 @@ class Calculated:
 
     def is_blackscreen(self, threshold=25):
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
-        
+
         if cv.mean(screenshot)[0] > threshold:  # 如果平均像素值大于阈值
             target = cv.imread("./picture/finish_fighting.png")
-            while True:
+            alt_target = cv.imread("./picture/finish_fighting2.png")
+            attempts = 0
+            max_attempts_ff1 = 3
+            while attempts < max_attempts_ff1:
                 result = self.scan_screenshot(target)
-                if result["max_val"] > 0.9:
+                if result and result["max_val"] > 0.9:
                     return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
+                attempts += 1
+                time.sleep(5)  # 等待5秒再尝试匹配
+            # 如果无法找到 finish_fighting.png，则尝试匹配 finish_fighting2.png
+            attempts = 0
+            while attempts < 3:  # 尝试匹配 finish_fighting2.png 最多3次
+                alt_result = self.scan_screenshot(alt_target)
+                if alt_result["max_val"] > 0.92:
+                    return False  # 如果匹配度大于0.92，表示不是黑屏，返回False
+                attempts += 1
 
-        return cv.mean(screenshot)[0] < threshold
+        return True  # 如果未匹配到指定的图像，返回True
 
