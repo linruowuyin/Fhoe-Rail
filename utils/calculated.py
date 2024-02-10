@@ -98,6 +98,7 @@ class Calculated:
     # flag为true一定要找到
     def click_target(self, target_path, threshold, flag=True):
         target = cv.imread(target_path)
+        start_time = time.time()
         while True:
             result = self.scan_screenshot(target)
             if result["max_val"] > threshold:
@@ -105,6 +106,9 @@ class Calculated:
                 self.click(points)
                 return
             if not flag:
+                return
+            elapsed_time = time.time() - start_time
+            if elapsed_time > 30:
                 return
 
     def fighting(self):
