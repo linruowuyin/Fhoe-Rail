@@ -1,0 +1,47 @@
+{
+    "name": "大矿区-4",
+    "author": "夜里无星,小明",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_2-5_point_4.png": 1.5
+        },
+        {
+            "picture\\map_2-5_point_5.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "d": 6.34
+        },
+        {
+            "w": 1.55
+        },
+        {
+            "d": 1.03
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "w": 3.97
+        },
+        {
+            "d": 0.53
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}
