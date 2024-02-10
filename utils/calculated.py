@@ -372,13 +372,25 @@ class Calculated:
 
     def is_blackscreen(self, threshold=25):
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
-        
+
         if cv.mean(screenshot)[0] > threshold:  # 如果平均像素值大于阈值
             target = cv.imread("./picture/finish_fighting.png")
-            while True:
+            alt_target = cv.imread("./picture/finish_fighting2.png")
+            attempts = 0
+            max_attempts_ff1 = 3
+            while attempts < max_attempts_ff1:
                 result = self.scan_screenshot(target)
-                if result["max_val"] > 0.9:
+                if result and result["max_val"] > 0.9:
                     return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
+                attempts += 1
+                time.sleep(5)  # 等待5秒再尝试匹配
+            # 如果无法找到 finish_fighting.png，则尝试匹配 finish_fighting2.png
+            attempts = 0
+            while attempts < 3:  # 尝试匹配 finish_fighting2.png 最多3次
+                alt_result = self.scan_screenshot(alt_target)
+                if alt_result["max_val"] > 0.92:
+                    return False  # 如果匹配度大于0.92，表示不是黑屏，返回False
+                attempts += 1
 
-        return cv.mean(screenshot)[0] < threshold
+        return True  # 如果未匹配到指定的图像，返回True
 
