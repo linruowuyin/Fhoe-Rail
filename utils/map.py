@@ -40,6 +40,7 @@ class Map:
         # 从'./map'目录获取地图文件列表（排除'old'）
         map_dir = './map'
         json_files = [f for f in os.listdir(map_dir) if f.endswith('.json') and not f.startswith('old')]
+        json_files = sorted(json_files, key=lambda x: [int(y) for y in x.replace('-','_').replace('.','_').split('_')[1:-1]])
     
         self.map_list = json_files
         self.map_list_map.clear()
