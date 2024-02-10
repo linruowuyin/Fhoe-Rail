@@ -39,13 +39,13 @@ def choose_map_debug(map_instance: Map):
             options_map = map_instance.map_list_map.get(main_map)
             if not options_map:
                 return None
-            sorted_keys = sorted(options_map.keys(), key=lambda x: int(x))  # 按数值大小排序地图名称
-            values = [options_map[key] for key in sorted_keys] + ["【返回】"]
+            keys = list(options_map.keys())
+            values = list(options_map.values()) + ["【返回】"]
             option_ = questionary.select(title_, values).ask()
             if option_ == "【返回】":
                 is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
             else:
-                side_map = sorted_keys[values.index(option_)]
+                side_map = keys[values.index(option_)]
                 return f"{main_map}-{side_map}"
 
 
