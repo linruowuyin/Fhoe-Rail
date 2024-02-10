@@ -40,25 +40,22 @@ class Map:
         # 从'./map'目录获取地图文件列表（排除'old'）
         map_dir = './map'
         json_files = [f for f in os.listdir(map_dir) if f.endswith('.json') and not f.startswith('old')]
-
+    
         self.map_list = json_files
         self.map_list_map.clear()
-
+    
         for map_ in json_files:
             map_data = read_json_file(f"map/{map_}")
             key1 = map_[map_.index('_') + 1:map_.index('-')]
             key2 = map_[map_.index('-') + 1:map_.index('.')]
-            key2 = key2.zfill(2)
-            key2 = int(key2) 
             value = self.map_list_map.get(key1)
-
+        
             if value is None:
                 value = {}
-
+        
             value[key2] = map_data["name"]
-            sorted_value = {k: v for k, v in sorted(value.items())}
-            self.map_list_map[key1] = sorted_value
-
+            self.map_list_map[key1] = value
+    
         log.debug(self.map_list)
         log.debug(self.map_list_map)
 
