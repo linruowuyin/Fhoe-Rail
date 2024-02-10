@@ -39,14 +39,15 @@ def choose_map_debug(map_instance: Map):
             options_map = map_instance.map_list_map.get(main_map)
             if not options_map:
                 return None
-            keys = list(options_map.keys())
-            values = list(options_map.values()) + ["【返回】"]
+            sorted_keys = sorted(options_map.keys(), key=lambda x: int(x))  # 按数值大小排序地图名称
+            values = [options_map[key] for key in sorted_keys] + ["【返回】"]
             option_ = questionary.select(title_, values).ask()
             if option_ == "【返回】":
                 is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
             else:
-                side_map = keys[values.index(option_)]
+                side_map = sorted_keys[values.index(option_)]
                 return f"{main_map}-{side_map}"
+
 
 def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
@@ -84,15 +85,17 @@ def main():
 def main_start():
     if not read_json_file(CONFIG_FILE_NAME, False).get('start'):
         title = "开启连续自动战斗了吗喵？："
-        options = ['没打开', '打开了', '我啷个晓得嘛']
+        options = ['打开了', '没打开', '我啷个晓得嘛']
         option = questionary.select(title, options).ask()
-        modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", options.index(option))
+        is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
+        modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
         modify_json_file(CONFIG_FILE_NAME, "start", True)
         new_option_title = "想要跑完自动关机吗？"
         new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
         new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
-        new_option_value = new_option_choice == '↑↑↓↓←→←→BABA'
-        modify_json_file(CONFIG_FILE_NAME, "auto_shutdown", new_option_value)
+        is_auto_shutdown_enabled = new_option_choice == '↑↑↓↓←→←→BABA'
+        modify_json_file(CONFIG_FILE_NAME, "auto_shutdown", is_auto_shutdown_enabled)
+
 
 def main_start_rewrite():
     title = "开启连续自动战斗了吗喵？："
