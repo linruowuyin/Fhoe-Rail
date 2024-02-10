@@ -14,11 +14,13 @@ from pynput.keyboard import Controller as KeyboardController
 from .config import read_json_file, CONFIG_FILE_NAME
 from .exceptions import Exception
 from .log import log
+from .mini_asu import ASU
 
 class Calculated:
     def __init__(self):
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
         self.keyboard = KeyboardController()
+        self.ASU = ASU()
 
     def click(self, points):
         """
@@ -163,6 +165,7 @@ class Calculated:
                 current_system_time = time.localtime()
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
+                self.rotate()
                 time.sleep(3)
                 break
 
@@ -246,10 +249,24 @@ class Calculated:
                 current_system_time = time.localtime()
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
+                self.rotate()
                 time.sleep(3)
                 break
+            
+    def rotate(self):
+        if self.need_rotate:
+            self.keyboard.press('w')
+            self.keyboard.release('w')
+            time.sleep(0.7)
+            self.ASU.screen = self.take_screenshot()[0]
+            ang = self.ang - self.ASU.get_now_direc()
+            ang = (ang + 900) % 360 - 180
+            self.mouse_move(ang * 10.2)
 
-    def auto_map(self, map, old=True):
+    def auto_map(self, map, old=True, rotate=False):
+        self.ASU.screen = self.take_screenshot()[0]
+        self.ang = self.ASU.get_now_direc()
+        self.need_rotate = rotate
         map_data = (
             read_json_file(f"map\\old\\{map}.json")
             if old
