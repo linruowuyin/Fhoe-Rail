@@ -1,4 +1,14 @@
+'''
+Author: Night-stars-1 nujj1042633805@gmail.com
+Date: 2023-05-24 10:56:11
+LastEditors: Night-stars-1 nujj1042633805@gmail.com
+LastEditTime: 2023-05-24 10:57:36
+Description: 
+
+Copyright (c) 2023 by Night-stars-1, All Rights Reserved. 
+'''
 import time
+
 import cv2 as cv
 import numpy as np
 import pyautogui
@@ -9,7 +19,6 @@ import random
 from datetime import datetime
 from PIL import ImageGrab
 from pynput.keyboard import Controller as KeyboardController
-from pynput.mouse import Listener as MouseListener
 
 from .config import read_json_file, CONFIG_FILE_NAME
 from .exceptions import Exception
@@ -20,40 +29,20 @@ class Calculated:
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
         self.keyboard = KeyboardController()
 
-    def on_move(self, x, y):
-        pass
-
-    def wait_for_mouse_stop(self, initial_pos):
-        current_pos = win32api.GetCursorPos()
-        while current_pos != initial_pos:
-            time.sleep(0.1)
-            initial_pos = current_pos
-            current_pos = win32api.GetCursorPos()
-
-    def move_to_and_click(self, x, y):
-        initial_pos = win32api.GetCursorPos()
-        with MouseListener(on_move=self.on_move) as listener:
-            win32api.SetCursorPos((x, y))
-            self.wait_for_mouse_stop(initial_pos)
-            current_pos = win32api.GetCursorPos()
-            if current_pos == (x, y):
-                pyautogui.mouseDown(x, y, button='left')
-                time.sleep(0.3)
-                pyautogui.mouseUp(x, y, button='left')
-            else:
-                win32api.SetCursorPos((x, y))
-                pyautogui.mouseDown(x, y, button='left')
-                time.sleep(0.3)
-                pyautogui.mouseUp(x, y, button='left')
-
     def click(self, points):
+        """
+        说明：
+            点击坐标
+        参数：
+            :param points: 坐标
+        """
         x, y = int(points[0]), int(points[1])
-        screen_width, screen_height = win32api.GetSystemMetrics(0), win32api.GetSystemMetrics(1)
-        x = max(0, min(x, screen_width - 1))
-        y = max(0, min(y, screen_height - 1))
-
-        # 确保鼠标点击位置不超出屏幕边界
-        self.move_to_and_click(x, y)
+        log.debug((x, y))
+        win32api.SetCursorPos((x, y))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+        # pyautogui.click(x,y, clicks=5, interval=0.1)
+        time.sleep(0.5)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def relative_click(self, points):
         """
@@ -99,22 +88,19 @@ class Calculated:
             "screenshot": screenshot,
             "min_val": min_val,
             "max_val": max_val,
-            "min_loc": (min_loc[0] + left, min_loc[1] + top) if min_loc else None,
-            "max_loc": (max_loc[0] + left, max_loc[1] + top) if max_loc else None,
+            "min_loc": (min_loc[0] + left, min_loc[1] + top),
+            "max_loc": (max_loc[0] + left, max_loc[1] + top),
         }
 
     def calculated(self, result, shape):
         mat_top, mat_left = result["max_loc"]
-        if mat_top is not None and mat_left is not None:
-            prepared_height, prepared_width, prepared_channels = shape
+        prepared_height, prepared_width, prepared_channels = shape
 
-            x = int((mat_top + mat_top + prepared_width) / 2)
+        x = int((mat_top + mat_top + prepared_width) / 2)
 
-            y = int((mat_left + mat_left + prepared_height) / 2)
+        y = int((mat_left + mat_left + prepared_height) / 2)
 
-            return x, y
-        else:
-            return None
+        return x, y
 
     # flag为true一定要找到
     def click_target(self, target_path, threshold, flag=True):
@@ -123,9 +109,8 @@ class Calculated:
             result = self.scan_screenshot(target)
             if result["max_val"] > threshold:
                 points = self.calculated(result, target.shape)
-                if points is not None:
-                    self.click(points)
-                    return
+                self.click(points)
+                return
             if not flag:
                 return
 
@@ -286,7 +271,7 @@ class Calculated:
             log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
             key = list(map.keys())[0]
             value = map[key]
-            if key == "f" or key == "space" or key == "r":  # 修改处：添加 "f"、"space" 和 "r" 键的处理条件
+            if key == "f":
                 # 生成0.3到0.7之间的随机浮点数
                 random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
@@ -296,7 +281,7 @@ class Calculated:
                     time.sleep(random_interval)  # 使用随机间隔
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
-                    time.sleep(remaining_time)
+                    time.sleep(remaining_time) 
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
@@ -325,7 +310,6 @@ class Calculated:
                 while time.perf_counter() - start_time < value:
                     pass
                 self.keyboard.release(key)
-
 
     def mouse_move(self, x):
         scaling = 1.0
@@ -372,25 +356,13 @@ class Calculated:
 
     def is_blackscreen(self, threshold=25):
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
-
+        
         if cv.mean(screenshot)[0] > threshold:  # 如果平均像素值大于阈值
             target = cv.imread("./picture/finish_fighting.png")
-            alt_target = cv.imread("./picture/finish_fighting2.png")
-            attempts = 0
-            max_attempts_ff1 = 3
-            while attempts < max_attempts_ff1:
+            while True:
                 result = self.scan_screenshot(target)
-                if result and result["max_val"] > 0.9:
+                if result["max_val"] > 0.9:
                     return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
-                attempts += 1
-                time.sleep(5)  # 等待5秒再尝试匹配
-            # 如果无法找到 finish_fighting.png，则尝试匹配 finish_fighting2.png
-            attempts = 0
-            while attempts < 3:  # 尝试匹配 finish_fighting2.png 最多3次
-                alt_result = self.scan_screenshot(alt_target)
-                if alt_result["max_val"] > 0.92:
-                    return False  # 如果匹配度大于0.92，表示不是黑屏，返回False
-                attempts += 1
 
-        return True  # 如果未匹配到指定的图像，返回True
+        return cv.mean(screenshot)[0] < threshold
 
