@@ -186,7 +186,8 @@ class Calculated:
                     pyautogui.press('esc')
                     time.sleep(1)
                     break
-                if elapsed_time > 60:
+                if elapsed_time > 900:
+                    log.info("战斗超时")
                     break
 
 
