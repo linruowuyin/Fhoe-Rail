@@ -61,7 +61,6 @@ class Map:
         log.debug(self.map_list_map)
 
 
-
     def format_time(self, seconds):
         # 格式化时间
         minutes, seconds = divmod(seconds, 60)
@@ -98,8 +97,8 @@ class Map:
                         time.sleep(value)
                         self.calculated.click_target(key, 0.93)
                         teleport_click_count += 1 
-                        log.info(f'执行传送点击（{teleport_click_count}）')
-                        time.sleep(3)  # 传送点击后等待3秒
+                        log.info(f'传送点击（{teleport_click_count}）')
+                        time.sleep(2)  # 传送点击后等待2秒
 
                 start_time = time.time()  
                 count = 0
@@ -107,7 +106,7 @@ class Map:
                     count += 1
                     time.sleep(1)
                 end_time = time.time()  # 记录地图加载完成的时间
-                loading_time = end_time - start_time + 3  
+                loading_time = end_time - start_time + 2  
                 log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
                 time.sleep(2)  # 增加2秒等待防止人物未加载错轴
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
