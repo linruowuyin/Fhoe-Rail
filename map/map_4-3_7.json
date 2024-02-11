@@ -1,20 +1,50 @@
 {
-    "name": "「白日梦」酒店梦境-7",
+    "name": "酒店梦境-6",
     "author": "喵不可言",
     "start": [
         {
-            "map": 1
-		},
-        {
-            "picture\\map_4-2_point_3.png": 1.5
+            "map": 2
         },
         {
-            "picture\\map_4-3_point_1.png": 1.5
+            "picture\\map_4-3_point_5.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
         }
     ],
     "map": [
+    {
+      "s": 1.1048564910888672
+    },
+    {
+      "a": 7.183839797973633
+    },
+    {
+      "w": 1.3196651935577393
+    },
+    {
+      "a": 3.056006669998169
+    },
+    {
+      "fighting": 1
+	},
+    {
+      "fighting": 2
+	},
+    {
+      "fighting": 1
+	},
+    {
+	  "d": 3.7
+    },
+    {
+      "fighting": 2
+	},
+    {
+	  "w": 0.3
+	},
+    {
+      "fighting": 1
+    }
   ]
 }
