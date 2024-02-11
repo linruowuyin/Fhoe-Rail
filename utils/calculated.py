@@ -158,7 +158,7 @@ class Calculated:
         target = cv.imread("./picture/finish_fighting.png")
         while True:
             result = self.scan_screenshot(target)
-            if result["max_val"] > 0.9:
+            if result["max_val"] > 0.92:
                 points = self.calculated(result, target.shape)
                 log.debug(points)
                 elapsed_time = time.time() - start_time
@@ -168,8 +168,6 @@ class Calculated:
                 current_system_time = time.localtime()
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
-
-                # 输出匹配度和匹配成功的位置坐标
                 match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
                 log.info(match_details)
 
@@ -246,17 +244,19 @@ class Calculated:
         target = cv.imread("./picture/finish_fighting.png")
         while True:
             result = self.scan_screenshot(target)
-            if result["max_val"] > 0.9:
+            if result["max_val"] > 0.92:
                 points = self.calculated(result, target.shape)
                 log.debug(points)
                 elapsed_time = time.time() - start_time
                 elapsed_minutes = int(elapsed_time // 60)
                 elapsed_seconds = elapsed_time % 60
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.0f}秒"
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
                 current_system_time = time.localtime()
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
+                match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+                log.info(match_details)
+
                 self.rotate()
                 time.sleep(3)
                 break
