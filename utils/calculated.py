@@ -164,11 +164,15 @@ class Calculated:
                 elapsed_time = time.time() - start_time
                 elapsed_minutes = int(elapsed_time // 60)
                 elapsed_seconds = elapsed_time % 60
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.0f}秒"
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
                 current_system_time = time.localtime()
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
+
+                # 输出匹配度和匹配成功的位置坐标
+                match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+                log.info(match_details)
+
                 self.rotate()
                 time.sleep(3)
                 break
@@ -277,13 +281,11 @@ class Calculated:
             else read_json_file(f"map\\{map}.json")
         )
         map_filename = map
-        # 开始寻路
-        log.info("开始寻路")
         for map_index, map in enumerate(map_data["map"]):
             log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
             key = list(map.keys())[0]
             value = map[key]
-            if key == "f" or key == "space" or key == "r":  # 修改处：添加 "f"、"space" 和 "r" 键的处理条件
+            if key == "f" or key == "space" or key == "r": 
                 # 生成0.3到0.7之间的随机浮点数
                 random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
@@ -322,7 +324,6 @@ class Calculated:
                 while time.perf_counter() - start_time < value:
                     pass
                 self.keyboard.release(key)
-
 
     def mouse_move(self, x):
         scaling = 1.0
