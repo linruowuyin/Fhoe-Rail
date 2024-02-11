@@ -176,19 +176,15 @@ class Calculated:
                 break
             
             elapsed_time = time.time() - start_time
-            if elapsed_time > 60:
-                self.click_target("./picture/auto.png", 0.9, False)  #超时尝试开启自动战斗
-                self.click_target("./picture/defeat.png", 0.9, False)  #战斗失败
-                self.click_target("./picture/map_4-2_point_3.png", 0.9, False)  #3D地图返回
-                orientation = cv.imread("./picture/orientation_1.png")      #退出地图界面
-                result = self.scan_screenshot(orientation)
-                if result["max_val"] > 0.9:
-                    pyautogui.press('esc')
-                    time.sleep(1)
-                    break
+            if elapsed_time > 90:
+                self.click_target("./picture/auto.png", 0.97, False)  #超时尝试开启自动战斗
+                self.click_target("./picture/defeat.png", 0.96, False)  #战斗失败
+                self.click_target("./picture/map_4-2_point_3.png", 0.97, False)  #3D地图返回
+                self.click_target("./picture/orientation_close.png", 0.98, False)  #退出地图界面
                 if elapsed_time > 900:
                     log.info("战斗超时")
                     break
+                time.sleep(0.5)
 
 
     def fightE(self):
