@@ -146,17 +146,32 @@ class Calculated:
 
     # flag为true一定要找到
     def click_target(self, target_path, threshold, flag=True):
-        target = cv.imread(target_path)
+        original_target = cv.imread(target_path)
         start_time = time.time()
+        
         while True:
-            result = self.scan_screenshot(target)
+            elapsed_time = time.time() - start_time
+            
+            # 匹配预定义目标图像
+            result = self.scan_screenshot(original_target)
             if result["max_val"] > threshold:
-                points = self.calculated(result, target.shape)
+                points = self.calculated(result, original_target.shape)
                 self.click(points)
                 return
+
+            # 如果超过3秒，同时匹配原图像和颜色反转后的图像
+            if elapsed_time > 3:
+                inverted_target = cv.bitwise_not(original_target)
+                result = self.scan_screenshot(inverted_target)
+                if result["max_val"] > threshold:
+                    points = self.calculated(result, inverted_target.shape)
+                    self.click(points)
+                    log.info("阴阳变转")
+                    return
+
             if not flag:
                 return
-            elapsed_time = time.time() - start_time
+
             if elapsed_time > 30:
                 return
             
