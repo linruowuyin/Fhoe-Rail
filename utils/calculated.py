@@ -251,9 +251,10 @@ class Calculated:
             
             elapsed_time = time.time() - start_time
             if elapsed_time > 90:
-                self.click_target("./picture/auto.png", 0.97, False)  #超时尝试开启自动战斗
-                self.click_target("./picture/defeat.png", 0.96, False)  #战斗失败
-                self.click_target("./picture/map_4-2_point_3.png", 0.97, False)  #3D地图返回
+                self.click_target("./picture/auto.png", 0.98, False)  #超时尝试开启自动战斗
+                self.click_target("./picture/continue_fighting.png", 0.98, False)  #战斗暂停界面点击继续战斗
+                self.click_target("./picture/defeat.png", 0.98, False)  #战斗失败
+                self.click_target("./picture/map_4-2_point_3.png", 0.98, False)  #3D地图返回
                 self.click_target("./picture/orientation_close.png", 0.98, False)  #退出地图界面
                 if elapsed_time > 900:
                     log.info("战斗超时")
