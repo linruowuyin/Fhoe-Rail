@@ -1,4 +1,21 @@
 import time
+import cv2 as cv
+import numpy as np
+import pyautogui
+import win32api
+import win32con
+import win32gui
+import random
+from datetime import datetime
+from PIL import ImageGrab
+from pynput.keyboard import Controller as KeyboardController
+
+from .config import read_json_file, CONFIG_FILE_NAME
+from .exceptions import Exception
+from .log import log
+from .mini_asu import ASU
+
+import time
 
 import cv2 as cv
 import numpy as np
@@ -31,9 +48,10 @@ class Calculated:
         """
         x, y = int(points[0]), int(points[1])
         log.debug((x, y))
+        
+        # 移动鼠标并点击
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        # pyautogui.click(x,y, clicks=5, interval=0.1)
         time.sleep(0.5)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
@@ -53,19 +71,51 @@ class Calculated:
         )
         log.info((x, y))
         log.debug((x, y))
+        
+        # Press Alt key
+        win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+        
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.5)
+        time.sleep(0.4)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def click_center(self):
+        """
+        点击游戏窗口中心位置
+        """
+        hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
+        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+        x = int((left + right) / 2)
+        y = int((top + bottom) / 2)
+        win32api.SetCursorPos((x, y))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+        time.sleep(0.1)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def take_screenshot(self):
-        # 返回RGB图像
+        """
+        获取游戏窗口的屏幕截图
+        """
         hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
         left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-        picture = ImageGrab.grab((left, top, right, bottom), all_screens=True)
+
+        # 计算截图范围
+        screenshot_left = left
+        screenshot_top = top
+        screenshot_right = min(right, left + 1920)
+        screenshot_bottom = min(bottom, top + 1080)
+
+        # 如果游戏窗口的底部坐标高于 1080，则调整截图范围
+        if bottom > 1080:
+            screenshot_top = max(top, bottom - 1080)
+
+        # 获取游戏窗口截图
+        picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
         screenshot = np.array(picture)
         screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
-        return screenshot, left, top, right, bottom
+        return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
 
     def scan_screenshot(self, prepared) -> dict:
         """
@@ -90,7 +140,6 @@ class Calculated:
         prepared_height, prepared_width, prepared_channels = shape
 
         x = int((mat_top + mat_top + prepared_width) / 2)
-
         y = int((mat_left + mat_left + prepared_height) / 2)
 
         return x, y
@@ -123,12 +172,12 @@ class Calculated:
             warn_result = self.scan_screenshot(warn)
             if attack_result["max_val"] > 0.9:
                 points = self.calculated(attack_result, attack.shape)
-                self.click(points)
+                self.click_center()
                 break
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
                 log.info("識別到疑問或警告，等待怪物開戰")
                 points = self.calculated(attack_result, attack.shape)
-                self.click(points)
+                self.click_center()
                 time.sleep(5)
                 target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
                 result = self.scan_screenshot(target)
@@ -145,7 +194,7 @@ class Calculated:
                 result = self.scan_screenshot(target)
                 if result["max_val"] > 0.9:
                     points = self.calculated(result, target.shape)
-                    self.click(points)
+                    self.click_center()
                     log.info("开启自动战斗")
                     break
                 elif time.time() - start_time > 15:
@@ -221,11 +270,11 @@ class Calculated:
                         
                 points = self.calculated(attack_result, attack.shape)
                 time.sleep(3)
-                self.click(points)
+                self.click_center()
                 break
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
                 log.info("識別到疑問或警告，等待怪物開戰")
-                self.click(points)
+                self.click_center()
                 time.sleep(3)
                 target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
                 result = self.scan_screenshot(target)
@@ -242,7 +291,7 @@ class Calculated:
                 result = self.scan_screenshot(target)
                 if result["max_val"] > 0.9:
                     points = self.calculated(result, target.shape)
-                    self.click(points)
+                    self.click_center()
                     log.info("开启自动战斗")
                     break
                 elif time.time() - start_time > 15:
