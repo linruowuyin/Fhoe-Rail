@@ -159,6 +159,16 @@ class Calculated:
             elapsed_time = time.time() - start_time
             if elapsed_time > 30:
                 return
+            
+    def click_target_with_alt(self, target_path, threshold, flag=True):
+        # 按下Alt键
+        win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+        
+        # 调用click_target方法
+        self.click_target(target_path, threshold, flag)
+        
+        # 释放Alt键
+        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def fighting(self):
         start_time = time.time()
@@ -378,6 +388,13 @@ class Calculated:
             elif key == "e":
                 if value == 1:  # 进战斗
                     self.fightE()
+            elif key == "Esc":
+                if value == 1:  # 执行一次Esc键的按下和释放操作
+                    win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
+                    time.sleep(0.1)  
+                    win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                else:
+                    raise Exception((f"map数据错误, Esc参数只能为1:{map_filename}", map))
             else:
                 self.keyboard.press(key)
                 start_time = time.perf_counter()
@@ -438,17 +455,12 @@ class Calculated:
             max_attempts_ff1 = 3
             while attempts < max_attempts_ff1:
                 result = self.scan_screenshot(target)
+                alt_result = self.scan_screenshot(alt_target)
                 if result and result["max_val"] > 0.9:
                     return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
-                attempts += 1
-                time.sleep(5)  # 等待5秒再尝试匹配
-            # 如果无法找到 finish_fighting.png，则尝试匹配 finish_fighting2.png
-            attempts = 0
-            while attempts < 3:  # 尝试匹配 finish_fighting2.png 最多3次
-                alt_result = self.scan_screenshot(alt_target)
-                if alt_result["max_val"] > 0.92:
+                elif alt_result and alt_result["max_val"] > 0.92:
                     return False  # 如果匹配度大于0.92，表示不是黑屏，返回False
                 attempts += 1
+                time.sleep(2)  # 等待2秒再尝试匹配
 
         return True  # 如果未匹配到指定的图像，返回True
-
