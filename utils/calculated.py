@@ -159,8 +159,8 @@ class Calculated:
                 self.click(points)
                 return
 
-            # 如果超过3秒，同时匹配原图像和颜色反转后的图像
-            if elapsed_time > 3:
+            # 如果超过5秒，同时匹配原图像和颜色反转后的图像
+            if elapsed_time > 5:
                 inverted_target = cv.bitwise_not(original_target)
                 result = self.scan_screenshot(inverted_target)
                 if result["max_val"] > threshold:
