@@ -465,17 +465,16 @@ class Calculated:
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
 
         if cv.mean(screenshot)[0] > threshold:  # 如果平均像素值大于阈值
-            target = cv.imread("./picture/finish_fighting.png")
-            alt_target = cv.imread("./picture/finish_fighting2.png")
+            image_folder = "./picture/"
+            finish_fighting_images = [f for f in os.listdir(image_folder) if f.startswith("finish_fighting")]
             attempts = 0
             max_attempts_ff1 = 3
             while attempts < max_attempts_ff1:
-                result = self.scan_screenshot(target)
-                alt_result = self.scan_screenshot(alt_target)
-                if result and result["max_val"] > 0.9:
-                    return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
-                elif alt_result and alt_result["max_val"] > 0.92:
-                    return False  # 如果匹配度大于0.92，表示不是黑屏，返回False
+                for image_name in finish_fighting_images:
+                    target = cv.imread(os.path.join(image_folder, image_name))
+                    result = self.scan_screenshot(target)
+                    if result and result["max_val"] > 0.9:
+                        return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
                 attempts += 1
                 time.sleep(2)  # 等待2秒再尝试匹配
 
