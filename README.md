@@ -3,6 +3,7 @@
 聚合使用请去：https://github.com/moesnow/March7thAssistant
 
 同类程序可以去：https://github.com/DoctorReid/StarRailAutoProxy
+                           https://github.com/Souloco/StarRail-FastRun
 
 模拟器运行请去：https://github.com/LmeSzinc/StarRailCopilot
 
