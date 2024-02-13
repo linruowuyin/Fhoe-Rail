@@ -72,7 +72,7 @@ This software is open source, free of charge and for learning and exchange purpo
 | WSAD       | 移动键，后面的数字代表按下的时间长短                   |
 | X          | 进入战斗，map映射为fighting=1                          |
 | 鼠标左键   | 打障碍物，map映射为fighting=2                          |
-| F/R/Space          | 交互键，后面的数字代表反复按键的时间次数，间隔随机      |
+| f/r/space          | 交互键，后面的数字代表反复按键的时间次数，间隔随机      |
 | shutdown   | 关机标志，键值无意义，控制开关在配置文件中             |
 | mouse_move | 视角转动，因数值计算复杂（不同设备数值不同），已被弃用 |
 | scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用             |
