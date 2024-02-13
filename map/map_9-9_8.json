@@ -1,0 +1,29 @@
+{
+    "name": "过期邮包2",
+    "author": "lrwy",
+    "start": [
+        {
+            "picture\\buy.png": 1.5
+        },
+        {
+            "picture\\parcel.png": 1.5
+        },
+        {
+            "picture\\max.png": 1
+        },
+        {
+            "picture\\confirm.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "Esc": 1
+        },
+        {
+            "Esc": 1
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}
