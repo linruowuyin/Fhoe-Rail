@@ -405,13 +405,13 @@ class Calculated:
             elif key == "e":
                 if value == 1:  # 进战斗
                     self.fightE()
-            elif key == "Esc":
-                if value == 1:  # 执行一次Esc键的按下和释放操作
+            elif key == "esc":
+                if value == 1:  # 执行一次esc键的按下和释放操作
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
                     time.sleep(0.1)  
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
                 else:
-                    raise Exception((f"map数据错误, Esc参数只能为1:{map_filename}", map))
+                    raise Exception((f"map数据错误, esc参数只能为1:{map_filename}", map))
             else:
                 self.keyboard.press(key)
                 start_time = time.perf_counter()
