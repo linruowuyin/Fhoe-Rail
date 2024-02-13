@@ -65,8 +65,6 @@ This software is open source, free of charge and for learning and exchange purpo
 - 但同时我又增加了原版没有的功能
 - 比如：购买过期邮包、使用秘技、自动启动
 
-自动启动的使用方法：把星铁的快捷方式（不是启动器），放到map文件夹中，运行启动器后就无需操作了，脚本会自动启动游戏（目前无法应对有更新的情况）
-
 ### 键位映射
 
 | 键位       | 映射                                                   |
