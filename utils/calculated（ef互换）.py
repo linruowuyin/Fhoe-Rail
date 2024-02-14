@@ -269,7 +269,7 @@ class Calculated:
         doubt = cv.imread("./picture/doubt.png")
         warn = cv.imread("./picture/warn.png")
         image_A = cv.imread("./picture/eat.png")  # 修改
-        image_B = cv.imread("./picture/cancel.png")  # 修改
+        image_B = cv.imread("./picture/round.png")  # 修改
         
         while True:
             log.info("识别中")
