@@ -220,7 +220,7 @@ class Calculated:
                 result = self.scan_screenshot(target)
                 if result["max_val"] > 0.9:
                     points = self.calculated(result, target.shape)
-                    self.click_center()
+                    self.click(points)
                     log.info("开启自动战斗")
                     break
                 elif time.time() - start_time > 15:
@@ -318,7 +318,7 @@ class Calculated:
                 result = self.scan_screenshot(target)
                 if result["max_val"] > 0.9:
                     points = self.calculated(result, target.shape)
-                    self.click_center()
+                    self.click(points)
                     log.info("开启自动战斗")
                     break
                 elif time.time() - start_time > 15:
