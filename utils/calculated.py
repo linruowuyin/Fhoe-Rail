@@ -268,8 +268,9 @@ class Calculated:
         attack = cv.imread("./picture/attack.png")
         doubt = cv.imread("./picture/doubt.png")
         warn = cv.imread("./picture/warn.png")
-        eat = cv.imread("./picture/eat.png")  
-        cancel = cv.imread("./picture/cancel.png") 
+        eat = cv.imread("./picture/eat.png")
+        confirm = cv.imread("./picture/confirm.png")
+        cancel = cv.imread("./picture/cancel.png")
 
         while True:
             log.info("识别中")
@@ -280,23 +281,34 @@ class Calculated:
             if attack_result["max_val"] > 0.9:
                 pyautogui.press('e')
                 time.sleep(0.6)
+                self.click_center()
                 start_time_eat = time.time()
                 result_eat = None
                 while result_eat is None and time.time() - start_time_eat < 3:
-                    result_eat = self.scan_screenshot(eat) 
+                    result_eat = self.scan_screenshot(eat)
 
                 if result_eat is not None and result_eat["max_val"] > 0.9:
                     while True:
-                        result_cancel = self.scan_screenshot(cancel)  
+                        result_confirm = self.scan_screenshot(confirm)
+                        result_cancel = self.scan_screenshot(cancel)
+                        points_confirm = self.calculated(result_confirm, confirm.shape)
                         points_cancel = self.calculated(result_cancel, cancel.shape)
+                        time.sleep(0.5)
+                        self.click(points_confirm)
+                        time.sleep(0.5)
                         self.click(points_cancel)
-                        if result_cancel is None or result_cancel["max_val"] < 0.9: 
+                        time.sleep(0.5)
+                        # 如果result_cancel不存在或匹配度低于0.9，跳出循环
+                        if result_cancel is None or result_cancel["max_val"] < 0.99:
                             break
-                        else:
-                            break
-                time.sleep(0.5)
-                self.click_center()
+                        pyautogui.press('e')
+                        time.sleep(1)
+                        self.click_center()
+                        time.sleep(0.5)
+                        self.click_center()
+                        break
                 break
+            
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
                 log.info("识別到疑問或警告，等待怪物开戰")
                 self.click_center()
@@ -305,7 +317,7 @@ class Calculated:
                 result = self.scan_screenshot(target)
                 if result["max_val"] < 0.9:
                     break
-            elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
+            elif time.time() - start_time > 10:
                 log.info("识别超时,此处可能无敌人")
                 return
         time.sleep(6)
@@ -325,7 +337,7 @@ class Calculated:
             log.info("不点击自动(沿用配置)")
             time.sleep(5)
 
-        start_time = time.time()  # 开始计算战斗时间
+        start_time = time.time()
         target = cv.imread("./picture/finish_fighting.png")
         while True:
             result = self.scan_screenshot(target)
