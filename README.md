@@ -81,7 +81,7 @@ This software is open source, free of charge and for learning and exchange purpo
 | mouse_move | 视角转动，因数值计算复杂（不同设备数值不同），已被弃用 |
 | scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用             |
 | e          | 只有键值为1时有意义，使用秘技并追加普通攻击            |
-| Esc          | 只有键值为1时有意义，等同于按下了一次Esc键            |
+| esc          | 只有键值为1时有意义，等同于按下了一次Esc键            |
 
 ### 关于地图录制
 感谢[@AlisaCat](https://github.com/AlisaCat-S)
