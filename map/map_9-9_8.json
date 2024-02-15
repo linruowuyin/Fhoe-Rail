@@ -3,6 +3,9 @@
     "author": "lrwy",
     "start": [
         {
+            "check": 1
+        },
+        {
             "picture\\buy.png": 1.5
         },
         {
@@ -16,6 +19,9 @@
         }
     ],
     "map": [
+        {
+            "check": 1
+        },
         {
             "fighting": 2
         },
