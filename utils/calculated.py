@@ -268,39 +268,37 @@ class Calculated:
         attack = cv.imread("./picture/attack.png")
         doubt = cv.imread("./picture/doubt.png")
         warn = cv.imread("./picture/warn.png")
-        image_A = cv.imread("./picture/eat.png")  # 修改
-        image_B = cv.imread("./picture/round.png")  # 修改
-        
+        eat = cv.imread("./picture/eat.png")  
+        cancel = cv.imread("./picture/cancel.png") 
+
         while True:
             log.info("识别中")
             attack_result = self.scan_screenshot(attack)
             doubt_result = self.scan_screenshot(doubt)
             warn_result = self.scan_screenshot(warn)
-            
+
             if attack_result["max_val"] > 0.9:
                 pyautogui.press('e')
-                time.sleep(1)
-                start_time_A = time.time()
-                result_A = None
-                while result_A is None and time.time() - start_time_A < 3:
-                    result_A = self.scan_screenshot(image_A)
-                    
-                if result_A is not None and result_A["max_val"] > 0.9:
+                time.sleep(0.6)
+                start_time_eat = time.time()
+                result_eat = None
+                while result_eat is None and time.time() - start_time_eat < 3:
+                    result_eat = self.scan_screenshot(eat) 
+
+                if result_eat is not None and result_eat["max_val"] > 0.9:
                     while True:
-                        result_B = self.scan_screenshot(image_B)
-                        points_B = self.calculated(result_B, image_B.shape)
-                        self.click(points_B)
-                        if result_B is None or result_B["max_val"] < 0.9:  # 修改条件判断语句
-                           break
+                        result_cancel = self.scan_screenshot(cancel)  
+                        points_cancel = self.calculated(result_cancel, cancel.shape)
+                        self.click(points_cancel)
+                        if result_cancel is None or result_cancel["max_val"] < 0.9: 
+                            break
                         else:
                             break
-                        
-                points = self.calculated(attack_result, attack.shape)
-                time.sleep(3)
+                time.sleep(0.5)
                 self.click_center()
                 break
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
-                log.info("識別到疑問或警告，等待怪物開戰")
+                log.info("识別到疑問或警告，等待怪物开戰")
                 self.click_center()
                 time.sleep(3)
                 target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
