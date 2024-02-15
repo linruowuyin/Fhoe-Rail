@@ -360,6 +360,8 @@ class Calculated:
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
         self.need_rotate = rotate
+        now = datetime.now()
+        today_weekday_str = now.strftime('%A')
         map_data = (
             read_json_file(f"map\\old\\{map}.json")
             if old
@@ -381,6 +383,14 @@ class Calculated:
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
                     time.sleep(remaining_time)
+            if key == "check" and value == 1:
+            # 判断是否为周二或周日
+                today_weekday_num = now.weekday()
+                if today_weekday_num  in [1, 4, 6]:  # 1代表周二，6代表周日
+                    log.info(f"{today_weekday_str}，周二五日，尝试购买")
+                else:
+                    log.info(f"{today_weekday_str}，非周二五日，跳过")
+                    return
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
