@@ -53,7 +53,7 @@ class Calculated:
         # 移动鼠标并点击
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.07, 0.1))
+        time.sleep(random.uniform(0.09, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def relative_click(self, points):
@@ -78,7 +78,7 @@ class Calculated:
         
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.07, 0.1))
+        time.sleep(random.uniform(0.09, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -92,7 +92,7 @@ class Calculated:
         y = int((top + bottom) / 2)
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.07, 0.1))
+        time.sleep(random.uniform(0.09, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def take_screenshot(self):
@@ -416,7 +416,7 @@ class Calculated:
             elif key == "esc":
                 if value == 1:  # 执行一次esc键的按下和释放操作
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
-                    time.sleep(random.uniform(0.07, 0.1))  
+                    time.sleep(random.uniform(0.09, 0.15)) 
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
                 else:
                     raise Exception((f"map数据错误, esc参数只能为1:{map_filename}", map))
