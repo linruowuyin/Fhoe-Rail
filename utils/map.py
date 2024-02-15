@@ -108,7 +108,7 @@ class Map:
                         self.calculated.click_target_with_alt(key, 0.93)
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
-                        time.sleep(2)  # 传送点击后等待2秒
+                        time.sleep(1)  # 传送点击后等待1秒
 
                 start_time = time.time()  
                 count = 0
@@ -116,9 +116,9 @@ class Map:
                     count += 1
                     time.sleep(1)
                 end_time = time.time()  # 记录地图加载完成的时间
-                loading_time = end_time - start_time + 2  
+                loading_time = end_time - start_time + 1
                 log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
-                time.sleep(2)  # 增加2秒等待防止人物未加载错轴
+                time.sleep(1)  # 增加1秒等待防止人物未加载错轴
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
                 # 记录处理开始时间

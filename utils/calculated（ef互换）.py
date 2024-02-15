@@ -53,7 +53,7 @@ class Calculated:
         # 移动鼠标并点击
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.5)
+        time.sleep(0.1)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def relative_click(self, points):
@@ -78,7 +78,7 @@ class Calculated:
         
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.4)
+        time.sleep(0.1)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -160,8 +160,8 @@ class Calculated:
                 self.click(points)
                 return
 
-            # 如果超过5秒，同时匹配原图像和颜色反转后的图像
-            if elapsed_time > 5:
+            # 如果超过3秒，同时匹配原图像和颜色反转后的图像
+            if elapsed_time > 3:
                 inverted_target = cv.bitwise_not(original_target)
                 result = self.scan_screenshot(inverted_target)
                 if result["max_val"] > threshold:
@@ -212,7 +212,7 @@ class Calculated:
             elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
                 log.info("识别超时,此处可能无敌人")
                 return
-        time.sleep(6)
+        time.sleep(5)
         target = cv.imread("./picture/auto.png")
         start_time = time.time()
         if self.CONFIG["auto_battle_persistence"] != 1:
