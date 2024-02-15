@@ -1,0 +1,20 @@
+{
+    "name": "黑塔办公室",
+    "author": "lrwy",
+    "start": [
+        {
+            "picture\\guide.png": 1.5
+        },
+        {
+            "picture\\index.png": 1.5
+        },
+        {
+            "picture\\map_0.png": 2
+        }
+    ],
+    "map": [
+        {
+            "esc": 1
+        }
+    ]
+}
