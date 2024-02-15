@@ -7,6 +7,9 @@
 
 模拟器运行请去：https://github.com/LmeSzinc/StarRailCopilot
 
+### 如何选图？
+
+Fhoe-Rail.exe --debug
 
 ### 地图支持问题
 
