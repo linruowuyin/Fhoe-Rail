@@ -1,0 +1,83 @@
+{
+    "name": "大矿区-1",
+    "author": "夜里无星,雪见璃,小明",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_3.png": 1.5
+        },
+        {
+            "picture\\map_2-5.png": 2
+        },
+        {
+            "picture\\map_2-5_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 1.39
+        },
+        {
+            "a": 3.31
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "a": 4
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "a": 3.46
+        },
+        {
+            "w": 1.09
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "a": 1.03
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "w": 1.73
+        },
+        {
+            "d": 6.76
+        },
+        {
+            "w": 2.97
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "w": 1.37
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}

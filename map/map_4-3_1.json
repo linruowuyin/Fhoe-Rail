@@ -1,0 +1,29 @@
+{
+    "name": "酒店梦境-1",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+		},
+        {
+            "picture\\map_4-3.png": 2
+        },
+        {
+            "picture\\map_4-3_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+    {
+      "w": 0.545
+    },
+    {
+      "d": 2.2
+    },
+    {
+      "f": 3.5
+    }
+  ]
+}
