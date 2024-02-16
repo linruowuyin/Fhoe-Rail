@@ -35,7 +35,7 @@ class Map:
                 log.info(f'打开地图')
             pyautogui.keyDown(self.open_map)
             pyautogui.keyUp(self.open_map)
-            time.sleep(3)  # 3秒延迟
+            time.sleep(2)  # 2秒延迟
 
     def read_maps(self):
         # 从'./map'目录获取地图文件列表（排除'old'）
@@ -105,7 +105,7 @@ class Map:
                         self.map_init()
                     else:
                         time.sleep(value)
-                        self.calculated.click_target_with_alt(key, 0.93)
+                        self.calculated.click_target_with_alt(key, 0.95)
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
                         time.sleep(1)  # 传送点击后等待1秒
@@ -118,7 +118,7 @@ class Map:
                 end_time = time.time()  # 记录地图加载完成的时间
                 loading_time = end_time - start_time + 1
                 log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
-                time.sleep(1)  # 增加1秒等待防止人物未加载错轴
+                time.sleep(2)  # 增加2秒等待防止人物未加载错轴
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
                 # 记录处理开始时间
