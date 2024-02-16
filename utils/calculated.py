@@ -16,116 +16,77 @@ from .exceptions import Exception
 from .log import log
 from .mini_asu import ASU
 
-import time
-
-import cv2 as cv
-import numpy as np
-import pyautogui
-import win32api
-import win32con
-import win32gui
-import random
-from datetime import datetime
-from PIL import ImageGrab
-from pynput.keyboard import Controller as KeyboardController
-
-from .config import read_json_file, CONFIG_FILE_NAME
-from .exceptions import Exception
-from .log import log
-from .mini_asu import ASU
 
 class Calculated:
     def __init__(self):
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
         self.keyboard = KeyboardController()
         self.ASU = ASU()
+        self.game_hwnd = self.get_game_window_handle()
+
+    def get_game_window_handle(self):
+        return win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
 
     def click(self, points):
-        """
-        说明：
-            点击坐标
-        参数：
-            :param points: 坐标
-        """
         x, y = int(points[0]), int(points[1])
         log.debug((x, y))
-        
-        # 移动鼠标并点击
+        self.move_and_click(x, y)
+
+    def relative_click(self, points):
+        x, y = self.calculate_relative_position(points)
+        log.info((x, y))
+        log.debug((x, y))
+        self.press_alt_and_click(x, y)
+
+    def click_center(self):
+            left, top, right, bottom = win32gui.GetWindowRect(self.game_hwnd)
+            x = int((left + right) / 2)
+            y = int((top + bottom) / 2)
+            win32api.SetCursorPos((x, y))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+            time.sleep(random.uniform(0.1, 0.15))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+
+    def calculate_relative_position(self, points):
+        left, top, right, bottom = win32gui.GetWindowRect(self.game_hwnd)
+        width = right - left
+        height = bottom - top
+        x = int(left + width * points[0] / 100)
+        y = int(top + height * points[1] / 100)
+        return x, y
+
+    def move_and_click(self, x, y):
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
         time.sleep(random.uniform(0.09, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
-    def relative_click(self, points):
-        """
-        说明：
-            点击相对坐标
-        参数：
-            :param points: 百分比坐标
-        """
-        hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
-        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-        real_width = self.CONFIG["real_width"]
-        real_height = self.CONFIG["real_height"]
-        x, y = int(left + (right - left) / 100 * points[0]), int(
-            top + (bottom - top) / 100 * points[1]
-        )
-        log.info((x, y))
-        log.debug((x, y))
-        
-        # Press Alt key
+    def press_alt_and_click(self, x, y):
         win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-        
-        win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.15, 0.2))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        self.move_and_click(x, y)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def click_center(self):
-        """
-        点击游戏窗口中心位置
-        """
-        hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
-        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-        x = int((left + right) / 2)
-        y = int((top + bottom) / 2)
-        win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.1, 0.15))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
-
     def take_screenshot(self):
-        """
-        获取游戏窗口的屏幕截图
-        """
-        hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
-        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-
-        # 计算截图范围
-        screenshot_left = left
-        screenshot_top = top
-        screenshot_right = min(right, left + 1920)
-        screenshot_bottom = min(bottom, top + 1080)
-
-        # 如果游戏窗口的底部坐标高于 1080，则调整截图范围
-        if bottom > 1080:
-            screenshot_top = max(top, bottom - 1080)
-
-        # 获取游戏窗口截图
+        left, top, right, bottom = win32gui.GetWindowRect(self.game_hwnd)
+        screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = self.adjust_screenshot_area(left, top, right, bottom)
         picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
         screenshot = np.array(picture)
         screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
         return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
 
+    def adjust_screenshot_area(self, left, top, right, bottom):
+        screenshot_left = left
+        screenshot_top = top
+        screenshot_right = min(right, left + 1920)
+        screenshot_bottom = min(bottom, top + 1080)
+
+        if bottom > 1080:
+            screenshot_top = max(top, bottom - 1080)
+
+        return screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
+
     def scan_screenshot(self, prepared) -> dict:
-        """
-        说明：
-            比对图片
-        参数：
-            :param prepared: 比对图片地址
-        """
-        screenshot, left, top, right, bottom = self.take_screenshot()
+        screenshot, left, top, _, _ = self.take_screenshot()
         result = cv.matchTemplate(screenshot, prepared, cv.TM_CCORR_NORMED)
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
         return {
@@ -139,28 +100,23 @@ class Calculated:
     def calculated(self, result, shape):
         mat_top, mat_left = result["max_loc"]
         prepared_height, prepared_width, prepared_channels = shape
-
         x = int((mat_top + mat_top + prepared_width) / 2)
         y = int((mat_left + mat_left + prepared_height) / 2)
-
         return x, y
 
-    # flag为true一定要找到
     def click_target(self, target_path, threshold, flag=True):
         original_target = cv.imread(target_path)
         start_time = time.time()
-        
+
         while True:
             elapsed_time = time.time() - start_time
-            
-            # 匹配预定义目标图像
+
             result = self.scan_screenshot(original_target)
             if result["max_val"] > threshold:
                 points = self.calculated(result, original_target.shape)
                 self.click(points)
                 return
 
-            # 如果超过3秒，同时匹配原图像和颜色反转后的图像
             if elapsed_time > 3:
                 inverted_target = cv.bitwise_not(original_target)
                 result = self.scan_screenshot(inverted_target)
@@ -175,131 +131,163 @@ class Calculated:
 
             if elapsed_time > 30:
                 return
-            
+
     def click_target_with_alt(self, target_path, threshold, flag=True):
-        # 按下Alt键
-        win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-        
-        # 调用click_target方法
+        self.press_alt()
         self.click_target(target_path, threshold, flag)
-        
-        # 释放Alt键
+        self.release_alt()
+
+    def press_alt(self):
+        win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+
+    def release_alt(self):
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def fighting(self):
-        start_time = time.time()
-        attack = cv.imread("./picture/attack.png")
-        doubt = cv.imread("./picture/doubt.png")
-        warn = cv.imread("./picture/warn.png")
-        while True:
-            log.info("识别中")
-            attack_result = self.scan_screenshot(attack)
-            doubt_result = self.scan_screenshot(doubt)
-            warn_result = self.scan_screenshot(warn)
-            if attack_result["max_val"] > 0.9:
-                points = self.calculated(attack_result, attack.shape)
-                self.click_center()
-                break
-            elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
-                log.info("識別到疑問或警告，等待怪物開戰")
-                points = self.calculated(attack_result, attack.shape)
-                self.click_center()
-                time.sleep(5)
-                target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
-                result = self.scan_screenshot(target)
-                if result["max_val"] < 0.9:
-                    break
-            elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
-                log.info("识别超时,此处可能无敌人")
-                return
-        time.sleep(5)
-        target = cv.imread("./picture/auto.png")
-        start_time = time.time()
-        if self.CONFIG["auto_battle_persistence"] != 1:
+            # 初始化开始时间
+            start_time = time.time()
+
+            # 读取游戏内不同状态的图片资源
+            attack, doubt, warn, finish_fighting, auto = map(lambda img_path: cv.imread(img_path), [
+                "./picture/attack.png",
+                "./picture/doubt.png",
+                "./picture/warn.png",
+                "./picture/finish_fighting.png",
+                "./picture/auto.png"
+            ])
+
+            # 主循环：寻找攻击、疑问或警告标志
             while True:
-                result = self.scan_screenshot(target)
-                if result["max_val"] > 0.9:
-                    points = self.calculated(result, target.shape)
-                    self.click(points)
-                    log.info("开启自动战斗")
+                log.info("识别中")
+
+                # 扫描并识别截图中的指定图像
+                scan_results = {
+                    "attack": self.scan_screenshot(attack),
+                    "doubt": self.scan_screenshot(doubt),
+                    "warn": self.scan_screenshot(warn)
+                }
+
+                # 检查识别结果
+                if scan_results["attack"]["max_val"] > 0.9:
+                    points = self.calculated(scan_results["attack"], attack.shape)
+                    self.click_center()
                     break
-                elif time.time() - start_time > 15:
-                    break
-        else:
-            log.info("不点击自动(沿用配置)")
+
+                elif (scan_results["doubt"]["max_val"] > 0.9 or scan_results["warn"]["max_val"] > 0.9):
+                    log.info("识别到疑問或警告，等待怪物开戰")
+                    points = self.calculated(scan_results["attack"], attack.shape)
+                    self.click_center()
+                    time.sleep(5)
+
+                    # 检查是否进入战斗状态
+                    in_battle = self.scan_screenshot(finish_fighting)["max_val"] < 0.9
+                    if in_battle:
+                        break
+
+                elif time.time() - start_time > 10:
+                    log.info("识别超时,此处可能无敌人")
+                    return
+
+            # 等待并开启自动战斗（根据配置）
             time.sleep(5)
+            if self.CONFIG["auto_battle_persistence"] != 1:
+                start_time = time.time()
+                while True:
+                    result = self.scan_screenshot(auto)
+                    if result["max_val"] > 0.9:
+                        points = self.calculated(result, auto.shape)
+                        self.click(points)
+                        log.info("开启自动战斗")
+                        break
+                    elif time.time() - start_time > 15:
+                        break
+            else:
+                log.info("不点击自动(沿用配置)")
+                time.sleep(5)
 
-        start_time = time.time()  # 开始计算战斗时间
-        target = cv.imread("./picture/finish_fighting.png")
-        while True:
-            result = self.scan_screenshot(target)
-            if result["max_val"] > 0.92:
-                points = self.calculated(result, target.shape)
-                log.debug(points)
-                elapsed_time = time.time() - start_time
-                elapsed_minutes = int(elapsed_time // 60)
-                elapsed_seconds = elapsed_time % 60
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
-                current_system_time = time.localtime()
-                colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
-                log.info(colored_message)
-                match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
-                log.info(match_details)
+            # 计算战斗时间
+            start_time = time.time()
+            while True:
+                result = self.scan_screenshot(finish_fighting)
+                if result["max_val"] > 0.92:
+                    points = self.calculated(result, finish_fighting.shape)
+                    elapsed_time = time.time() - start_time
+                    formatted_time = f"{elapsed_time // 60}分钟{elapsed_time % 60:.2f}秒"
+                    log.info(f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
+                    log.info(f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
 
-                self.rotate()
-                time.sleep(3)
-                break
-            
-            elapsed_time = time.time() - start_time
-            if elapsed_time > 90:
-                self.click_target("./picture/auto.png", 0.98, False)  #超时尝试开启自动战斗
-                self.click_target("./picture/continue_fighting.png", 0.98, False)  #战斗暂停界面点击继续战斗
-                self.click_target("./picture/defeat.png", 0.98, False)  #战斗失败
-                self.click_target("./picture/map_4-2_point_3.png", 0.98, False)  #3D地图返回
-                self.click_target("./picture/orientation_close.png", 0.98, False)  #退出地图界面
-                if elapsed_time > 900:
-                    log.info("战斗超时")
+                    self.rotate()
+                    time.sleep(3)
                     break
-                time.sleep(0.5)
 
+                # 超时处理及尝试恢复游戏状态
+                elapsed_time = time.time() - start_time
+                if elapsed_time > 90:
+                    for img_path, threshold in (
+                        ("./picture/auto.png", 0.98),
+                        ("./picture/continue_fighting.png", 0.98),
+                        ("./picture/defeat.png", 0.98),
+                        ("./picture/map_4-2_point_3.png", 0.98),
+                        ("./picture/orientation_close.png", 0.98)
+                    ):
+                        self.click_target(img_path, threshold, False)
+
+                    if elapsed_time > 900:
+                        log.info("战斗超时")
+                        break
+                    time.sleep(0.5)
 
     def fightE(self):
+        # 初始化开始时间
         start_time = time.time()
-        attack = cv.imread("./picture/attack.png")
-        doubt = cv.imread("./picture/doubt.png")
-        warn = cv.imread("./picture/warn.png")
-        eat = cv.imread("./picture/eat.png")
-        confirm = cv.imread("./picture/confirm.png")
-        cancel = cv.imread("./picture/cancel.png")
+
+        # 读取游戏内不同状态的图片资源
+        images = {
+            "attack": cv.imread("./picture/attack.png"),
+            "doubt": cv.imread("./picture/doubt.png"),
+            "warn": cv.imread("./picture/warn.png"),
+            "eat": cv.imread("./picture/eat.png"),
+            "confirm": cv.imread("./picture/confirm.png"),
+            "cancel": cv.imread("./picture/cancel.png"),
+            "finish_fighting": cv.imread("./picture/finish_fighting.png"),
+            "auto": cv.imread("./picture/auto.png")
+        }
 
         while True:
             log.info("识别中")
-            attack_result = self.scan_screenshot(attack)
-            doubt_result = self.scan_screenshot(doubt)
-            warn_result = self.scan_screenshot(warn)
 
-            if attack_result["max_val"] > 0.9:
+            # 获取识别结果
+            scan_results = {
+                "attack": self.scan_screenshot(images["attack"]),
+                "doubt": self.scan_screenshot(images["doubt"]),
+                "warn": self.scan_screenshot(images["warn"])
+            }
+
+            if scan_results["attack"]["max_val"] > 0.9:
                 pyautogui.press('e')
-                time.sleep(0.6)
+                time.sleep(1)
                 self.click_center()
+
+                # 处理吃药环节
                 start_time_eat = time.time()
                 result_eat = None
                 while result_eat is None and time.time() - start_time_eat < 3:
-                    result_eat = self.scan_screenshot(eat)
+                    result_eat = self.scan_screenshot(images["eat"])
 
                 if result_eat is not None and result_eat["max_val"] > 0.9:
                     while True:
-                        result_confirm = self.scan_screenshot(confirm)
-                        result_cancel = self.scan_screenshot(cancel)
-                        points_confirm = self.calculated(result_confirm, confirm.shape)
-                        points_cancel = self.calculated(result_cancel, cancel.shape)
+                        confirm_result = self.scan_screenshot(images["confirm"])
+                        cancel_result = self.scan_screenshot(images["cancel"])
+                        confirm_points = self.calculated(confirm_result, images["confirm"].shape)
+                        cancel_points = self.calculated(cancel_result, images["cancel"].shape)
                         time.sleep(0.5)
-                        self.click(points_confirm)
+                        self.click(confirm_points)
                         time.sleep(0.5)
-                        self.click(points_cancel)
+                        self.click(cancel_points)
                         time.sleep(0.5)
-                        # 如果result_cancel不存在或匹配度低于0.9，跳出循环
-                        if result_cancel is None or result_cancel["max_val"] < 0.99:
+
+                        # 判断是否跳出循环
+                        if cancel_result is None or cancel_result["max_val"] < 0.99:
                             break
                         pyautogui.press('e')
                         time.sleep(1)
@@ -307,27 +295,31 @@ class Calculated:
                         time.sleep(0.5)
                         self.click_center()
                         break
+                
                 break
-            
-            elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
+
+            elif (scan_results["doubt"]["max_val"] > 0.9 or scan_results["warn"]["max_val"] > 0.9):
                 log.info("识別到疑問或警告，等待怪物开戰")
                 self.click_center()
                 time.sleep(3)
-                target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
-                result = self.scan_screenshot(target)
-                if result["max_val"] < 0.9:
+
+                # 检查是否进入战斗状态
+                in_battle = self.scan_screenshot(images["finish_fighting"])["max_val"] < 0.9
+                if in_battle:
                     break
+
             elif time.time() - start_time > 10:
                 log.info("识别超时,此处可能无敌人")
                 return
+
+        # 等待并开启自动战斗（根据配置）
         time.sleep(6)
-        target = cv.imread("./picture/auto.png")
-        start_time = time.time()
         if self.CONFIG["auto_battle_persistence"] != 1:
+            start_time = time.time()
             while True:
-                result = self.scan_screenshot(target)
+                result = self.scan_screenshot(images["auto"])
                 if result["max_val"] > 0.9:
-                    points = self.calculated(result, target.shape)
+                    points = self.calculated(result, images["auto"].shape)
                     self.click(points)
                     log.info("开启自动战斗")
                     break
@@ -337,22 +329,16 @@ class Calculated:
             log.info("不点击自动(沿用配置)")
             time.sleep(5)
 
+        # 计算战斗时间
         start_time = time.time()
-        target = cv.imread("./picture/finish_fighting.png")
         while True:
-            result = self.scan_screenshot(target)
+            result = self.scan_screenshot(images["finish_fighting"])
             if result["max_val"] > 0.92:
-                points = self.calculated(result, target.shape)
-                log.debug(points)
+                points = self.calculated(result, images["finish_fighting"].shape)
                 elapsed_time = time.time() - start_time
-                elapsed_minutes = int(elapsed_time // 60)
-                elapsed_seconds = elapsed_time % 60
-                formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
-                current_system_time = time.localtime()
-                colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
-                log.info(colored_message)
-                match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
-                log.info(match_details)
+                formatted_time = f"{elapsed_time // 60}分钟{elapsed_time % 60:.2f}秒"
+                log.info(f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
+                log.info(f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
 
                 self.rotate()
                 time.sleep(3)
@@ -483,20 +469,21 @@ class Calculated:
         time.sleep(0.5)
 
     def is_blackscreen(self, threshold=25):
-        screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
+        screenshot_gray = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
+        avg_pixel = cv.mean(screenshot_gray)[0]
 
-        if cv.mean(screenshot)[0] > threshold:  # 如果平均像素值大于阈值
+        if avg_pixel > threshold:  # 如果平均像素值大于阈值
             image_folder = "./picture/"
             finish_fighting_images = [f for f in os.listdir(image_folder) if f.startswith("finish_fighting")]
-            attempts = 0
-            max_attempts_ff1 = 3
-            while attempts < max_attempts_ff1:
+
+            for _ in range(3):  # 尝试3次
                 for image_name in finish_fighting_images:
                     target = cv.imread(os.path.join(image_folder, image_name))
                     result = self.scan_screenshot(target)
+                    
                     if result and result["max_val"] > 0.9:
-                        return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
-                attempts += 1
-                time.sleep(2)  # 等待2秒再尝试匹配
+                        return False  # 匹配成功且匹配度大于0.9，返回False
 
-        return True  # 如果未匹配到指定的图像，返回True
+                time.sleep(2)  # 每尝试完一轮图片后等待2秒
+
+        return True  # 如果经过3轮尝试仍未找到匹配成功的图片，则返回True
