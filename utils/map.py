@@ -24,7 +24,7 @@ class Map:
 
         while attempts < max_attempts:
             result = self.calculated.scan_screenshot(target)
-            if result['max_val'] > 0.97:
+            if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
                 log.info(f'地图最小化')
@@ -35,7 +35,7 @@ class Map:
                 log.info(f'打开地图')
             pyautogui.keyDown(self.open_map)
             pyautogui.keyUp(self.open_map)
-            time.sleep(2)  # 2秒延迟
+            time.sleep(3)  # 3秒延迟
 
     def read_maps(self):
         # 从'./map'目录获取地图文件列表（排除'old'）
@@ -105,10 +105,10 @@ class Map:
                         self.map_init()
                     else:
                         time.sleep(value)
-                        self.calculated.click_target_with_alt(key, 0.95)
+                        self.calculated.click_target_with_alt(key, 0.93)
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
-                        time.sleep(1)  # 传送点击后等待1秒
+                        time.sleep(0.8)  # 传送点击后等待0.8秒
 
                 start_time = time.time()  
                 count = 0

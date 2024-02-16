@@ -78,7 +78,7 @@ class Calculated:
         
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.09, 0.15))
+        time.sleep(random.uniform(0.15, 0.2))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -92,7 +92,7 @@ class Calculated:
         y = int((top + bottom) / 2)
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(random.uniform(0.09, 0.15))
+        time.sleep(random.uniform(0.1, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def take_screenshot(self):
@@ -160,8 +160,8 @@ class Calculated:
                 self.click(points)
                 return
 
-            # 如果超过5秒，同时匹配原图像和颜色反转后的图像
-            if elapsed_time > 5:
+            # 如果超过3秒，同时匹配原图像和颜色反转后的图像
+            if elapsed_time > 3:
                 inverted_target = cv.bitwise_not(original_target)
                 result = self.scan_screenshot(inverted_target)
                 if result["max_val"] > threshold:
