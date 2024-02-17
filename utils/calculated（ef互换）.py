@@ -386,7 +386,7 @@ class Calculated:
             value = map[key]
             if key == "e" or key == "space" or key == "r": 
                 # 生成0.3到0.7之间的随机浮点数
-                random_interval = random.uniform(0.3, 0.7)
+                random_interval = random.uniform(0.1, 0.3)
                 num_repeats = int(value / random_interval)
                 for i in range(num_repeats):
                     self.keyboard.press(key)
