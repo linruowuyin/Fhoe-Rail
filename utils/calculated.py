@@ -400,9 +400,9 @@ class Calculated:
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fir":
-                self.click_firing()
+                self.click_fir()
             elif key == "rec":
-                self.click_firing()
+                self.click_rec()
             elif key == "fighting":
                 if value == 1:  # 进战斗
                     self.fighting()
