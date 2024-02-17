@@ -117,7 +117,7 @@ class Calculated:
                 self.click(points)
                 return
 
-            if elapsed_time > 3:
+            if elapsed_time > 8:
                 inverted_target = cv.bitwise_not(original_target)
                 result = self.scan_screenshot(inverted_target)
                 if result["max_val"] > threshold:
@@ -354,6 +354,14 @@ class Calculated:
             ang = (ang + 900) % 360 - 180
             self.mouse_move(ang * 10.2)
 
+    def click_fir(self, threshold=0.9):
+        self.click_target_with_alt(target_path="./picture/fir.png", threshold=threshold)
+        time.sleep(10)
+
+    def click_rec(self, threshold=0.9):
+        self.click_target_with_alt(target_path="./picture/rec.png", threshold=threshold)
+        time.sleep(10)
+
     def auto_map(self, map, old=True, rotate=False):
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
@@ -372,7 +380,7 @@ class Calculated:
             value = map[key]
             if key == "f" or key == "space" or key == "r": 
                 # 生成0.1到0.3之间的随机浮点数
-                random_interval = random.uniform(0.1, 0.3)
+                random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
                 for i in range(num_repeats):
                     self.keyboard.press(key)
@@ -391,6 +399,10 @@ class Calculated:
                     return
             elif key == "mouse_move":
                 self.mouse_move(value)
+            elif key == "fir":
+                self.click_firing()
+            elif key == "rec":
+                self.click_firing()
             elif key == "fighting":
                 if value == 1:  # 进战斗
                     self.fighting()
