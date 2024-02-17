@@ -73,7 +73,7 @@ This software is open source, free of charge and for learning and exchange purpo
 
 | 键位       | 映射                                                   |
 | ---------- | ------------------------------------------------------ |
-| WSAD       | 移动键，后面的数字代表按下的时间长短                   |
+| other       | 未列出的任意键都视为移动键，后面的数字代表按下的时间长短                   |
 | X          | 进入战斗，map映射为fighting=1                          |
 | 鼠标左键   | 打障碍物，map映射为fighting=2                          |
 | f/r/space          | 交互键，后面的数字代表反复按键的时间次数，间隔随机      |
