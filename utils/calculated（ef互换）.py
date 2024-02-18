@@ -354,12 +354,8 @@ class Calculated:
             ang = (ang + 900) % 360 - 180
             self.mouse_move(ang * 10.2)
 
-    def click_fir(self, threshold=0.9):
-        self.click_target_with_alt(target_path="./picture/fir.png", threshold=threshold)
-        time.sleep(10)
-
-    def click_rec(self, threshold=0.9):
-        self.click_target_with_alt(target_path="./picture/rec.png", threshold=threshold)
+    def click_sw(self, threshold=0.9):
+        self.click_target_with_alt(target_path="./picture/sw.png", threshold=threshold)
         time.sleep(10)
 
     def auto_map(self, map, old=True, rotate=False):
@@ -399,10 +395,8 @@ class Calculated:
                     return
             elif key == "mouse_move":
                 self.mouse_move(value)
-            elif key == "fir":
-                self.click_fir()
-            elif key == "rec":
-                self.click_rec()
+            elif key == "sw":
+                self.click_sw()
             elif key == "fighting":
                 if value == 1:  # 进战斗
                     self.fighting()

@@ -108,7 +108,7 @@ class Map:
                         self.calculated.click_target_with_alt(key, 0.93)
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
-                        time.sleep(0.8)  # 传送点击后等待0.8秒
+                        time.sleep(2)  # 传送点击后等待2秒
 
                 start_time = time.time()  
                 count = 0
