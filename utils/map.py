@@ -2,10 +2,15 @@ import time
 import cv2 as cv
 import pyautogui
 import os
+import win32api
+import win32con
+import win32gui
+import random
 
 from .calculated import Calculated
 from .config import get_file, read_json_file, CONFIG_FILE_NAME
 from .log import log, webhook_and_log
+from datetime import datetime
 
 class Map:
     def __init__(self):
@@ -23,7 +28,7 @@ class Map:
 
         while attempts < max_attempts:
             result = self.calculated.scan_screenshot(target)
-            if result['max_val'] > 0.97:
+            if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
                 log.info(f'地图最小化')
@@ -73,10 +78,11 @@ class Map:
         else:
             return f"{seconds:.1f}秒"
 
-
     def auto_map(self, start):
         total_processing_time = 0
         teleport_click_count = 0  
+        now = datetime.now()
+        today_weekday_str = now.strftime('%A')
 
         if f'map_{start}.json' in self.map_list:
             map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
@@ -91,6 +97,19 @@ class Map:
                     key = list(start.keys())[0]
                     log.debug(key)
                     value = start[key]
+                    if key == "check" and value == 1:# 判断是否为周二或周日
+                       today_weekday_num = now.weekday()
+                       if today_weekday_num  in [1, 4, 6]:  # 1代表周二，6代表周日
+                             log.info(f"{today_weekday_str}，周二五日，尝试购买")
+                             continue
+                       else:
+                             log.info(f"{today_weekday_str}，非周二五日，跳过")
+                             break
+                    if key == "esc":
+                        win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
+                        time.sleep(random.uniform(0.09, 0.15)) 
+                        win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        continue
                     if key == 'map':
                         self.map_init()
                     else:
@@ -106,7 +125,7 @@ class Map:
                     count += 1
                     time.sleep(1)
                 end_time = time.time()  # 记录地图加载完成的时间
-                loading_time = end_time - start_time + 2  
+                loading_time = end_time - start_time + 1
                 log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
                 time.sleep(2)  # 增加2秒等待防止人物未加载错轴
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
