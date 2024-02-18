@@ -53,7 +53,7 @@ class Calculated:
         # 移动鼠标并点击
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.5)
+        time.sleep(random.uniform(0.09, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def relative_click(self, points):
@@ -78,7 +78,7 @@ class Calculated:
         
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.4)
+        time.sleep(random.uniform(0.15, 0.2))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
@@ -92,7 +92,7 @@ class Calculated:
         y = int((top + bottom) / 2)
         win32api.SetCursorPos((x, y))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
-        time.sleep(0.1)
+        time.sleep(random.uniform(0.1, 0.15))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
     def take_screenshot(self):
@@ -160,8 +160,8 @@ class Calculated:
                 self.click(points)
                 return
 
-            # 如果超过5秒，同时匹配原图像和颜色反转后的图像
-            if elapsed_time > 5:
+            # 如果超过3秒，同时匹配原图像和颜色反转后的图像
+            if elapsed_time > 3:
                 inverted_target = cv.bitwise_not(original_target)
                 result = self.scan_screenshot(inverted_target)
                 if result["max_val"] > threshold:
@@ -212,7 +212,7 @@ class Calculated:
             elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
                 log.info("识别超时,此处可能无敌人")
                 return
-        time.sleep(6)
+        time.sleep(5)
         target = cv.imread("./picture/auto.png")
         start_time = time.time()
         if self.CONFIG["auto_battle_persistence"] != 1:
@@ -268,46 +268,56 @@ class Calculated:
         attack = cv.imread("./picture/attack.png")
         doubt = cv.imread("./picture/doubt.png")
         warn = cv.imread("./picture/warn.png")
-        image_A = cv.imread("./picture/eat.png")  # 修改
-        image_B = cv.imread("./picture/round.png")  # 修改
-        
+        eat = cv.imread("./picture/eat.png")
+        confirm = cv.imread("./picture/confirm.png")
+        cancel = cv.imread("./picture/cancel.png")
+
         while True:
             log.info("识别中")
             attack_result = self.scan_screenshot(attack)
             doubt_result = self.scan_screenshot(doubt)
             warn_result = self.scan_screenshot(warn)
-            
+
             if attack_result["max_val"] > 0.9:
                 pyautogui.press('e')
-                time.sleep(1)
-                start_time_A = time.time()
-                result_A = None
-                while result_A is None and time.time() - start_time_A < 3:
-                    result_A = self.scan_screenshot(image_A)
-                    
-                if result_A is not None and result_A["max_val"] > 0.9:
-                    while True:
-                        result_B = self.scan_screenshot(image_B)
-                        points_B = self.calculated(result_B, image_B.shape)
-                        self.click(points_B)
-                        if result_B is None or result_B["max_val"] < 0.9:  # 修改条件判断语句
-                           break
-                        else:
-                            break
-                        
-                points = self.calculated(attack_result, attack.shape)
-                time.sleep(3)
+                time.sleep(0.6)
                 self.click_center()
+                start_time_eat = time.time()
+                result_eat = None
+                while result_eat is None and time.time() - start_time_eat < 3:
+                    result_eat = self.scan_screenshot(eat)
+
+                if result_eat is not None and result_eat["max_val"] > 0.9:
+                    while True:
+                        result_confirm = self.scan_screenshot(confirm)
+                        result_cancel = self.scan_screenshot(cancel)
+                        points_confirm = self.calculated(result_confirm, confirm.shape)
+                        points_cancel = self.calculated(result_cancel, cancel.shape)
+                        time.sleep(0.5)
+                        self.click(points_confirm)
+                        time.sleep(0.5)
+                        self.click(points_cancel)
+                        time.sleep(0.5)
+                        # 如果result_cancel不存在或匹配度低于0.9，跳出循环
+                        if result_cancel is None or result_cancel["max_val"] < 0.99:
+                            break
+                        pyautogui.press('e')
+                        time.sleep(1)
+                        self.click_center()
+                        time.sleep(0.5)
+                        self.click_center()
+                        break
                 break
+            
             elif doubt_result["max_val"] > 0.9 or warn_result["max_val"] > 0.9:
-                log.info("識別到疑問或警告，等待怪物開戰")
+                log.info("识別到疑問或警告，等待怪物开戰")
                 self.click_center()
                 time.sleep(3)
                 target = cv.imread("./picture/finish_fighting.png")  # 識別是否已進入戰鬥，若已進入則跳出迴圈
                 result = self.scan_screenshot(target)
                 if result["max_val"] < 0.9:
                     break
-            elif time.time() - start_time > 10:  # 如果已经识别了10秒还未找到目标图片，则退出循环
+            elif time.time() - start_time > 10:
                 log.info("识别超时,此处可能无敌人")
                 return
         time.sleep(6)
@@ -327,7 +337,7 @@ class Calculated:
             log.info("不点击自动(沿用配置)")
             time.sleep(5)
 
-        start_time = time.time()  # 开始计算战斗时间
+        start_time = time.time()
         target = cv.imread("./picture/finish_fighting.png")
         while True:
             result = self.scan_screenshot(target)
@@ -358,10 +368,45 @@ class Calculated:
             ang = (ang + 900) % 360 - 180
             self.mouse_move(ang * 10.2)
 
+
+    def press_f(self):
+        target = cv.imread("./picture/sw.png")
+        start_time = time.time()
+        log.info(f"扫描传送图标")
+
+        # 新增：在超时后模拟按键和等待
+        not_found = True
+
+        while time.time() - start_time < 60:
+            # 匹配预定义目标图像
+            result = self.scan_screenshot(target)
+            if result["max_val"] > 0.96:
+                not_found = False
+                self.keyboard.press('f')
+                time.sleep(0.1)
+                self.keyboard.release('f')  # 释放F键以避免持续按下状态
+                log.info("传送ing")
+                log.info(f"等待10秒")
+                time.sleep(10)
+                return
+            else:
+                time.sleep(0.1)
+
+        # 超过60秒未找到目标图像，则执行按键、等待并记录日志（新增逻辑）
+        if not_found:
+            log.info(f"扫描失败！强制切换")
+            self.keyboard.press('f')
+            time.sleep(0.1)
+            self.keyboard.release('f')  
+            log.info(f"等待10秒")
+            time.sleep(10)
+
     def auto_map(self, map, old=True, rotate=False):
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
         self.need_rotate = rotate
+        now = datetime.now()
+        today_weekday_str = now.strftime('%A')
         map_data = (
             read_json_file(f"map\\old\\{map}.json")
             if old
@@ -372,7 +417,7 @@ class Calculated:
             log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
             key = list(map.keys())[0]
             value = map[key]
-            if key == "e" or key == "space" or key == "r": 
+            if key == "space" or key == "r": 
                 # 生成0.3到0.7之间的随机浮点数
                 random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
@@ -383,6 +428,16 @@ class Calculated:
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
                     time.sleep(remaining_time)
+            if key == "check" and value == 1:
+            # 判断是否为周二或周日
+                today_weekday_num = now.weekday()
+                if today_weekday_num  in [1, 4, 6]:  # 1代表周二，6代表周日
+                    log.info(f"{today_weekday_str}，周二五日，尝试购买")
+                else:
+                    log.info(f"{today_weekday_str}，非周二五日，跳过")
+                    return
+            if key == "e":
+                self.press_f()
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
@@ -408,7 +463,7 @@ class Calculated:
             elif key == "esc":
                 if value == 1:  # 执行一次esc键的按下和释放操作
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
-                    time.sleep(0.1)  
+                    time.sleep(random.uniform(0.09, 0.15)) 
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
                 else:
                     raise Exception((f"map数据错误, esc参数只能为1:{map_filename}", map))

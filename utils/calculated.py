@@ -368,6 +368,40 @@ class Calculated:
             ang = (ang + 900) % 360 - 180
             self.mouse_move(ang * 10.2)
 
+
+    def press_f(self):
+        target = cv.imread("./picture/sw.png")
+        start_time = time.time()
+        log.info(f"扫描传送图标")
+
+        # 新增：在超时后模拟按键和等待
+        not_found = True
+
+        while time.time() - start_time < 60:
+            # 匹配预定义目标图像
+            result = self.scan_screenshot(target)
+            if result["max_val"] > 0.96:
+                not_found = False
+                self.keyboard.press('f')
+                time.sleep(0.1)
+                self.keyboard.release('f')  # 释放F键以避免持续按下状态
+                log.info("传送ing")
+                log.info(f"等待10秒")
+                time.sleep(10)
+                return
+            else:
+                time.sleep(0.1)
+
+        # 超过60秒未找到目标图像，则执行按键、等待并记录日志（新增逻辑）
+        if not_found:
+            log.info(f"扫描失败！强制切换")
+            self.keyboard.press('f')
+            time.sleep(0.1)
+            self.keyboard.release('f')  
+            log.info(f"等待10秒")
+            time.sleep(10)
+            
+
     def auto_map(self, map, old=True, rotate=False):
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
@@ -384,7 +418,7 @@ class Calculated:
             log.info(f"执行{map_filename}文件:{map_index + 1}/{len(map_data['map'])} {map}")
             key = list(map.keys())[0]
             value = map[key]
-            if key == "f" or key == "space" or key == "r": 
+            if key == "space" or key == "r": 
                 # 生成0.3到0.7之间的随机浮点数
                 random_interval = random.uniform(0.3, 0.7)
                 num_repeats = int(value / random_interval)
@@ -403,6 +437,8 @@ class Calculated:
                 else:
                     log.info(f"{today_weekday_str}，非周二五日，跳过")
                     return
+            if key == "f":
+                self.press_f()
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
