@@ -427,7 +427,8 @@ class Calculated:
                     log.info(f"{today_weekday_str}，非周二五日，跳过")
                     return
             if key == "f":
-                self.press_f()
+                if value == 1:  # 进战斗
+                    self.fightE()
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
@@ -448,8 +449,7 @@ class Calculated:
                 else:
                     log.info("锄地结束！")
             elif key == "e":
-                if value == 1:  # 进战斗
-                    self.fightE()
+                self.press_f()
             elif key == "esc":
                 if value == 1:  # 执行一次esc键的按下和释放操作
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
