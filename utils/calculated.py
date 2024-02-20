@@ -418,6 +418,8 @@ class Calculated:
                 remaining_time = value - (num_repeats * random_interval)
                 if remaining_time > 0:
                     time.sleep(remaining_time)
+            if key == "f":
+                self.press_f()
             if key == "check" and value == 1:
             # 判断是否为周二或周日
                 today_weekday_num = now.weekday()
@@ -426,8 +428,6 @@ class Calculated:
                 else:
                     log.info(f"{today_weekday_str}，非周二五日，跳过")
                     return
-            if key == "f":
-                self.press_f()
             elif key == "mouse_move":
                 self.mouse_move(value)
             elif key == "fighting":
