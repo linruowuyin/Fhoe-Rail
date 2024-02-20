@@ -231,6 +231,7 @@ class Calculated:
 
         start_time = time.time()  # 开始计算战斗时间
         target = cv.imread("./picture/finish_fighting.png")
+        not_auto = cv.imread("./picture/not_auto.png")
         while True:
             result = self.scan_screenshot(target)
             if result["max_val"] > 0.92:
@@ -249,7 +250,13 @@ class Calculated:
                 self.rotate()
                 time.sleep(3)
                 break
-            
+
+            not_auto_result = self.scan_screenshot(not_auto)
+            if not_auto_result["max_val"] > 0.95:
+                pyautogui.press('v')
+                log.info("开启自动战斗")
+                time.sleep(1)
+
             elapsed_time = time.time() - start_time
             if elapsed_time > 90:
                 self.click_target("./picture/auto.png", 0.98, False)  #超时尝试开启自动战斗
@@ -329,6 +336,7 @@ class Calculated:
 
         start_time = time.time()  # 开始计算战斗时间
         target = cv.imread("./picture/finish_fighting.png")
+        not_auto = cv.imread("./picture/not_auto.png")
         while True:
             result = self.scan_screenshot(target)
             if result["max_val"] > 0.92:
@@ -347,7 +355,13 @@ class Calculated:
                 self.rotate()
                 time.sleep(3)
                 break
-            
+
+            not_auto_result = self.scan_screenshot(not_auto)
+            if not_auto_result["max_val"] > 0.95:
+                pyautogui.press('v')
+                log.info("开启自动战斗")
+                time.sleep(1)
+
     def rotate(self):
         if self.need_rotate:
             self.keyboard.press('w')
