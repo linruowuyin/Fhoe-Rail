@@ -101,16 +101,18 @@ class Calculated:
         """
         hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
         left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+        
+        # 计算边框
+        width = right - left
+        height = bottom - top
+        other_border = (width - 1920) // 2
+        up_border = height - 1080 - other_border
 
         # 计算截图范围
-        screenshot_left = left
-        screenshot_top = top
-        screenshot_right = min(right, left + 1920)
-        screenshot_bottom = min(bottom, top + 1080)
-
-        # 如果游戏窗口的底部坐标高于 1080，则调整截图范围
-        if bottom > 1080:
-            screenshot_top = max(top, bottom - 1080)
+        screenshot_left = left + other_border
+        screenshot_top = top + up_border
+        screenshot_right = right - other_border
+        screenshot_bottom = bottom - other_border
 
         # 获取游戏窗口截图
         picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
