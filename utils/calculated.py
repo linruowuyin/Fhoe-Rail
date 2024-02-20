@@ -216,21 +216,6 @@ class Calculated:
                 return
         time.sleep(6)
         target = cv.imread("./picture/auto.png")
-        start_time = time.time()
-        if self.CONFIG["auto_battle_persistence"] != 1:
-            while True:
-                result = self.scan_screenshot(target)
-                if result["max_val"] > 0.9:
-                    points = self.calculated(result, target.shape)
-                    self.click(points)
-                    log.info("开启自动战斗")
-                    break
-                elif time.time() - start_time > 15:
-                    break
-        else:
-            log.info("不点击自动(沿用配置)")
-            time.sleep(5)
-
         start_time = time.time()  # 开始计算战斗时间
         target = cv.imread("./picture/finish_fighting.png")
         not_auto = cv.imread("./picture/not_auto.png")
@@ -320,22 +305,6 @@ class Calculated:
                 log.info("识别超时,此处可能无敌人")
                 return
         time.sleep(6)
-        target = cv.imread("./picture/auto.png")
-        start_time = time.time()
-        if self.CONFIG["auto_battle_persistence"] != 1:
-            while True:
-                result = self.scan_screenshot(target)
-                if result["max_val"] > 0.9:
-                    points = self.calculated(result, target.shape)
-                    self.click(points)
-                    log.info("开启自动战斗")
-                    break
-                elif time.time() - start_time > 15:
-                    break
-        else:
-            log.info("不点击自动(沿用配置)")
-            time.sleep(5)
-
         start_time = time.time()  # 开始计算战斗时间
         target = cv.imread("./picture/finish_fighting.png")
         not_auto = cv.imread("./picture/not_auto.png")
