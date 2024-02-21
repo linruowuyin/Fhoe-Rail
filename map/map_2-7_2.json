@@ -26,8 +26,14 @@
             "s": 0.75
         },
         {
-            "fighting": 1
+            "fighting": 2
         },
+        {
+            "fighting": 2
+		},
+        {
+            "fighting": 1
+		},
         {
             "fighting": 2
         }
