@@ -84,6 +84,12 @@ def main():
 
 def main_start():
     if not read_json_file(CONFIG_FILE_NAME, False).get('start'):
+        #title = "开启连续自动战斗了吗喵？："
+        #options = ['打开了', '没打开', '我啷个晓得嘛']
+        #option = questionary.select(title, options).ask()
+        #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
+        #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
+        modify_json_file(CONFIG_FILE_NAME, "start", True)
         new_option_title = "想要跑完自动关机吗？"
         new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
         new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
@@ -92,6 +98,10 @@ def main_start():
 
 
 def main_start_rewrite():
+    #title = "开启连续自动战斗了吗喵？："
+    #options = ['没打开', '打开了', '我啷个晓得嘛']
+    #option = questionary.select(title, options).ask()
+
     new_option_title = "想要跑完自动关机吗？"
     new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
     new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
@@ -105,6 +115,7 @@ def main_start_rewrite():
         config = {}
 
     # 更新配置文件
+    #config['auto_battle_persistence'] = options.index(option)
     config['auto_shutdown'] = new_option_value
 
     # 写入配置文件
@@ -119,11 +130,9 @@ if __name__ == "__main__":
             main()
     except ModuleNotFoundError as e:
         print(traceback.format_exc())
-        os.system("pip install -r requirements.txt")
         print("请重新运行")
     except NameError as e:
         print(traceback.format_exc())
-        os.system("pip install -r requirements.txt")
         print("请重新运行")
     except:
         log.error(traceback.format_exc())
