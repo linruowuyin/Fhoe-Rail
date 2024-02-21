@@ -348,21 +348,19 @@ class Calculated:
         start_time = time.time()
         log.info(f"扫描传送图标")
 
-        # 新增：在超时后模拟按键和等待
         not_found = True
 
         while time.time() - start_time < 60:
-            # 匹配预定义目标图像
             result = self.scan_screenshot(target)
             if result["max_val"] > 0.96:
                 not_found = False
                 self.keyboard.press('f')
                 time.sleep(0.1)
-                self.keyboard.release('f')  # 释放F键以避免持续按下状态
+                self.keyboard.release('f')  
                 log.info("传送ing")
                 log.info(f"等待10秒")
                 time.sleep(10)
-                return
+                return  # 修复bug：在找到并点击后直接返回，不再执行后续循环和按键操作
             else:
                 time.sleep(0.1)
 
