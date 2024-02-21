@@ -74,8 +74,8 @@ def main():
         switch_window()
         time.sleep(0.5)
         log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
-        log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：32076")
-        log.info("2.0版本单角色锄满101240经验（fhoe能锄95%）")
+        log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
+        log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         map_instance.auto_map(start)  # 读取配置
     else:
@@ -84,11 +84,11 @@ def main():
 
 def main_start():
     if not read_json_file(CONFIG_FILE_NAME, False).get('start'):
-        title = "开启连续自动战斗了吗喵？："
-        options = ['打开了', '没打开', '我啷个晓得嘛']
-        option = questionary.select(title, options).ask()
-        is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
-        modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
+        #title = "开启连续自动战斗了吗喵？："
+        #options = ['打开了', '没打开', '我啷个晓得嘛']
+        #option = questionary.select(title, options).ask()
+        #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
+        #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
         modify_json_file(CONFIG_FILE_NAME, "start", True)
         new_option_title = "想要跑完自动关机吗？"
         new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
@@ -130,9 +130,11 @@ if __name__ == "__main__":
             main()
     except ModuleNotFoundError as e:
         print(traceback.format_exc())
+        os.system("pip install -r requirements.txt")
         print("请重新运行")
     except NameError as e:
         print(traceback.format_exc())
+        os.system("pip install -r requirements.txt")
         print("请重新运行")
     except:
         log.error(traceback.format_exc())
