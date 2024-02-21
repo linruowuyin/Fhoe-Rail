@@ -39,6 +39,8 @@ class Calculated:
         self.CONFIG = read_json_file(CONFIG_FILE_NAME)
         self.keyboard = KeyboardController()
         self.ASU = ASU()
+        self.have_monthly_pass = False  # 标志是否领取完月卡
+        self.monthly_pass_success = False  # 标志是否成功执行月卡检测
 
     def click(self, points):
         """
@@ -285,7 +287,7 @@ class Calculated:
                         points_B = self.calculated(result_B, image_B.shape)
                         self.click(points_B)
                         if result_B is None or result_B["max_val"] < 0.9:  # 修改条件判断语句
-                           break
+                            break
                         else:
                             break
                         
@@ -438,6 +440,7 @@ class Calculated:
                 else:
                     raise Exception((f"map数据错误, esc参数只能为1:{map_filename}", map))
             else:
+                self.monthly_pass()  # 行进前识别是否接近月卡时间
                 self.keyboard.press(key)
                 start_time = time.perf_counter()
                 while time.perf_counter() - start_time < value:
@@ -465,17 +468,70 @@ class Calculated:
     def monthly_pass(self):
         """
         说明：
-            点击月卡
+            点击月卡。首先检查当前时间是否接近目标时间（凌晨4点前后），然后执行月卡点击操作。
+            仅在while循环至少成功运行一次后，不再重复执行。
         """
+        if self.monthly_pass_success:  # 月卡检查已完成，不再重复执行
+            return
+        
         start_time = time.time()
-        dt = datetime.now().strftime('%Y-%m-%d') + " 04:00:00"
-        ts = int(time.mktime(time.strptime(dt, "%Y-%m-%d %H:%M:%S")))
-        ns = int(start_time)
-        if -60 < ns - ts <= 60:
-            log.info("点击月卡")
-            pos = self.ocr_click("今日补给")
-            time.sleep(0.5)
-            self.click(pos)
+        target_time_str = datetime.now().strftime('%Y-%m-%d') + " 04:00:00"
+        target_time_stamp = int(time.mktime(time.strptime(target_time_str, "%Y-%m-%d %H:%M:%S")))
+        current_time_stamp = int(start_time)
+        time_period = current_time_stamp - target_time_stamp
+
+        if -60 < time_period <= 300:  # 接近4点1分钟时开始等待点击月卡，超过4点5分钟内会点击月卡
+            if -60 < time_period < 0:
+                time.sleep(abs(time_period))  # 等待4点
+                time.sleep(3)  # 假设的延时，等待动画可能的加载
+            self.attempt_to_click_monthly_pass()
+
+    def attempt_to_click_monthly_pass(self):
+        """
+        说明：
+            尝试点击月卡。
+        """
+        log.info("判断是否存在月卡")
+        target = cv.imread("./picture/finish_fighting.png")
+        result = self.scan_screenshot(target)
+        if result["max_val"] > 0.92:
+            points = self.calculated(result, target.shape)
+            log.debug(points)
+            match_details = f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+            log.info(match_details)
+            self.monthly_pass_success = True  # 月卡检查完成，无月卡
+            return
+
+        log.info("准备点击月卡")
+        monthly_pass_pic = cv.imread("./picture/monthly_pass_pic.png")
+        result_monthly_pass = self.scan_screenshot(monthly_pass_pic)
+
+        max_click_attempts = 2
+        similarity_threshold = 0.92
+        count = 0
+        attempts_made = False
+
+        while not self.have_monthly_pass and count < max_click_attempts:  # 月卡需要点击两次，1次领取，1次完成
+            if result_monthly_pass["max_val"] > similarity_threshold:
+                log.info("点击月卡")
+                points_monthly_pass = self.calculated(result_monthly_pass, monthly_pass_pic.shape)
+                self.click(points_monthly_pass)
+                match_monthly_pass = f"识别到月卡，图片匹配度: {result_monthly_pass['max_val']:.2f} ({points_monthly_pass[0]}, {points_monthly_pass[1]})"
+                log.info(match_monthly_pass)
+                time.sleep(2)  # 等待动画
+                attempts_made = True
+                count += 1
+                if count == max_click_attempts:
+                    self.have_monthly_pass = True
+                    break
+            else:
+                log.info("找不到与月卡图片相符的图")
+                self.monthly_pass_success = True  # 月卡检查，找不到与月卡图片相符的图
+                break
+            time.sleep(0.1)  # 稍微等待再次尝试
+
+        if attempts_made:
+            self.monthly_pass_success = True  # 月卡检查，已领取
 
     def scroll(self, clicks: float):
         """
