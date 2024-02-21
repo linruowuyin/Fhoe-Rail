@@ -6,6 +6,8 @@
                            https://github.com/Souloco/StarRail-FastRun
 
 模拟器运行请去：https://github.com/LmeSzinc/StarRailCopilot
+### 托帕版本
+请移步https://github.com/linruowuyin/Fhoe-Rail/tree/Topaz
 
 ### 如何选图？
 
