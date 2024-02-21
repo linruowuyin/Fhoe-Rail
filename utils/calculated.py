@@ -400,7 +400,7 @@ class Calculated:
             if key == "f":
                 self.press_f()
                 time.sleep(10)
-            if key == "check" and value == 1:
+            elif key == "check" and value == 1:
             # 判断是否为周二或周日
                 today_weekday_num = now.weekday()
                 if today_weekday_num  in [1, 4, 6]:  # 1代表周二，6代表周日
