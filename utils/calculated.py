@@ -483,7 +483,7 @@ class Calculated:
         if -60 < time_period <= 300:  # 接近4点1分钟时开始等待点击月卡，超过4点5分钟内会点击月卡
             if -60 < time_period < 0:
                 time.sleep(abs(time_period))  # 等待4点
-                time.sleep(3)  # 假设的延时，等待动画可能的加载
+            time.sleep(5)  # 延时，等待动画可能的加载
             self.attempt_to_click_monthly_pass()
 
     def attempt_to_click_monthly_pass(self):
@@ -518,14 +518,15 @@ class Calculated:
                 self.click(points_monthly_pass)
                 match_monthly_pass = f"识别到月卡，图片匹配度: {result_monthly_pass['max_val']:.2f} ({points_monthly_pass[0]}, {points_monthly_pass[1]})"
                 log.info(match_monthly_pass)
-                time.sleep(2)  # 等待动画
+                time.sleep(4)  # 等待动画修正到4秒
                 attempts_made = True
                 count += 1
                 if count == max_click_attempts:
                     self.have_monthly_pass = True
                     break
             else:
-                log.info("找不到与月卡图片相符的图")
+                match_no_pass = f"找不到与月卡图片相符的图，图片匹配度：{result_monthly_pass['max_val']:.2f} 需要 > {similarity_threshold}"
+                log.info(match_no_pass)
                 self.monthly_pass_success = True  # 月卡检查，找不到与月卡图片相符的图
                 break
             time.sleep(0.1)  # 稍微等待再次尝试
