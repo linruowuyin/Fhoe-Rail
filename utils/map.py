@@ -123,7 +123,7 @@ class Map:
                         self.calculated.click_target_with_alt(key, 0.93)
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
-                        time.sleep(2)  
+                        time.sleep(1.7)  
 
                 while self.calculated.is_blackscreen():
                     count += 1
