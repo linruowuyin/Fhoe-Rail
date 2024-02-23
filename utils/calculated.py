@@ -217,10 +217,10 @@ class Calculated:
                 log.info("识别超时,此处可能无敌人")
                 return
         time.sleep(6)
-        target = cv.imread("./picture/auto.png")
         start_time = time.time()  # 开始计算战斗时间
         target = cv.imread("./picture/finish_fighting.png")
-        not_auto = cv.imread("./picture/not_auto.png")
+        not_auto = cv.imread("./picture/auto.png")
+        auto_switch = False
         while True:
             result = self.scan_screenshot(target)
             if result["max_val"] > 0.92:
@@ -240,11 +240,13 @@ class Calculated:
                 time.sleep(3)
                 break
 
-            not_auto_result = self.scan_screenshot(not_auto)
-            if not_auto_result["max_val"] > 0.95:
-                pyautogui.press('v')
-                log.info("开启自动战斗")
-                time.sleep(1)
+            if not auto_switch:
+                not_auto_result = self.scan_screenshot(not_auto)
+                if not_auto_result["max_val"] > 0.95:
+                    pyautogui.press('v')
+                    log.info("开启自动战斗")
+                    time.sleep(1)
+                auto_switch = True
 
             elapsed_time = time.time() - start_time
             if elapsed_time > 90:
@@ -309,7 +311,8 @@ class Calculated:
         time.sleep(6)
         start_time = time.time()  # 开始计算战斗时间
         target = cv.imread("./picture/finish_fighting.png")
-        not_auto = cv.imread("./picture/not_auto.png")
+        not_auto = cv.imread("./picture/auto.png")
+        auto_switch = False
         while True:
             result = self.scan_screenshot(target)
             if result["max_val"] > 0.92:
@@ -329,11 +332,13 @@ class Calculated:
                 time.sleep(3)
                 break
 
-            not_auto_result = self.scan_screenshot(not_auto)
-            if not_auto_result["max_val"] > 0.95:
-                pyautogui.press('v')
-                log.info("开启自动战斗")
-                time.sleep(1)
+            if not auto_switch:
+                not_auto_result = self.scan_screenshot(not_auto)
+                if not_auto_result["max_val"] > 0.95:
+                    pyautogui.press('v')
+                    log.info("开启自动战斗")
+                    time.sleep(1)
+                auto_switch = True
 
     def rotate(self):
         if self.need_rotate:
