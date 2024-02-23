@@ -544,6 +544,19 @@ class Calculated:
         pyautogui.scroll(clicks)
         time.sleep(0.5)
 
+    def blackscreen_check(self, threshold=25):
+        """
+        说明：
+            检测是否黑屏
+        """
+        screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
+        current_param = cv.mean(screenshot)[0]
+        if current_param > threshold:
+            log.info(f'当前黑屏，值为{current_param} > {threshold}')
+            return True
+
+        return False
+
     def is_blackscreen(self, threshold=25):
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
 
@@ -562,3 +575,44 @@ class Calculated:
                 time.sleep(2)  # 等待2秒再尝试匹配
 
         return True  # 如果未匹配到指定的图像，返回True
+
+    def run_blackscreen_cal_time(self):
+        """
+        说明：
+            黑屏时间
+        """
+        start_time = time.time()  
+        while self.is_blackscreen():
+            time.sleep(1)
+        end_time = time.time()  # 记录黑屏加载完成的时间
+        loading_time = end_time - start_time + 1
+        
+        return loading_time
+
+    def run_mapload_check(self):
+        """
+        说明：
+            计算地图加载时间
+        """
+        start_time = time.time()
+        target = cv.imread('./picture/map_load.png')
+        time.sleep(1)  # 短暂延迟后开始判定是否为地图加载or黑屏跳转
+        error_count = 0
+        while error_count < 10:
+            result = self.scan_screenshot(target)
+            if result and result["max_val"] > 0.9:
+                while result["max_val"] > 0.9:
+                    time.sleep(1)
+                    result = self.scan_screenshot(target)
+                break
+            elif self.blackscreen_check():
+                self.run_blackscreen_cal_time()
+                break
+            else:
+                error_count += 1
+                time.sleep(1)
+                log.info(f'未查询到地图加载状态{error_count}次，加载图片匹配值{result["max_val"]}')
+        end_time = time.time()
+        loading_time = end_time - start_time
+        log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
+        time.sleep(2)  # 增加2秒等待防止人物未加载错轴
