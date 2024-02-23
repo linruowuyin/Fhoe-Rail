@@ -89,12 +89,12 @@ class Map:
             for map_ in map_list:
                 # 选择地图
                 start_time = time.time() 
-                count = 0
                 map_ = map_.split('.')[0]
                 map_data = read_json_file(f"map/{map_}.json")
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                 self.calculated.monthly_pass()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献")
+                temp_point = ""  # 用于输出传送前的点位
                 for start in map_data['start']:
                     key = list(start.keys())[0]
                     log.debug(key)
@@ -116,18 +116,18 @@ class Map:
                         self.map_init()
                     else:
                         time.sleep(value)
-                        self.calculated.click_target_with_alt(key, 0.93)
+                        if key in ["picture\\transfer.png", "picture\\map_0.png"]:
+                            self.calculated.click_target_with_alt(key, 0.93)
+                            self.calculated.run_mapload_check()
+                            if temp_point:
+                                log.info(f'地图加载前的传送点为 {temp_point}')
+                        else:
+                            self.calculated.click_target_with_alt(key, 0.93)
+                            temp_point = key
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
                         time.sleep(1.7)  # 传送点击后等待2秒
-
-                while self.calculated.is_blackscreen():
-                    count += 1
-                    time.sleep(1)
-                end_time = time.time()  # 记录地图加载完成的时间
-                loading_time = end_time - start_time + 1
-                log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
-                time.sleep(2)  # 增加2秒等待防止人物未加载错轴
+                
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
                 # 记录处理开始时间
