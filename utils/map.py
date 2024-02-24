@@ -32,7 +32,7 @@ class Map:
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
-                log.info(f'地图最小化，识别图片匹配度{result['max_val']:.3f}')
+                log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
                 pyautogui.click(points, clicks=5, interval=0.1)
                 break
             else:
