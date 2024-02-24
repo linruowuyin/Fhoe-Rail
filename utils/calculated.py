@@ -616,8 +616,33 @@ class Calculated:
             else:
                 error_count += 1
                 time.sleep(1)
-                log.info(f'未查询到地图加载状态{error_count}次，加载图片匹配值{result["max_val"]}')
+                log.info(f'未查询到地图加载状态{error_count}次，加载图片匹配值{result["max_val"]:.3f}')
         end_time = time.time()
         loading_time = end_time - start_time
         log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
         time.sleep(2)  # 增加2秒等待防止人物未加载错轴
+
+    def run_dreambuild_check(self):
+        """
+        说明：
+            筑梦模块移动模块加载时间
+        """
+        start_time = time.time()
+        target = cv.imread('./picture/finish_fighting.png')
+        time.sleep(3)  # 短暂延迟后开始判定
+        error_count = 0
+        max_error_count = 10
+        while error_count < max_error_count:
+            result = self.scan_screenshot(target)
+            if result["max_val"] > 0.9:
+                break
+            else:
+                error_count += 1
+                time.sleep(1)
+        end_time = time.time()
+        loading_time = end_time - start_time
+        if error_count >= max_error_count:
+            log.info(f'移动模块加载超时，用时 {loading_time:.1f} 秒，识别图片匹配值{result["max_val"]:.3f}')
+        else:
+            log.info(f'移动模块成功，用时 {loading_time:.1f} 秒')
+        time.sleep(0.5)  #短暂延迟后开始下一步
