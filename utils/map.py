@@ -121,6 +121,9 @@ class Map:
                             self.calculated.run_mapload_check()
                             if temp_point:
                                 log.info(f'地图加载前的传送点为 {temp_point}')
+                        elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
+                            self.calculated.click_target_with_alt(key, 0.93)
+                            self.calculated.run_dreambuild_check()
                         else:
                             self.calculated.click_target_with_alt(key, 0.93)
                             temp_point = key
