@@ -557,7 +557,7 @@ class Calculated:
         screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
         current_param = cv.mean(screenshot)[0]
         if current_param > threshold:
-            log.info(f'当前黑屏，值为{current_param} > {threshold}')
+            log.info(f'当前黑屏，值为{current_param:.3f} > {threshold}')
             return True
 
         return False

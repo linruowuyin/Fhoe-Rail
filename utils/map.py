@@ -26,12 +26,13 @@ class Map:
         max_attempts = 60  # 最大重试次数
         attempts = 0
 
+        time.sleep(1)  # 增加1秒识别延迟，避免偶现的识别错误
         while attempts < max_attempts:
             result = self.calculated.scan_screenshot(target)
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
-                log.info(f'地图最小化')
+                log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
                 pyautogui.click(points, clicks=5, interval=0.1)
                 break
             else:
