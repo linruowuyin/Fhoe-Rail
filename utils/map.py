@@ -26,7 +26,7 @@ class Map:
         max_attempts = 60  # 最大重试次数
         attempts = 0
 
-        time.sleep(1)  # 增加1秒识别延迟，避免偶现的识别错误
+        time.sleep(2)  # 增加2秒识别延迟，避免偶现的识别错误
         while attempts < max_attempts:
             result = self.calculated.scan_screenshot(target)
             if result['max_val'] > 0.95:
