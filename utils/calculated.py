@@ -41,6 +41,7 @@ class Calculated:
         self.ASU = ASU()
         self.have_monthly_pass = False  # 标志是否领取完月卡
         self.monthly_pass_success = False  # 标志是否成功执行月卡检测
+        self.temp_screenshot = ()  # 初始化临时截图
 
     def click(self, points):
         """
@@ -97,9 +98,15 @@ class Calculated:
         time.sleep(0.1)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
-    def take_screenshot(self):
+    def take_screenshot(self, left_offset=0, top_offset=0, right_offset=0, bottom_offset=0):
         """
-        获取游戏窗口的屏幕截图
+        说明：
+            获取游戏窗口的屏幕截图
+        参数：
+            :param left_offset: 左侧向右偏移
+            :param top_offset: 上方向下偏移
+            :param right_offset: 右侧向左偏移
+            :param bottom_offset: 下方向上偏移
         """
         while True:
             try:
@@ -109,39 +116,75 @@ class Calculated:
             except:
                 log.info("未找到游戏窗口，等待10秒后重试")
                 time.sleep(10)
-
-        # 计算边框
+        
+        # 计算初始边框
         width = right - left
         height = bottom - top
         other_border = (width - 1920) // 2
         up_border = height - 1080 - other_border
 
-        # 计算截图范围
+        # 计算窗口截图范围
         screenshot_left = left + other_border
         screenshot_top = top + up_border
         screenshot_right = right - other_border
         screenshot_bottom = bottom - other_border
+        
+        # 计算偏移截图范围
+        screenshot_left_offset = screenshot_left + left_offset
+        screenshot_top_offset = screenshot_top + top_offset
+        screenshot_right_offset = screenshot_right - right_offset
+        screenshot_bottom_offset = screenshot_bottom - bottom_offset
 
-        # 获取游戏窗口截图
-        while True:
+        # 错误计数
+        count = 0
+        while count <= 50:
             try:
-                picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
-                break
+                # 确保截图区域是有效的
+                if screenshot_left < screenshot_right and screenshot_top < screenshot_bottom:
+                    # 获取游戏窗口偏移截图
+                    picture = ImageGrab.grab((screenshot_left_offset, screenshot_top_offset, screenshot_right_offset, screenshot_bottom_offset), all_screens=True)
+                    screenshot = np.array(picture)
+                    screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
+                    return screenshot, screenshot_left_offset, screenshot_top_offset, screenshot_right_offset, screenshot_bottom_offset
+                else:
+                    # 如果截图区域无效，使用窗口截图
+                    log.debug(f'截图区域无效，偏移值错误{left_offset},{top_offset},{right_offset},{bottom_offset}')
+                    log.debug(f'使用窗口截图')
+                    picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
+                    screenshot = np.array(picture)
+                    screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
+                    return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
+                    
             except:
-                log.info("截图失败，等待2秒后重试")
+                log.debug("截图失败，等待2秒后重试")
+                count += 1
                 time.sleep(2)
-        screenshot = np.array(picture)
-        screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
-        return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
+        raise RuntimeError(f"截图尝试失败，已达到最大重试次数（{count}次）。")  
+        
 
-    def scan_screenshot(self, prepared) -> dict:
+
+    def scan_screenshot(self, prepared,  left_offset=0, top_offset=0, right_offset=0, bottom_offset=0, use_temp=False) -> dict:
         """
         说明：
             比对图片
         参数：
             :param prepared: 比对图片地址
+            :param left_offset: 左侧向右偏移 (当use_temp为True时忽略)
+            :param top_offset: 上方向下偏移 (当use_temp为True时忽略)
+            :param right_offset: 右侧向左偏移 (当use_temp为True时忽略)
+            :param bottom_offset: 下方向上偏移 (当use_temp为True时忽略)
+            :param use_temp: 是否使用临时截图数据
         """
-        screenshot, left, top, right, bottom = self.take_screenshot()
+        if use_temp and self.temp_screenshot:  
+            # 如果use_temp为True且存在缓存的截图数据，使用临时截图数据，忽略偏移值
+            screenshot, left, top, right, bottom = self.temp_screenshot
+        else:
+            screenshot, left, top, right, bottom = self.take_screenshot(left_offset, top_offset, right_offset, bottom_offset)
+        
+        # 如果use_temp为False或者首次截图，将截图数据保存到临时变量中以便下次使用
+        if not use_temp or not self.temp_screenshot:
+            self.temp_screenshot = (screenshot, left, top, right, bottom)
+
         result = cv.matchTemplate(screenshot, prepared, cv.TM_CCORR_NORMED)
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
         return {
@@ -188,6 +231,9 @@ class Calculated:
 
             if not flag:
                 return
+            
+            # 添加短暂延迟避免性能消耗
+            time.sleep(1)
 
             if elapsed_time > 30:
                 return
@@ -210,8 +256,8 @@ class Calculated:
         while True:
             log.info("识别中")
             attack_result = self.scan_screenshot(attack)
-            doubt_result = self.scan_screenshot(doubt)
-            warn_result = self.scan_screenshot(warn)
+            doubt_result = self.scan_screenshot(doubt, use_temp=True)
+            warn_result = self.scan_screenshot(warn, use_temp=True)
             if attack_result["max_val"] > 0.9:
                 points = self.calculated(attack_result, attack.shape)
                 self.click_center()
@@ -284,8 +330,8 @@ class Calculated:
         while True:
             log.info("识别中")
             attack_result = self.scan_screenshot(attack)
-            doubt_result = self.scan_screenshot(doubt)
-            warn_result = self.scan_screenshot(warn)
+            doubt_result = self.scan_screenshot(doubt, use_temp=True)
+            warn_result = self.scan_screenshot(warn, use_temp=True)
             
             if attack_result["max_val"] > 0.9:
                 pyautogui.press('e')
@@ -454,6 +500,7 @@ class Calculated:
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
                     time.sleep(random.uniform(0.09, 0.15)) 
                     win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    time.sleep(3)
                 else:
                     raise Exception((f"map数据错误, esc参数只能为1:{map_filename}", map))
             else:

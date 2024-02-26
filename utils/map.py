@@ -26,9 +26,9 @@ class Map:
         max_attempts = 60  # 最大重试次数
         attempts = 0
 
-        time.sleep(1)  # 增加1秒识别延迟，避免偶现的识别错误
+        time.sleep(2)  # 增加2秒识别延迟，避免偶现的识别错误
         while attempts < max_attempts:
-            result = self.calculated.scan_screenshot(target)
+            result = self.calculated.scan_screenshot(target, left_offset=550, top_offset=960, right_offset=1050, bottom_offset=50, use_temp=False)
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
