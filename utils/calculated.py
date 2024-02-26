@@ -101,9 +101,15 @@ class Calculated:
         """
         获取游戏窗口的屏幕截图
         """
-        hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
-        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-        
+        while True:
+            try:
+                hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
+                left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+                break
+            except:
+                log.info("未找到游戏窗口，等待10秒后重试")
+                time.sleep(10)
+
         # 计算边框
         width = right - left
         height = bottom - top
@@ -117,7 +123,13 @@ class Calculated:
         screenshot_bottom = bottom - other_border
 
         # 获取游戏窗口截图
-        picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
+        while True:
+            try:
+                picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
+                break
+            except:
+                log.info("截图失败，等待2秒后重试")
+                time.sleep(2)
         screenshot = np.array(picture)
         screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
         return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
