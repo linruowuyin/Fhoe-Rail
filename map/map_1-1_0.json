@@ -3,6 +3,9 @@
     "author": "lrwy",
     "start": [
         {
+            "main": 1
+        },
+        {
             "picture\\guide.png": 1.5
         },
         {
@@ -10,17 +13,10 @@
         },
         {
             "picture\\map_0.png": 2
+        },
+        {
+            "main": 1
         }
     ],
-    "map": [
-        {
-            "esc": 1
-        },
-        {
-            "esc": 1
-        },
-        {
-            "fighting": 2
-        }
-    ]
+    "map": []
 }

@@ -108,13 +108,23 @@ class Map:
                        else:
                              log.info(f"{today_weekday_str}，非周二五日，跳过")
                              break
-                    if key == "esc":
+                    elif key == "esc":
                         win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
                         time.sleep(random.uniform(0.09, 0.15)) 
                         win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
                         continue
-                    if key == 'map':
+                    elif key == 'map':
                         self.map_init()
+                    elif key == 'main':
+                        target = cv.imread("./picture/finish_fighting.png")
+                        while True:
+                            result = self.calculated.scan_screenshot(target)
+                            if result["max_val"] > 0.9:
+                                break
+                            else:
+                                pyautogui.press('esc')
+                                time.sleep(2)
+                        time.sleep(2)
                     else:
                         time.sleep(value)
                         if key in ["picture\\transfer.png", "picture\\map_0.png"]:
