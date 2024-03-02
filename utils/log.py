@@ -18,20 +18,32 @@ try:
 except:
     from requests import post
 
-VER = "3.1"
+VER = "2.061"
 log = logger
 dir_log = "logs"
 path_log = os.path.join(dir_log, '日志文件.log')
+
+def update_extra(record):
+    module = record["module"]
+    function = record["function"]
+    line = record["line"]
+
+    # 将额外信息更新到记录字典中
+    record["new_module"] = f"{module}.{function}:{line}"
+
+log = logger.patch(update_extra)
+    
 logger.remove()
 logger.add(sys.stdout, level='INFO', colorize=True,
             format="<cyan>{module}</cyan>.<cyan>{function}</cyan>"
                     ":<cyan>{line}</cyan> - "+f"<cyan>{VER}</cyan> - "
                     "<level>{message}</level>"
             )
-logger.add(path_log,
+
+log.add(path_log,
             format="{time:HH:mm:ss} - "
-                    "{level}\t| "
-                    "{module}.{function}:{line} - "+f"<cyan>{VER}</cyan> - "+" {message}",
+                    "{level:<6} \t| "
+                    "{new_module:<40} \t- "+f"<cyan>{VER}</cyan> - "+"{message}",
             rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="10 days")
 
 def webhook_and_log(message):
