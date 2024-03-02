@@ -19,16 +19,16 @@ class Map:
         self.map_list = []
         self.map_list_map = {}
         self.read_maps()
+        self.now = datetime.now()
 
-    def map_init(self):
+    def map_init(self, max_attempts=60):
 
         target = cv.imread('./picture/contraction.png')
-        max_attempts = 60  # 最大重试次数
         attempts = 0
 
         time.sleep(2)  # 增加2秒识别延迟，避免偶现的识别错误
         while attempts < max_attempts:
-            result = self.calculated.scan_screenshot(target, left_offset=550, top_offset=960, right_offset=1050, bottom_offset=50, use_temp=False)
+            result = self.calculated.scan_screenshot(target, offset=(550,960,-1050,-50))
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.debug(points)
@@ -38,8 +38,7 @@ class Map:
             else:
                 attempts += 1
                 log.info(f'打开地图')
-            pyautogui.keyDown(self.open_map)
-            pyautogui.keyUp(self.open_map)
+            pyautogui.press(self.open_map)
             time.sleep(3)  # 3秒延迟
 
     def read_maps(self):
@@ -79,51 +78,54 @@ class Map:
         else:
             return f"{seconds:.1f}秒"
 
+    def day_init(self, days: list=None):
+        if days is None:  
+            days = []
+        today_weekday_num = self.now.weekday()
+        in_day = today_weekday_num in days
+        
+        return in_day
+
     def auto_map(self, start):
         total_processing_time = 0
         teleport_click_count = 0  
-        now = datetime.now()
-        today_weekday_str = now.strftime('%A')
+        today_weekday_str = self.now.strftime('%A')
 
         if f'map_{start}.json' in self.map_list:
+            total_start_time = time.time()
             map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
-            for map_ in map_list:
+            max_index = max(index for index, _ in enumerate(map_list))
+            for index, map_ in enumerate(map_list):
                 # 选择地图
                 start_time = time.time() 
                 map_ = map_.split('.')[0]
                 map_data = read_json_file(f"map/{map_}.json")
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                 self.calculated.monthly_pass()
-                log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献")
+                log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 temp_point = ""  # 用于输出传送前的点位
                 for start in map_data['start']:
                     key = list(start.keys())[0]
                     log.debug(key)
                     value = start[key]
+                    self.calculated.monthly_pass_check()
                     if key == "check" and value == 1:# 判断是否为周二或周日
-                       today_weekday_num = now.weekday()
-                       if today_weekday_num  in [1, 4, 6]:  # 1代表周二，6代表周日
-                             log.info(f"{today_weekday_str}，周二五日，尝试购买")
-                             continue
+                       if self.day_init([1,4,6]):
+                            # 1代表周二，4代表周五，6代表周日
+                            log.info(f"{today_weekday_str}，周二五日，尝试购买")
+                            continue
                        else:
-                             log.info(f"{today_weekday_str}，非周二五日，跳过")
-                             break
+                            log.info(f"{today_weekday_str}，非周二五日，跳过")
+                            break
                     elif key == "esc":
-                        win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
-                        time.sleep(random.uniform(0.09, 0.15)) 
-                        win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        pyautogui.press('esc')
                         continue
                     elif key == 'map':
                         self.map_init()
                     elif key == 'main':
-                        target = cv.imread("./picture/finish_fighting.png")
-                        while True:
-                            result = self.calculated.scan_screenshot(target)
-                            if result["max_val"] > 0.9:
-                                break
-                            else:
-                                pyautogui.press('esc')
-                                time.sleep(2)
+                        while not self.calculated.on_main_interface():  # 检测是否出现左上角灯泡，即主界面检测
+                            pyautogui.press('esc')
+                            time.sleep(2)
                         time.sleep(2)
                     else:
                         time.sleep(value)
@@ -157,6 +159,13 @@ class Map:
                 formatted_time = self.format_time(processing_time)
                 total_processing_time += processing_time
                 log.info(f"{map_}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.format_time(total_processing_time)}』\033[0m")
+                
+                if index == max_index:
+                    total_time = time.time() - total_start_time
+                    total_fight_time = self.calculated.total_fight_time
+                    log.info(f"结束运行，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
+                    error_fight_cnt = self.calculated.error_fight_cnt
+                    log.debug(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
 
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')
