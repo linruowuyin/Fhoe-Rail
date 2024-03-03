@@ -86,14 +86,46 @@ class Map:
         
         return in_day
 
-    def auto_map(self, start):
+    def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
+        """
+        说明:
+            寻找传送点
+        参数：
+            :param key:图片地址
+            :param threshold:图片查找阈值
+            :param min_threshold:最低图片查找阈值
+            :param timeout:超时时间（秒）
+        """
+        start_time = time.time()
+        target = cv.imread(key)
+        direction_names = ["向下移动", "向左移动", "向上移动", "向右移动"]
+        while not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
+            # 设置向下、向左、向上、向右的移动数值
+            directions = [(250, 900, 250, 300), (250, 900, 850, 900), (1330, 200, 1330, 800), (1330, 200, 730, 200)]
+            for index, direction in enumerate(directions):
+                log.info(f"开始移动地图，{direction_names[index]}，当前所需匹配值{threshold}")
+                for i in range(3):
+                    if not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold):
+                        self.calculated.mouse_drag(*direction)
+                    else:
+                        return
+            threshold -= 0.01
+
+    def auto_map(self, start, start_in_mid: bool=False):
         total_processing_time = 0
         teleport_click_count = 0  
         today_weekday_str = self.now.strftime('%A')
 
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
-            map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
+            # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
+            start_index = self.map_list.index(f'map_{start}.json')
+            if start_in_mid:
+                mid_slice = self.map_list[start_index:]
+                map_list = mid_slice + self.map_list[:start_index]
+            else:
+                map_list = self.map_list[start_index:]
+            log.info(map_list)
             max_index = max(index for index, _ in enumerate(map_list))
             for index, map_ in enumerate(map_list):
                 # 选择地图
@@ -123,7 +155,7 @@ class Map:
                     elif key == 'map':
                         self.map_init()
                     elif key == 'main':
-                        while not self.calculated.on_main_interface():  # 检测是否出现左上角灯泡，即主界面检测
+                        while not self.calculated.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
                             pyautogui.press('esc')
                             time.sleep(2)
                         time.sleep(2)
@@ -137,6 +169,16 @@ class Map:
                         elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
                             self.calculated.click_target_with_alt(key, 0.93)
                             self.calculated.run_dreambuild_check()
+                        elif key in ["picture\\first_floor.png","picture\\second_floor.png","picture\\third_floor.png"]:
+                            if self.calculated.img_bitwise_check(key):
+                                self.calculated.click_target_with_alt(key, 0.93)
+                            else:
+                                log.info(f"已在对应楼层，跳过选择楼层")
+                                pass
+                        elif key.startswith("picture\\map_"):
+                            self.find_transfer_point(key, threshold=0.98)
+                            self.calculated.click_target_with_alt(key, 0.93)
+                            temp_point = key
                         else:
                             self.calculated.click_target_with_alt(key, 0.93)
                             temp_point = key

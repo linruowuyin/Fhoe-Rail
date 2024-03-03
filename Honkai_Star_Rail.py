@@ -28,10 +28,17 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "其他地图": "9"}
+            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "其他地图": "9", "优先地图（默认匹诺康尼）": "first_map"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
+            if option_ == "优先地图（默认匹诺康尼）":
+                default = "4"
+                options_map_first = {"默认": default, "空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"}
+                option_ = questionary.select(title_, list(options_map_first.keys())).ask()
+                main_map = options_map_first.get(option_)
+                side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
+                return (f"{main_map}-{side_map}", True)
             main_map = options_map.get(option_)
             is_selecting_main_map = False
         else:
@@ -46,6 +53,7 @@ def choose_map_debug(map_instance: Map):
                 is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
             else:
                 side_map = keys[values.index(option_)]
+                log.info(f"{main_map}-{side_map}")
                 return f"{main_map}-{side_map}"
 
 
@@ -56,8 +64,12 @@ def filter_content(content, keyword):
 def main():
     main_start()
     map_instance = Map()
+    start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
     if len(sys.argv) > 1 and sys.argv[1] == "--debug":
         start = choose_map_debug(map_instance)
+        if isinstance(start, tuple):
+            start_in_mid = start[1]
+            start = start[0]
     elif len(sys.argv) > 1 and sys.argv[1] == "--config":
         main_start_rewrite()  
         start = choose_map_debug(map_instance) 
@@ -77,7 +89,7 @@ def main():
         log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
         log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
-        map_instance.auto_map(start)  # 读取配置
+        map_instance.auto_map(start, start_in_mid)  # 读取配置
     else:
         log.info("前面的区域，以后再来探索吧")
         return choose_map_debug(map_instance)
