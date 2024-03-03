@@ -102,19 +102,41 @@ class Calculated:
         time.sleep(delay)
         self.keyboard.release(key_name)
 
-    def mouse_press(self, x, y, delay: float=0.4):
+    def mouse_press(self, x, y, end_x=None, end_y=None, delay: float = 0.4):
         """
         说明：
             鼠标点击
         参数：
-            :param x:相对坐标x
-            :param y:相对坐标y
-            :param delay:鼠标点击与抬起之间的延迟（秒）
+            :param x: 起始点相对坐标x
+            :param y: 起始点相对坐标y
+            :param end_x: 目标终点相对坐标x，默认为 None
+            :param end_y: 目标终点相对坐标y，默认为 None
+            :param delay: 鼠标点击与抬起之间的延迟（秒）
         """
+        # 如果没有提供目标终点的坐标，则默认终点为初始点击位置
+        if end_x is None:
+            end_x = x
+        if end_y is None:
+            end_y = y
         win32api.SetCursorPos((x, y))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, x, y, 0, 0)
+        time.sleep(0.1)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         time.sleep(delay)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
+        win32api.SetCursorPos((end_x, end_y))
+        time.sleep(0.1)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+
+    def mouse_drag(self, x, y, end_x, end_y):
+        """
+        说明：
+            鼠标按下后拖动
+        """
+        left, top, right, bottom =self.get_rect()
+        pyautogui.moveTo(left + x, top + y)
+        pyautogui.mouseDown()
+        pyautogui.moveTo(left + end_x, top + end_y, duration=0.2)
+        pyautogui.mouseUp()
+        time.sleep(1)
 
     def mouse_press_alt(self, x, y, delay: float=0.4):
         """
@@ -190,6 +212,19 @@ class Calculated:
             "max_loc": (max_loc[0] + left, max_loc[1] + top),
         }
 
+    def have_screenshot(self, prepared, offset=(0,0,0,0), threshold=0.90):
+        """
+        说明：
+            验证图片是否符合要求
+        """
+        result_dict = self.scan_screenshot(prepared, offset)
+        max_val = result_dict['max_val']
+        if max_val > threshold:
+            log.info(f'找到图片，匹配值：{max_val}')
+            return True
+        else:
+            return False
+
     def take_screenshot(self, offset=(0,0,0,0), max_retries=50, retry_interval=2):
         """
         说明：
@@ -261,6 +296,28 @@ class Calculated:
         y = int((mat_left + mat_left + prepared_height) / 2)
 
         return x, y
+
+    def img_trans_bitwise(self, target_path):
+        """
+        颜色反转
+        """
+        original_target = cv.imread(target_path)
+        inverted_target = cv.bitwise_not(original_target)
+        result = self.scan_screenshot(inverted_target)
+        return inverted_target, result
+        
+    def img_bitwise_check(self, target_path):
+        """
+        比对颜色反转
+        """
+        original_target = cv.imread(target_path)
+        target,  result_inverted = self.img_trans_bitwise(target_path)
+        result_original = self.scan_screenshot(original_target)
+        log.debug(f"颜色反转后的匹配值为：result_inverted['max_val']")
+        if result_original["max_val"] > result_inverted["max_val"]:
+            return True
+        else:
+            return False
 
     def click_target(self, target_path, threshold, flag=True, timeout=30):
         """
@@ -387,7 +444,7 @@ class Calculated:
                 time.sleep(3)
                 return True
 
-            if not auto_switch:
+            if not auto_switch and elapsed_time > 5:
                 not_auto_result = self.scan_screenshot(not_auto)
                 if not_auto_result["max_val"] > 0.95:
                     pyautogui.press('v')
@@ -404,7 +461,7 @@ class Calculated:
                 if elapsed_time > 600:
                     log.info("战斗超时")
                     return True
-                time.sleep(0.5)
+            time.sleep(0.5)
 
     def fighting(self):
         self.click_center()
@@ -564,6 +621,7 @@ class Calculated:
         else:
             self.keyboard_press('f', delay=0.1)
             log.info(f"按下'F'，等待主界面检测")
+            time.sleep(2)  # 2 秒后开始检测主界面
             self.on_main_interface()
             time.sleep(2)  # 等待 2 秒加载人物
                 
