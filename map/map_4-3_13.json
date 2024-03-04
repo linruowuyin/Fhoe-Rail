@@ -12,27 +12,6 @@
             "picture\\third_floor.png": 1.5
 		},
         {
-            "picture\\map_4-3_point_5.png": 1.5
-        },
-        {
-            "picture\\transfer.png": 1.5
-		},
-        {
-			"map": 1
-	    },
-        {
-            "picture\\map_4-3_point_6.png": 1.5
-		},
-        {
-            "picture\\transfer.png": 1.5
-		},
-        {
-			"map": 1
-		},
-        {
-            "picture\\third_floor.png": 1.5
-		},
-        {
             "picture\\map_4-3_point_8.png": 1.5
 		},
         {
@@ -98,7 +77,7 @@
       "fighting": 2
     },
     {
-      "s": 0.58
+      "s": 0.75
     },
     {
       "d": 5.21

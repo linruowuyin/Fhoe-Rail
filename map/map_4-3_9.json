@@ -4,6 +4,9 @@
     "start": [
         {
             "map": 1
+	    },
+        {
+			"picture\\first_floor.png": 1.5
         },
         {
             "picture\\map_4-3_point_6.png": 1.5
