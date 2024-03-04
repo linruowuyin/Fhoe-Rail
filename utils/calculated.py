@@ -19,7 +19,8 @@ from .mini_asu import ASU
 
 class Calculated:
     def __init__(self):
-        self.CONFIG = read_json_file(CONFIG_FILE_NAME)
+        self._config = None
+        self._last_updated = None
         self.keyboard = KeyboardController()
         self.ASU = ASU()
         self.hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
@@ -34,8 +35,11 @@ class Calculated:
         self.doubt_ui = cv.imread("./picture/doubt.png")
         self.warn_ui = cv.imread("./picture/warn.png")
         self.finish2_ui = cv.imread("./picture/finish_fighting2.png")
+        self.finish2_1_ui = cv.imread("./picture/finish_fighting2_1.png")
+        self.finish2_2_ui = cv.imread("./picture/finish_fighting2_2.png")
         self.finish3_ui = cv.imread("./picture/finish_fighting3.png")
         self.finish4_ui = cv.imread("./picture/finish_fighting4.png")
+        self.finish5_ui = cv.imread("./picture/finish_fighting5.png")
         
         self.attack_once = False  # 检测fighting时仅攻击一次，避免连续攻击
         self.esc_btn = KeyboardKey.esc  # esc键
@@ -43,7 +47,25 @@ class Calculated:
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<1秒的计数
         self.error_fight_threshold = 1  # 异常战斗为战斗时间<1秒
-    
+
+    @property
+    def CONFIG(self):
+        # 检查配置是否需要更新
+        if self._config is None or self._config_needs_update():
+            self._update_config()
+        return self._config
+
+    def _update_config(self):
+        self._config = read_json_file(CONFIG_FILE_NAME)
+        self._last_updated = time.time()
+
+    def _config_needs_update(self):
+        if self._last_updated is None:
+            return True
+
+        file_modified_time = os.path.getmtime(CONFIG_FILE_NAME)
+        return file_modified_time > self._last_updated
+
     def _check_window_visibility(self):
         """
         检查窗口是否可见
@@ -422,6 +444,7 @@ class Calculated:
 
         start_time = time.time()
         not_auto = cv.imread("./picture/auto.png")
+        not_auto_c = cv.imread("./picture/not_auto.png")
         auto_switch = False
         while True:
             result = self.scan_screenshot(self.main_ui)
@@ -450,7 +473,16 @@ class Calculated:
                     pyautogui.press('v')
                     log.info("开启自动战斗")
                     time.sleep(1)
+    
                 auto_switch = True
+
+            if auto_switch and elapsed_time > 10:
+                not_auto_result_c = self.scan_screenshot(not_auto_c)
+                while not_auto_result_c["max_val"] > 0.95:
+                    log.info(f"开启自动战斗，识别'C'，匹配值：{not_auto_result_c['max_val']}")
+                    pyautogui.press('v')
+                    time.sleep(2)
+                    not_auto_result_c = self.scan_screenshot(not_auto_c)
 
             if elapsed_time > 90:
                 self.click_target("./picture/auto.png", 0.98, False)
@@ -835,17 +867,22 @@ class Calculated:
         time.sleep(1)  # 短暂延迟后开始判定是否为地图加载or黑屏跳转
         while error_count < max_error_count:
             result = self.scan_screenshot(target)
-            if result and result["max_val"] > 0.9:
-                log.info(f"检测到地图加载map_load")
-                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish3_ui]):
+            if result and result['max_val'] > 0.95:
+                log.info(f"检测到地图加载map_load，匹配度{result['max_val']}")
+                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], timeout=10):
                     break
             elif self.blackscreen_check():
                 self.run_blackscreen_cal_time()
                 break
-            elif self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish3_ui]):
+            elif self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui]):
                 time.sleep(2)
-                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish3_ui]):
+                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui]):
                     log.info(f"连续检测到主界面，地图加载标记为结束")
+                    break
+            elif self.on_interface(check_list=[self.finish5_ui], timeout=3, interface_desc='模拟宇宙积分奖励界面'):
+                time.sleep(2)
+                if self.on_interface(check_list=[self.finish5_ui], timeout=3, interface_desc='模拟宇宙积分奖励界面'):
+                    log.info(f"连续检测到模拟宇宙积分奖励界面，地图加载标记为结束")
                     break
             else:
                 error_count += 1
@@ -892,23 +929,42 @@ class Calculated:
         返回：
             是否在主界面
         """
+        if check_list == []:
+            check_list = [self.main_ui]
+        interface_desc = '游戏主界面，非战斗/传送/黑屏状态'
+        
+        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc)
+
+    def on_interface(self, check_list=[], timeout=60, interface_desc=''):
+        """
+        说明：
+            检测check_list中的图片是否在某个页面
+        参数：
+            :param check_list:检测图片列表，默认为检测[self.main_ui]主界面左上角灯泡
+            :param timeout:超时时间（秒），超时后返回False
+            :param interface_desc:界面名称或说明，用于日志输出
+        返回：
+            是否在check_list存在的界面
+        """
         start_time = time.time()
         if check_list == []:
             check_list = [self.main_ui]
         
+        temp_max_val = []
         while time.time() - start_time < timeout:
             for index, img in enumerate(check_list):
                 result = self.scan_screenshot(img)
-                if result["max_val"] > 0.9:
-                    log.info(f"检测到游戏主界面，非战斗/传送/黑屏状态，耗时 {(time.time() - start_time):.1f} 秒")
-                    log.debug(f"检测图片序号为{index}，匹配位置为{result['max_loc']}")
+                if result["max_val"] > 0.95:
+                    log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
+                    log.debug(f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
                     return True
                 else:
+                    temp_max_val.append(result['max_val'])
                     time.sleep(1)
         else:
-            log.info(f"在 {timeout} 秒 的时间内未检测到游戏主界面")
+            log.info(f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
             return False
-    
+
     def handle_shutdown(self):
         if self.CONFIG.get("auto_shutdown", False):
             log.info("下班喽！I'm free!")
