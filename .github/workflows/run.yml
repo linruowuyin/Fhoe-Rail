@@ -48,6 +48,8 @@ jobs:
       - name: Create zip archive
         if: startsWith(github.ref, 'refs/tags/')
         run: |
+          $tag = git describe --tags --abbrev=0
+          [System.IO.File]::WriteAllText(".\dist\Fhoe-Rail\version.txt", $tag)
           powershell Compress-Archive -Path .\dist\Fhoe-Rail\ -DestinationPath .\dist\Fhoe-Rail.zip -Force
 
       - name: Create release
