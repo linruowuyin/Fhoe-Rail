@@ -61,7 +61,16 @@ def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
     return content.replace(keyword, "")
 
+def print_version():
+    try:
+        with open("version.txt", "r", encoding="utf-8") as file:
+            version = file.read().strip()
+            log.info(f"当前版本：{version}")
+    except:
+        pass
+
 def main():
+    print_version()
     main_start()
     map_instance = Map()
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
