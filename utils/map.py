@@ -126,7 +126,6 @@ class Map:
             else:
                 map_list = self.map_list[start_index:]
             log.info(map_list)
-            check_today_weekday_str = False  # 过期邮包默认跳过
             max_index = max(index for index, _ in enumerate(map_list))
             for index, map_ in enumerate(map_list):
                 # 选择地图
@@ -136,6 +135,7 @@ class Map:
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                 self.calculated.monthly_pass()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
+                jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                 temp_point = ""  # 用于输出传送前的点位
                 for start in map_data['start']:
                     key = list(start.keys())[0]
@@ -146,11 +146,11 @@ class Map:
                        if self.day_init([1,4,6]):
                             # 1代表周二，4代表周五，6代表周日
                             log.info(f"{today_weekday_str}，周二五日，尝试购买")
-                            check_today_weekday_str = True
+                            jump_this_map = False
                             continue
                        else:
                             log.info(f"{today_weekday_str}，非周二五日，跳过")
-                            check_today_weekday_str = False
+                            jump_this_map = True
                             break
                     elif key == "esc":
                         pyautogui.press('esc')
@@ -195,7 +195,7 @@ class Map:
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
                 # 'check'过期邮包跳过，执行下一张图
-                if not check_today_weekday_str:
+                if jump_this_map:
                     break
                 
                 # 记录处理开始时间
