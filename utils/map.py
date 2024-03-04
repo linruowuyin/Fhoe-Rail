@@ -126,6 +126,7 @@ class Map:
             else:
                 map_list = self.map_list[start_index:]
             log.info(map_list)
+            check_today_weekday_str = False  # 过期邮包默认跳过
             max_index = max(index for index, _ in enumerate(map_list))
             for index, map_ in enumerate(map_list):
                 # 选择地图
@@ -145,9 +146,11 @@ class Map:
                        if self.day_init([1,4,6]):
                             # 1代表周二，4代表周五，6代表周日
                             log.info(f"{today_weekday_str}，周二五日，尝试购买")
+                            check_today_weekday_str = True
                             continue
                        else:
                             log.info(f"{today_weekday_str}，非周二五日，跳过")
+                            check_today_weekday_str = False
                             break
                     elif key == "esc":
                         pyautogui.press('esc')
@@ -161,11 +164,14 @@ class Map:
                         time.sleep(2)
                     else:
                         time.sleep(value)
-                        if key in ["picture\\transfer.png", "picture\\map_0.png"]:
+                        if key in ["picture\\transfer.png"]:
                             self.calculated.click_target_with_alt(key, 0.93)
                             self.calculated.run_mapload_check()
                             if temp_point:
                                 log.info(f'地图加载前的传送点为 {temp_point}')
+                        elif key == "picture\\map_0.png":
+                            self.calculated.click_target_with_alt(key, 0.93)
+                            self.calculated.run_mapload_check()
                         elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
                             self.calculated.click_target_with_alt(key, 0.93)
                             self.calculated.run_dreambuild_check()
@@ -175,8 +181,8 @@ class Map:
                             else:
                                 log.info(f"已在对应楼层，跳过选择楼层")
                                 pass
-                        elif key.startswith("picture\\map_"):
-                            self.find_transfer_point(key, threshold=0.98)
+                        elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
+                            self.find_transfer_point(key, threshold=0.97)
                             self.calculated.click_target_with_alt(key, 0.93)
                             temp_point = key
                         else:
@@ -188,6 +194,10 @@ class Map:
                 
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
+                # 'check'过期邮包跳过，执行下一张图
+                if not check_today_weekday_str:
+                    break
+                
                 # 记录处理开始时间
                 start_time = time.time()
 
