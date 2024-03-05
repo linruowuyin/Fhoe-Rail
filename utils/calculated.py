@@ -446,6 +446,7 @@ class Calculated:
         not_auto = cv.imread("./picture/auto.png")
         not_auto_c = cv.imread("./picture/not_auto.png")
         auto_switch = False
+        auto_switch_clicked = False
         while True:
             result = self.scan_screenshot(self.main_ui)
             elapsed_time = time.time() - start_time
@@ -473,10 +474,11 @@ class Calculated:
                     pyautogui.press('v')
                     log.info("开启自动战斗")
                     time.sleep(1)
+                    auto_switch_clicked = True
     
                 auto_switch = True
 
-            if auto_switch and elapsed_time > 10:
+            if auto_switch_clicked and auto_switch and elapsed_time > 10:
                 not_auto_result_c = self.scan_screenshot(not_auto_c)
                 while not_auto_result_c["max_val"] > 0.95:
                     log.info(f"开启自动战斗，识别'C'，匹配值：{not_auto_result_c['max_val']}")
@@ -857,7 +859,7 @@ class Calculated:
         
         return loading_time
 
-    def run_mapload_check(self, error_count=0, max_error_count=10):
+    def run_mapload_check(self, error_count=0, max_error_count=10, threshold = 0.9):
         """
         说明：
             计算地图加载时间
@@ -869,14 +871,14 @@ class Calculated:
             result = self.scan_screenshot(target)
             if result and result['max_val'] > 0.95:
                 log.info(f"检测到地图加载map_load，匹配度{result['max_val']}")
-                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], timeout=10):
+                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], timeout=10, threshold=threshold):
                     break
             elif self.blackscreen_check():
                 self.run_blackscreen_cal_time()
                 break
-            elif self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui]):
+            elif self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], threshold=threshold):
                 time.sleep(2)
-                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui]):
+                if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], threshold=threshold):
                     log.info(f"连续检测到主界面，地图加载标记为结束")
                     break
             elif self.on_interface(check_list=[self.finish5_ui], timeout=3, interface_desc='模拟宇宙积分奖励界面'):
@@ -919,13 +921,14 @@ class Calculated:
             log.info(f'移动模块成功，用时 {loading_time:.1f} 秒')
         time.sleep(0.5)  #短暂延迟后开始下一步
 
-    def on_main_interface(self, check_list=[], timeout=60):
+    def on_main_interface(self, check_list=[], timeout=60, threshold=0.9):
         """
         说明：
             检测主页面
         参数：
             :param check_list:检测图片列表，默认检测左上角地图的灯泡，遍历检测
             :param timeout:超时时间（秒），超时后返回False
+            :param threshold:识别阈值，默认0.9
         返回：
             是否在主界面
         """
@@ -933,9 +936,9 @@ class Calculated:
             check_list = [self.main_ui]
         interface_desc = '游戏主界面，非战斗/传送/黑屏状态'
         
-        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc)
+        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold)
 
-    def on_interface(self, check_list=[], timeout=60, interface_desc=''):
+    def on_interface(self, check_list=[], timeout=60, interface_desc='', threshold=0.9):
         """
         说明：
             检测check_list中的图片是否在某个页面
@@ -954,7 +957,7 @@ class Calculated:
         while time.time() - start_time < timeout:
             for index, img in enumerate(check_list):
                 result = self.scan_screenshot(img)
-                if result["max_val"] > 0.95:
+                if result["max_val"] > threshold:
                     log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
                     log.debug(f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
                     return True
