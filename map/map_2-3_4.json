@@ -39,6 +39,9 @@
         },
         {
             "fighting": 2
+		},
+        {
+            "fighting": 1
         }
     ]
 }
