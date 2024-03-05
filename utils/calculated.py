@@ -399,7 +399,7 @@ class Calculated:
         self.attack_once = False
         log.info("识别进入战斗")
         while time.time() - start_time < timeout:
-            main_result = self.scan_screenshot(self.main_ui)
+            main_result = self.scan_screenshot(self.main_ui, offset=(0,0,-1630,-800))
             doubt_result = self.scan_temp_screenshot(self.doubt_ui)
             warn_result = self.scan_temp_screenshot(self.warn_ui)
             if main_result['max_val'] < 0.9:
@@ -519,13 +519,19 @@ class Calculated:
             result_A = self.scan_screenshot(image_A)
         if result_A is not None and result_A["max_val"] > 0.9:
             time.sleep(1)
-            self.click_target("./picture/round.png", 0.9)
+            round_disable = cv.imread("./picture/round_disable.png")
+            if self.on_interface(check_list=[round_disable], timeout=5, interface_desc='无法购买', threshold=0.95):
+                allow_buy = False
+            else:
+                self.click_target("./picture/round.png", 0.9, timeout=8)
+                allow_buy = True
             main_result = self.scan_screenshot(self.main_ui)
             while main_result['max_val'] < 0.9:
                 self.keyboard_press(self.esc_btn)
                 time.sleep(1)
                 main_result = self.scan_screenshot(self.main_ui)
-            pyautogui.press('e')
+            if allow_buy:
+                pyautogui.press('e')
             time.sleep(1)
 
         self.click_center()
@@ -609,6 +615,8 @@ class Calculated:
             else read_json_file(f"map\\{map}.json")
         )
         map_filename = map
+        self.fighting_count = sum(1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
+        self.current_fighting_index = 0
         total_map_count = len(map_data['map'])
         for map_index, map in enumerate(map_data["map"]):
             log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map}")
@@ -669,7 +677,12 @@ class Calculated:
 
     def handle_fighting(self, value):
         if value == 1:  # 战斗
-            self.fighting()
+            self.current_fighting_index += 1
+            if self.CONFIG.get("auto_final_fight_e", False) and self.current_fighting_index == self.fighting_count:
+                log.info(f"地图最后一个fighting:1，改为使用e")
+                self.handle_e(value)
+            else:
+                self.fighting()
         elif value == 2:  # 打障碍物
             self.click(win32api.GetCursorPos())
             time.sleep(1)
@@ -681,9 +694,9 @@ class Calculated:
             self.fightE()
 
     def handle_esc(self, value):
-        if value == 1:  
-            win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0) 
-            time.sleep(random.uniform(0.09, 0.15)) 
+        if value == 1:
+            win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0)
+            time.sleep(random.uniform(0.09, 0.15))
             win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
             time.sleep(3)
         else:

@@ -119,15 +119,18 @@ def main_start():
 
 
 def main_start_rewrite():
-    #title = "开启连续自动战斗了吗喵？："
-    #options = ['没打开', '打开了', '我啷个晓得嘛']
-    #option = questionary.select(title, options).ask()
-
-    new_option_title = "想要跑完自动关机吗？"
-    new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
-    new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
-    new_option_value = new_option_choice == '↑↑↓↓←→←→BABA'
-
+    questions = [
+        {
+            "title": "想要跑完自动关机吗？",
+            "choices": ['不想', '↑↑↓↓←→←→BABA'],
+            "config_key": "auto_shutdown"
+        },
+        {
+            "title": "map最后一次攻击自动转换为秘技攻击？默认为不转换",
+            "choices": ['不转换', '转换'],
+            "config_key": "auto_final_fight_e"
+        }
+    ]
     # 读取配置文件（如果存在）
     try:
         with open(CONFIG_FILE_NAME, 'r') as file:
@@ -135,11 +138,10 @@ def main_start_rewrite():
     except FileNotFoundError:
         config = {}
 
-    # 更新配置文件
-    #config['auto_battle_persistence'] = options.index(option)
-    config['auto_shutdown'] = new_option_value
+    for question in questions:
+        option = questionary.select(question["title"], question["choices"]).ask()
+        config[question["config_key"]] = option == question["choices"][1]
 
-    # 写入配置文件
     with open(CONFIG_FILE_NAME, 'w') as file:
         json.dump(config, file, indent=4)
 

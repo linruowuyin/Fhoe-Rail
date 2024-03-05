@@ -84,7 +84,8 @@ def init_config_file(real_width, real_height):
                     "star_version": "0",
                     "open_map": "m",
                     "script_debug": False,
-                    "auto_shutdown": False  
+                    "auto_shutdown": False,
+                    "auto_final_fight_e": False
                 }
             )
         )
