@@ -142,6 +142,11 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "auto_shutdown"
         },
         {
+            "title": "map最后一次攻击自动转换为秘技攻击？默认为不转换",
+            "choices": {'不转换': False, '转换': True},
+            "config_key": "auto_final_fight_e"
+        },
+        {
             "title": "跑图时使用疾跑模式？（实验性功能，默认关闭，未测试过不同角色的影响，请自行斟酌打开）",
             "choices": {'关闭疾跑': False, '开启疾跑': True},
             "config_key": "auto_run_in_map"
@@ -150,13 +155,7 @@ def get_questions_for_slot(slot: str) -> list:
 
     slot_questions = {
         'start': default_questions,
-        'start_rewrite': default_questions + [
-            {
-                "title": "map最后一次攻击自动转换为秘技攻击？默认为不转换",
-                "choices": {'不转换': False, '转换': True},
-                "config_key": "auto_final_fight_e"
-            }
-        ]
+        'start_rewrite': default_questions
     }
 
     return slot_questions.get(slot, [])
