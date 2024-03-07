@@ -90,11 +90,8 @@ class ConfigurationManager:
         # 先读，再写
         data, file_path = self.read_json_file(filename, path=True)
         data[key] = value
-        from .log import log
-        log.info(f"data{data}")
         with open(file_path, "wb") as f:
             f.write(orjson.dumps(data))
-            log.info(f"写入成功")
 
     def init_config_file(self, real_width, real_height):
         if self.normalize_file_path(self.CONFIG_FILE_NAME) is None:

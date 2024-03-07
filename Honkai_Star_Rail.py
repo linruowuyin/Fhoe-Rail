@@ -74,7 +74,6 @@ def print_version():
         pass
 
 def main():
-    main_start()
     map_instance = Map()
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
     if len(sys.argv) > 1 and sys.argv[1] == "--debug":
@@ -86,6 +85,7 @@ def main():
         main_start_rewrite()  
         start = choose_map_debug(map_instance) 
     else:
+        main_start()
         start = choose_map(map_instance)
     
     if start:
