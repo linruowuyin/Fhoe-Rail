@@ -25,7 +25,7 @@ def get_ver():
     cfg = ConfigurationManager()
     VER = cfg.CONFIG.get("version", "")
     if VER == "":
-        month, day, hour, minute = get_folder_modified_time('utils')
+        month, day, hour, minute = get_folder_modified_time('map')
         VER = f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
     return VER
 
