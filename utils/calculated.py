@@ -12,13 +12,14 @@ from PIL import ImageGrab
 from pynput.keyboard import Controller as KeyboardController
 from pynput.keyboard import Key as KeyboardKey
 
-from .config import read_json_file, CONFIG_FILE_NAME, modify_json_file
+from .config import ConfigurationManager
 from .exceptions import Exception
 from .log import log
 from .mini_asu import ASU
 
 class Calculated:
     def __init__(self):
+        self.cfg = ConfigurationManager()
         self._config = None
         self._last_updated = None
         self.keyboard = KeyboardController()
@@ -43,28 +44,13 @@ class Calculated:
         
         self.attack_once = False  # 检测fighting时仅攻击一次，避免连续攻击
         self.esc_btn = KeyboardKey.esc  # esc键
+        self.shift_btn = KeyboardKey.shift_l  # shift左键
         
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<1秒的计数
         self.error_fight_threshold = 1  # 异常战斗为战斗时间<1秒
+        self.tatol_save_time = 0  # 疾跑节约时间
 
-    @property
-    def CONFIG(self):
-        # 检查配置是否需要更新
-        if self._config is None or self._config_needs_update():
-            self._update_config()
-        return self._config
-
-    def _update_config(self):
-        self._config = read_json_file(CONFIG_FILE_NAME)
-        self._last_updated = time.time()
-
-    def _config_needs_update(self):
-        if self._last_updated is None:
-            return True
-
-        file_modified_time = os.path.getmtime(CONFIG_FILE_NAME)
-        return file_modified_time > self._last_updated
 
     def _check_window_visibility(self):
         """
@@ -181,8 +167,8 @@ class Calculated:
         """
         if self._check_window_visibility():
             left, top, right, bottom = self.get_rect()
-            # real_width = self.CONFIG["real_width"]  # 暂时没用
-            # real_height = self.CONFIG["real_height"]  # 暂时没用
+            # real_width = self.cfg.CONFIG["real_width"]  # 暂时没用
+            # real_height = self.cfg.CONFIG["real_height"]  # 暂时没用
             x, y = int(left + (right - left) / 100 * points[0]), int(top + (bottom - top) / 100 * points[1])
             log.info((x, y))
             self.mouse_press_alt(x, y)
@@ -242,7 +228,7 @@ class Calculated:
         result_dict = self.scan_screenshot(prepared, offset)
         max_val = result_dict['max_val']
         if max_val > threshold:
-            log.info(f'找到图片，匹配值：{max_val}')
+            log.info(f'找到图片，匹配值：{max_val:.3f}')
             return True
         else:
             return False
@@ -335,7 +321,7 @@ class Calculated:
         original_target = cv.imread(target_path)
         target,  result_inverted = self.img_trans_bitwise(target_path)
         result_original = self.scan_screenshot(original_target)
-        log.debug(f"颜色反转后的匹配值为：result_inverted['max_val']")
+        log.debug(f"颜色反转后的匹配值为：{result_inverted['max_val']}")
         if result_original["max_val"] > result_inverted["max_val"]:
             return True
         else:
@@ -393,7 +379,7 @@ class Calculated:
         self.click_target(target_path, threshold, flag)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def detect_fight_status(self, timeout=15):
+    def detect_fight_status(self, timeout=10):
         start_time = time.time()
         action_executed = False
         self.attack_once = False
@@ -404,7 +390,7 @@ class Calculated:
             warn_result = self.scan_temp_screenshot(self.warn_ui)
             if main_result['max_val'] < 0.9:
                 return True
-            elif doubt_result["max_val"] > 0.9:
+            elif doubt_result["max_val"] > 0.92:
                 action_executed = self.click_action(is_warning=False)
             # elif warn_result["max_val"] > 0.9:
             #     action_executed = self.click_action(is_warning=True)
@@ -414,7 +400,7 @@ class Calculated:
         log.info("识别超时,此处可能无敌人")
         return False
 
-    def click_action(self, is_warning, timeout=10):
+    def click_action(self, is_warning, timeout=8):
         if is_warning:
             log.info("识别到警告，等待怪物开战")
         else:
@@ -431,6 +417,13 @@ class Calculated:
                 return True
             time.sleep(0.5)
 
+    def fight_error_cnt(self, elapsed_time: int):
+        """
+        检测异常战斗
+        """
+        if elapsed_time < self.error_fight_threshold:
+            self.error_fight_cnt += 1
+        
     def fight_elapsed(self):
         """战斗时间
 
@@ -454,8 +447,7 @@ class Calculated:
                 points = self.calculated(result, self.main_ui.shape)
                 log.debug(points)
                 self.total_fight_time += elapsed_time
-                if elapsed_time < self.error_fight_threshold:
-                    self.error_fight_cnt += 1
+                self.fight_error_cnt(elapsed_time)
                 elapsed_minutes = int(elapsed_time // 60)
                 elapsed_seconds = elapsed_time % 60
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
@@ -583,10 +575,10 @@ class Calculated:
             if len(found_targets) == 2:
                 break
 
-            if 'target' in found_targets and time.time() - start_time >= 5:
+            if 'target' in found_targets and time.time() - start_time >= 2:
                 break
 
-            time.sleep(1)
+            time.sleep(0.5)
         if 'target' in found_targets:
             if 'target_dream_pop' in found_targets:
                 delay_to_do = 3
@@ -610,9 +602,9 @@ class Calculated:
         now = datetime.now()
         today_weekday_str = now.strftime('%A')
         map_data = (
-            read_json_file(f"map\\old\\{map}.json")
+            self.cfg.read_json_file(f"map\\old\\{map}.json")
             if old
-            else read_json_file(f"map\\{map}.json")
+            else self.cfg.read_json_file(f"map\\{map}.json")
         )
         map_filename = map
         self.fighting_count = sum(1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
@@ -678,7 +670,7 @@ class Calculated:
     def handle_fighting(self, value):
         if value == 1:  # 战斗
             self.current_fighting_index += 1
-            if self.CONFIG.get("auto_final_fight_e", False) and self.current_fighting_index == self.fighting_count:
+            if self.cfg.CONFIG.get("auto_final_fight_e", False) and self.current_fighting_index == self.fighting_count:
                 log.info(f"地图最后一个fighting:1，改为使用e")
                 self.handle_e(value)
             else:
@@ -705,9 +697,24 @@ class Calculated:
     def handle_move(self, value, key):
         self.keyboard.press(key)
         start_time = time.perf_counter()
+        allow_run = self.cfg.CONFIG.get("auto_run_in_map", False)
+        add_time = True
+        run_in_road = False
         while time.perf_counter() - start_time < value:
+            if value > 2 and time.perf_counter() - start_time > 1 and not run_in_road and allow_run:
+                self.keyboard.press(self.shift_btn)
+                run_in_road = True
+                temp_value = value
+                value = round((value - 1) / 1.53, 4) + 1
+                # log.info(f"按键时间修改为{value}")
+                self.tatol_save_time += (temp_value - value)
+            elif value <= 1 and allow_run and add_time:
+                value = value + 0.07
+                add_time = False
             pass
+        self.keyboard.release(self.shift_btn)
         self.keyboard.release(key)
+        time.sleep(0.05)
 
     def mouse_move(self, x):
         scaling = 1.0
@@ -982,7 +989,7 @@ class Calculated:
             return False
 
     def handle_shutdown(self):
-        if self.CONFIG.get("auto_shutdown", False):
+        if self.cfg.CONFIG.get("auto_shutdown", False):
             log.info("下班喽！I'm free!")
             os.system("shutdown /s /f /t 0")
         else:

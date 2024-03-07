@@ -8,14 +8,15 @@ import win32gui
 import random
 
 from .calculated import Calculated
-from .config import get_file, read_json_file, CONFIG_FILE_NAME
+from .config import ConfigurationManager
 from .log import log, webhook_and_log
 from datetime import datetime
 
 class Map:
     def __init__(self):
         self.calculated = Calculated()
-        self.open_map = read_json_file(CONFIG_FILE_NAME).get("open_map", "m")
+        self.cfg = ConfigurationManager()
+        self.open_map = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME).get("open_map", "m")
         self.map_list = []
         self.map_list_map = {}
         self.read_maps()
@@ -51,7 +52,7 @@ class Map:
         self.map_list_map.clear()
     
         for map_ in json_files:
-            map_data = read_json_file(f"map/{map_}")
+            map_data = self.cfg.read_json_file(f"map/{map_}")
             key1 = map_[map_.index('_') + 1:map_.index('-')]
             key2 = map_[map_.index('-') + 1:map_.index('.')]
             value = self.map_list_map.get(key1)
@@ -131,7 +132,7 @@ class Map:
                 # 选择地图
                 start_time = time.time() 
                 map_ = map_.split('.')[0]
-                map_data = read_json_file(f"map/{map_}.json")
+                map_data = self.cfg.read_json_file(f"map/{map_}.json")
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                 self.calculated.monthly_pass()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
@@ -196,7 +197,7 @@ class Map:
 
                 # 'check'过期邮包跳过，执行下一张图
                 if jump_this_map:
-                    break
+                    continue
                 
                 # 记录处理开始时间
                 start_time = time.time()
@@ -218,6 +219,7 @@ class Map:
                     log.info(f"结束运行，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
                     error_fight_cnt = self.calculated.error_fight_cnt
                     log.debug(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
+                    log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
 
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')
