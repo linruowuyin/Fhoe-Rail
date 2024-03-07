@@ -3,7 +3,7 @@ import win32con
 import win32gui
 import win32print
 
-from utils.config import init_config_file, modify_json_file, normalize_file_path, CONFIG_FILE_NAME
+from utils.config import ConfigurationManager as cfg
 from utils.log import log
 
 def get_width():
@@ -29,8 +29,8 @@ def get_width():
     real_width = int(width * scale_x)
     real_height = int(height * scale_y)
 
-    if not normalize_file_path(CONFIG_FILE_NAME):
-        init_config_file(real_width=real_width, real_height=real_height)
+    if not cfg.normalize_file_path(cfg.CONFIG_FILE_NAME):
+        cfg.init_config_file(real_width=real_width, real_height=real_height)
     
     if real_width != 1920 or real_height != 1080:
         log.warning("请调整分辨率为1920 x 1080")
@@ -38,8 +38,8 @@ def get_width():
     else:
         pass  # 不执行任何操作，避免输出日志
 
-    modify_json_file(CONFIG_FILE_NAME, "real_width", real_width)
-    modify_json_file(CONFIG_FILE_NAME, "real_height", real_height)
+    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "real_width", real_width)
+    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "real_height", real_height)
 
 
 

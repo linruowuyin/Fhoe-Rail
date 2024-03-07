@@ -8,12 +8,12 @@ import pyuac
 import json
 from utils.log import log, webhook_and_log, fetch_php_file_content
 from get_width import get_width, check_mult_screen
-from utils.config import read_json_file, modify_json_file, init_config_file, CONFIG_FILE_NAME
+from utils.config import ConfigurationManager
 from utils.map import Map
 from utils.switch_window import switch_window
 from utils.exceptions import Exception
 
-CONFIG_FILE_NAME = "config.json"  # 你的配置文件名
+cfg = ConfigurationManager()
 
 def choose_map(map_instance: Map):
     main_map = "1-1"  # 选择第一张地图
@@ -66,11 +66,14 @@ def print_version():
         with open("version.txt", "r", encoding="utf-8") as file:
             version = file.read().strip()
             log.info(f"当前版本：{version}")
+        log.info(f'{cfg.CONFIG_FILE_NAME}')
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "version", version)
+        from utils.calculated import Calculated
+        Calculated.CONFIG.get("version", "")
     except:
         pass
 
 def main():
-    print_version()
     main_start()
     map_instance = Map()
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
@@ -104,52 +107,80 @@ def main():
         return choose_map_debug(map_instance)
 
 def main_start():
-    if not read_json_file(CONFIG_FILE_NAME, False).get('start'):
+    if not cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('start'):
         #title = "开启连续自动战斗了吗喵？："
         #options = ['打开了', '没打开', '我啷个晓得嘛']
         #option = questionary.select(title, options).ask()
         #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
         #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
-        modify_json_file(CONFIG_FILE_NAME, "start", True)
-        new_option_title = "想要跑完自动关机吗？"
-        new_option_choices = ['不想', '↑↑↓↓←→←→BABA']
-        new_option_choice = questionary.select(new_option_title, new_option_choices).ask()
-        is_auto_shutdown_enabled = new_option_choice == '↑↑↓↓←→←→BABA'
-        modify_json_file(CONFIG_FILE_NAME, "auto_shutdown", is_auto_shutdown_enabled)
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
+        set_config()
 
 
 def main_start_rewrite():
-    questions = [
+    set_config(slot='start_rewrite')
+
+def set_config(slot: str = 'start'):
+    questions = get_questions_for_slot(slot)
+    if not questions:
+        log.info(f"错误的set_config参数: {slot}")
+        return
+
+    config = load_config()
+
+    for question in questions:
+        option = ask_question(question)
+        config[question["config_key"]] = question["choices"][option]
+
+    save_config(config)
+
+def get_questions_for_slot(slot: str) -> list:
+    default_questions = [
         {
             "title": "想要跑完自动关机吗？",
-            "choices": ['不想', '↑↑↓↓←→←→BABA'],
+            "choices": {'不想': False, '↑↑↓↓←→←→BABA': True},
             "config_key": "auto_shutdown"
         },
         {
             "title": "map最后一次攻击自动转换为秘技攻击？默认为不转换",
-            "choices": ['不转换', '转换'],
+            "choices": {'不转换': False, '转换': True},
             "config_key": "auto_final_fight_e"
+        },
+        {
+            "title": "跑图时使用疾跑模式？（实验性功能，默认关闭，未测试过不同角色的影响，请自行斟酌打开）",
+            "choices": {'关闭疾跑': False, '开启疾跑': True},
+            "config_key": "auto_run_in_map"
         }
     ]
-    # 读取配置文件（如果存在）
+
+    slot_questions = {
+        'start': default_questions,
+        'start_rewrite': default_questions
+    }
+
+    return slot_questions.get(slot, [])
+
+def load_config() -> dict:
     try:
-        with open(CONFIG_FILE_NAME, 'r') as file:
-            config = json.load(file)
+        with open(cfg.CONFIG_FILE_NAME, 'r') as file:
+            return json.load(file)
     except FileNotFoundError:
-        config = {}
+        return {}
 
-    for question in questions:
-        option = questionary.select(question["title"], question["choices"]).ask()
-        config[question["config_key"]] = option == question["choices"][1]
-
-    with open(CONFIG_FILE_NAME, 'w') as file:
+def save_config(config: dict):
+    with open(cfg.CONFIG_FILE_NAME, 'w') as file:
         json.dump(config, file, indent=4)
+
+def ask_question(question: dict):
+    return questionary.select(question["title"], list(question["choices"].keys())).ask()
+
 
 if __name__ == "__main__":
     try:
         if not pyuac.isUserAdmin():
             pyuac.runAsAdmin()
         else:
+            print_version()
             main()
     except ModuleNotFoundError as e:
         print(traceback.format_exc())

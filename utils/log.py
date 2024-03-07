@@ -11,6 +11,7 @@ Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
 import os
 import sys
 import requests
+import datetime
 from loguru import logger
 
 try:
@@ -18,7 +19,16 @@ try:
 except:
     from requests import post
 
-VER = "2.061"
+
+def get_ver():
+    from .config import ConfigurationManager
+    cfg = ConfigurationManager()
+    VER = cfg.CONFIG.get("version", "")
+    if VER == "":
+        month, day, hour, minute = get_folder_modified_time('utils')
+        VER = f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
+    return VER
+
 log = logger
 dir_log = "logs"
 path_log = os.path.join(dir_log, '日志文件.log')
@@ -27,29 +37,31 @@ def update_extra(record):
     module = record["module"]
     function = record["function"]
     line = record["line"]
-
+    version = get_ver()
     # 将额外信息更新到记录字典中
     record["new_module"] = f"{module}.{function}:{line}"
+    record["VER"] = f"{version}"
 
 log = logger.patch(update_extra)
     
 logger.remove()
 logger.add(sys.stdout, level='INFO', colorize=True,
             format="<cyan>{module}</cyan>.<cyan>{function}</cyan>"
-                    ":<cyan>{line}</cyan> - "+f"<cyan>{VER}</cyan> - "
+                    ":<cyan>{line}</cyan> - "+"<cyan>{VER}</cyan> - "
                     "<level>{message}</level>"
             )
 
 log.add(path_log,
             format="{time:HH:mm:ss} - "
                     "{level:<6} \t| "
-                    "{new_module:<40} \t- "+f"<cyan>{VER}</cyan> - "+"{message}",
+                    "<cyan>{new_module:<40}</cyan> \t- "+"<cyan>{VER}</cyan> - "+"{message}",
             rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="10 days")
 
 def webhook_and_log(message):
     log.info(message)
-    from .config import read_json_file # Circular import
-    url = read_json_file("config.json", False).get("webhook_url")
+    from .config import ConfigurationManager # Circular import
+    cfg = ConfigurationManager()
+    url = cfg.read_json_file(filename=cfg.CONFIG_FILE_NAME, path=False).get("webhook_url")
     if url == "" or url == None:
         return
     try:
@@ -72,3 +84,24 @@ def fetch_php_file_content():
             pass
 
     return ""
+
+def get_folder_modified_time(folder_path):
+    """
+    获取文件夹的修改时间
+    :param folder_path: 文件夹路径
+    :return: 修改时间的月日时分
+    """
+    try:
+        modified_time = os.path.getmtime(folder_path)
+        modified_datetime = datetime.datetime.fromtimestamp(modified_time)
+        
+        # 提取月、日、时、分
+        month = modified_datetime.month
+        day = modified_datetime.day
+        hour = modified_datetime.hour
+        minute = modified_datetime.minute
+        
+        return month, day, hour, minute
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
