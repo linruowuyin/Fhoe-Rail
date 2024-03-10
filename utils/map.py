@@ -148,6 +148,9 @@ class Map:
                     key = list(start.keys())[0]
                     log.debug(key)
                     value = start[key]
+                    allow_drap_map = 0  # 初始化禁止拖动地图
+                    if "drag" in start:
+                        allow_drap_map = start["drag"]
                     self.calculated.monthly_pass_check()
                     if key == "check" and value == 1:  # 判断是否为周二，周五，周日
                        if self.day_init([1,4,6]):  # 1代表周二，4代表周五，6代表周日
@@ -200,6 +203,8 @@ class Map:
                             temp_point = key
                             time.sleep(1.7)
                         else:
+                            if allow_drap_map:
+                                self.find_transfer_point(key, threshold=0.97)
                             self.calculated.click_target_with_alt(key, 0.93)
                             temp_point = key
                         teleport_click_count += 1 

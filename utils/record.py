@@ -18,9 +18,9 @@ from pynput import keyboard
 from pynput import mouse
 from pynput.mouse import Controller as mouseController
 
-from config import read_json_file
+from config import ConfigurationManager
 
-
+cfg = ConfigurationManager()
 def timestamped_print(*args, **kwargs):
     currentDT = datetime.now().strftime('%H:%M:%S')
     builtins.print(str(currentDT), *args, **kwargs)
@@ -79,7 +79,7 @@ def Click(points):
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, x, y, 0, 0)
 
 
-real_width = read_json_file("config.json")['real_width']
+real_width = cfg.read_json_file("config.json")['real_width']
 
 
 def on_press(key):

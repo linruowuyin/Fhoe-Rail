@@ -17,8 +17,9 @@ from typing import Dict, Optional, Any, Union, Tuple, List
 from .log import log
 from .requests import *
 from .exceptions import Exception
-from .config import normalize_file_path, modify_json_file, read_json_file, get_file, CONFIG_FILE_NAME
+from .config import ConfigurationManager
 
+cfg = ConfigurationManager()
 tmp_dir = 'tmp'
 
 async def verify_file_hash(json_path: Path, keep_file: Optional[List[str]] = []) -> bool:
@@ -60,7 +61,7 @@ async def remove_file(folder_path: Path,keep_folder: Optional[List[str]] = [],ke
 async def move_file(src_folder: Path, dst_folder,keep_folder: Optional[List[str]] = [],keep_file: Optional[List[str]] = []) -> None:
 
 
-    for item in get_file(src_folder,keep_folder,keep_file, True):
+    for item in cfg.get_file(src_folder,keep_folder,keep_file, True):
         if dst_folder in item:
             dst_path = item.replace(src_folder, "./")
 
@@ -122,9 +123,9 @@ async def update_file(url_proxy: str="",
         os.makedirs(tmp_dir)
     if not os.path.exists(unzip_path):
         os.makedirs(unzip_path)
-        modify_json_file(CONFIG_FILE_NAME, f"{type}_version", "0")
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, f"{type}_version", "0")
     elif rm_all:
-        modify_json_file(CONFIG_FILE_NAME, f"{type}_version", "0")
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, f"{type}_version", "0")
 
     log.info(f'[资源文件更新]正在检查远程版本是否有更新...')
 
@@ -146,7 +147,7 @@ async def update_file(url_proxy: str="",
 
     log.info(f'[资源文件更新]获取远程版本成功: {remote_version}')
 
-    local_version = read_json_file(CONFIG_FILE_NAME).get(f'{type}_version', '0')
+    local_version = cfg.read_json_file(cfg.CONFIG_FILE_NAME).get(f'{type}_version', '0')
 
     if remote_version != local_version:
         log.info(f'[资源文件更新]本地版本与远程版本不符，开始更新资源文件->{url_zip}')
@@ -192,7 +193,7 @@ async def update_file(url_proxy: str="",
         log.info(f'[资源文件更新]校验完成, 更新本地{name}文件版本号 {local_version} -> {remote_version}')
 
         # 更新版本号
-        modify_json_file(CONFIG_FILE_NAME, f"{type}_version", remote_version)
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, f"{type}_version", remote_version)
 
         log.info(f'[资源文件更新]删除临时文件{tmp_dir}')
         shutil.rmtree(tmp_dir, ignore_errors=True)
