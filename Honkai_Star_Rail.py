@@ -16,9 +16,9 @@ from utils.exceptions import Exception
 cfg = ConfigurationManager()
 
 def choose_map(map_instance: Map):
-    main_map = "1-1"  # 选择第一张地图
-    side_map = "0"  # 选择第一张地图的第一个子地图
-    return f"{main_map}_{side_map}"
+    main_map = "1"  # 选择第一星球
+    side_map = "1_0"  # 选择第一星球的第一个地图的第一个节点
+    return f"{main_map}-{side_map}"
 
 def choose_map_debug(map_instance: Map):
     is_selecting_main_map = True
@@ -77,6 +77,7 @@ def main():
     map_instance = Map()
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
     if len(sys.argv) > 1 and sys.argv[1] == "--debug":
+        main_start()
         start = choose_map_debug(map_instance)
         if isinstance(start, tuple):
             start_in_mid = start[1]
