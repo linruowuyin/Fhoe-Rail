@@ -112,6 +112,17 @@ class Map:
                         return
             threshold -= 0.01
 
+    def get_map_list(self, start, start_in_mid: bool=False):
+        start_index = self.map_list.index(f'map_{start}.json')
+        if start_in_mid:
+            mid_slice = self.map_list[start_index:]
+            map_list = mid_slice + self.map_list[:start_index]
+        else:
+            map_list = self.map_list[start_index:]
+        
+        log.debug(map_list)
+        return map_list
+    
     def auto_map(self, start, start_in_mid: bool=False):
         total_processing_time = 0
         teleport_click_count = 0  
@@ -120,13 +131,7 @@ class Map:
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
-            start_index = self.map_list.index(f'map_{start}.json')
-            if start_in_mid:
-                mid_slice = self.map_list[start_index:]
-                map_list = mid_slice + self.map_list[:start_index]
-            else:
-                map_list = self.map_list[start_index:]
-            log.info(map_list)
+            map_list = self.get_map_list(start, start_in_mid)
             max_index = max(index for index, _ in enumerate(map_list))
             for index, map_ in enumerate(map_list):
                 # 选择地图
@@ -138,14 +143,14 @@ class Map:
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                 temp_point = ""  # 用于输出传送前的点位
+                self.calculated.on_main_interface(timeout=5)  # 地图json，start运行前保证在主界面
                 for start in map_data['start']:
                     key = list(start.keys())[0]
                     log.debug(key)
                     value = start[key]
                     self.calculated.monthly_pass_check()
-                    if key == "check" and value == 1:# 判断是否为周二或周日
-                       if self.day_init([1,4,6]):
-                            # 1代表周二，4代表周五，6代表周日
+                    if key == "check" and value == 1:  # 判断是否为周二，周五，周日
+                       if self.day_init([1,4,6]):  # 1代表周二，4代表周五，6代表周日
                             log.info(f"{today_weekday_str}，周二五日，尝试购买")
                             jump_this_map = False
                             continue
@@ -159,18 +164,25 @@ class Map:
                     elif key == 'map':
                         self.map_init()
                     elif key == 'main':
-                        while not self.calculated.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
-                            pyautogui.press('esc')
-                            time.sleep(2)
+                        self.calculated.back_to_main()  # 检测并回到主界面
                         time.sleep(2)
+                    elif key == "picture\\max.png":
+                        if self.calculated.allow_buy_item():
+                            jump_this_map = False
+                            continue
+                        else:
+                            jump_this_map = True
+                            break
+                    elif key in ["picture\\transfer.png"]:
+                        time.sleep(0.1)
+                        self.calculated.click_target_with_alt(key, 0.93)
+                        self.calculated.run_mapload_check()
+                        if temp_point:
+                            log.info(f'地图加载前的传送点为 {temp_point}')
                     else:
+                        value = min(value, 0.8)
                         time.sleep(value)
-                        if key in ["picture\\transfer.png"]:
-                            self.calculated.click_target_with_alt(key, 0.93)
-                            self.calculated.run_mapload_check()
-                            if temp_point:
-                                log.info(f'地图加载前的传送点为 {temp_point}')
-                        elif key == "picture\\map_0.png":
+                        if key == "picture\\map_0.png":
                             self.calculated.click_target_with_alt(key, 0.93)
                             self.calculated.run_mapload_check()
                         elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
@@ -186,12 +198,13 @@ class Map:
                             self.find_transfer_point(key, threshold=0.97)
                             self.calculated.click_target_with_alt(key, 0.93)
                             temp_point = key
+                            time.sleep(1.7)
                         else:
                             self.calculated.click_target_with_alt(key, 0.93)
                             temp_point = key
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
-                        time.sleep(1.7)  # 传送点击后等待2秒
+                        # time.sleep(1.7)  # 传送点击后等待2秒
                 
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
@@ -220,6 +233,8 @@ class Map:
                     error_fight_cnt = self.calculated.error_fight_cnt
                     log.debug(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
                     log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
+                    log.info(f"战斗次数{self.calculated.total_fight_cnt}")
+                    log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
 
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')
