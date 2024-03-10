@@ -14,13 +14,16 @@
     ],
     "map": [
         {
+            "fighting": 2
+        },
+        {
             "s": 5.11
         },
         {
             "a": 3.3
         },
         {
-            "fighting": 1
+            "fighting": 2
         },
         {
             "fighting": 1
