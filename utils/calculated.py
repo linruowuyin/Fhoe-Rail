@@ -733,7 +733,7 @@ class Calculated:
         self.keyboard.release(self.shift_btn)
         self.keyboard.release(key)
         if allow_run:
-            time.sleep(0.02)
+            time.sleep(0.03)
 
     def mouse_move(self, x):
         scaling = 1.0
