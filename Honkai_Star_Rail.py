@@ -150,6 +150,11 @@ def get_questions_for_slot(slot: str) -> list:
             "title": "跑图时使用疾跑模式？（实验性功能，默认关闭，未测试过不同角色的影响，请自行斟酌打开）",
             "choices": {'关闭疾跑': False, '开启疾跑': True},
             "config_key": "auto_run_in_map"
+        },
+        {
+            "title": "设置识别怪物超时时间，默认为15秒。需要自定义设置可以直接修改config.json中的detect_fight_status_time为指定的秒数",
+            "choices": {'较短识别时间（5秒）': 5, '较长识别时间（15秒）': 15},
+            "config_key": "detect_fight_status_time"
         }
     ]
 

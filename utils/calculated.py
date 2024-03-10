@@ -7,6 +7,7 @@ import win32api
 import win32con
 import win32gui
 import random
+import atexit
 from datetime import datetime
 from PIL import ImageGrab
 from pynput.keyboard import Controller as KeyboardController
@@ -20,6 +21,8 @@ from .mini_asu import ASU
 class Calculated:
     def __init__(self):
         self.cfg = ConfigurationManager()
+        atexit.register(self.error_stop)
+        win32api.SetConsoleCtrlHandler(self.error_stop, True)
         self._config = None
         self._last_updated = None
         self.keyboard = KeyboardController()
@@ -45,12 +48,18 @@ class Calculated:
         self.attack_once = False  # 检测fighting时仅攻击一次，避免连续攻击
         self.esc_btn = KeyboardKey.esc  # esc键
         self.shift_btn = KeyboardKey.shift_l  # shift左键
+        self.alt_btn = KeyboardKey.alt_l  # alt左键
         
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<1秒的计数
         self.error_fight_threshold = 1  # 异常战斗为战斗时间<1秒
         self.tatol_save_time = 0  # 疾跑节约时间
-
+        self.total_fight_cnt = 0  # 战斗次数计数
+        self.total_no_fight_cnt = 0  # 非战斗次数计数
+    
+    def error_stop(self):
+        for i in [self.shift_btn, self.alt_btn]:
+            self.keyboard.release(i)
 
     def _check_window_visibility(self):
         """
@@ -110,7 +119,7 @@ class Calculated:
         time.sleep(delay)
         self.keyboard.release(key_name)
 
-    def mouse_press(self, x, y, end_x=None, end_y=None, delay: float = 0.4):
+    def mouse_press(self, x, y, end_x=None, end_y=None, delay: float = 0.05):
         """
         说明：
             鼠标点击
@@ -379,7 +388,7 @@ class Calculated:
         self.click_target(target_path, threshold, flag)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def detect_fight_status(self, timeout=10):
+    def detect_fight_status(self, timeout=5):
         start_time = time.time()
         action_executed = False
         self.attack_once = False
@@ -430,7 +439,8 @@ class Calculated:
         返回：
             是否识别到敌人
         """
-        fight_status = self.detect_fight_status()
+        detect_fight_status_time = self.cfg.CONFIG.get("detect_fight_status_time", 15)
+        fight_status = self.detect_fight_status(timeout=detect_fight_status_time)
         if not fight_status:
             # 识别超时，此处可能无敌人
             return False
@@ -451,13 +461,16 @@ class Calculated:
                 elapsed_minutes = int(elapsed_time // 60)
                 elapsed_seconds = elapsed_time % 60
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
+                self.total_fight_cnt += 1
                 colored_message = (f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
                 log.info(colored_message)
                 match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
                 log.info(match_details)
 
                 self.rotate()
-                time.sleep(3)
+                while not self.on_main_interface(timeout=2):
+                    time.sleep(0.1)
+                time.sleep(1)
                 return True
 
             if not auto_switch and elapsed_time > 5:
@@ -494,6 +507,7 @@ class Calculated:
         fight_status = self.fight_elapsed()
 
         if not fight_status:
+            self.total_no_fight_cnt += 1
             log.info(f'未进入战斗')
             time.sleep(0.5)
 
@@ -614,6 +628,7 @@ class Calculated:
             log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map}")
             key, value = next(iter(map.items()))
             self.monthly_pass_check()  # 行进前识别是否接近月卡时间
+            self._last_step_run = False  # 初始化上一次为走路
             if key == "space" or key == "r": 
                 self.handle_space_or_r(value, key)
             elif key == "f":
@@ -706,15 +721,19 @@ class Calculated:
                 run_in_road = True
                 temp_value = value
                 value = round((value - 1) / 1.53, 4) + 1
-                # log.info(f"按键时间修改为{value}")
                 self.tatol_save_time += (temp_value - value)
-            elif value <= 1 and allow_run and add_time:
+                self._last_step_run = True
+            elif value <= 1 and allow_run and add_time and self._last_step_run:
                 value = value + 0.07
                 add_time = False
+                self._last_step_run = False
+            elif value <= 2:
+                self._last_step_run = False
             pass
         self.keyboard.release(self.shift_btn)
         self.keyboard.release(key)
-        time.sleep(0.05)
+        if allow_run:
+            time.sleep(0.02)
 
     def mouse_move(self, x):
         scaling = 1.0
@@ -897,12 +916,12 @@ class Calculated:
                 self.run_blackscreen_cal_time()
                 break
             elif self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], threshold=threshold):
-                time.sleep(2)
+                time.sleep(1)
                 if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], threshold=threshold):
                     log.info(f"连续检测到主界面，地图加载标记为结束")
                     break
             elif self.on_interface(check_list=[self.finish5_ui], timeout=3, interface_desc='模拟宇宙积分奖励界面'):
-                time.sleep(2)
+                time.sleep(1)
                 if self.on_interface(check_list=[self.finish5_ui], timeout=3, interface_desc='模拟宇宙积分奖励界面'):
                     log.info(f"连续检测到模拟宇宙积分奖励界面，地图加载标记为结束")
                     break
@@ -916,7 +935,7 @@ class Calculated:
         loading_time = end_time - start_time
         if error_count < max_error_count:
             log.info(f'地图载毕，用时 {loading_time:.1f} 秒')
-        time.sleep(2)  # 增加2秒等待防止人物未加载错轴
+        time.sleep(1)  # 增加1秒等待防止人物未加载错轴
 
     def run_dreambuild_check(self, error_count=0, max_error_count=10):
         """
@@ -941,6 +960,14 @@ class Calculated:
             log.info(f'移动模块成功，用时 {loading_time:.1f} 秒')
         time.sleep(0.5)  #短暂延迟后开始下一步
 
+    def back_to_main(self):
+        """
+        检测并回到主界面
+        """
+        while not self.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
+            pyautogui.press('esc')
+            time.sleep(2)
+    
     def on_main_interface(self, check_list=[], timeout=60, threshold=0.9):
         """
         说明：
@@ -994,3 +1021,13 @@ class Calculated:
             os.system("shutdown /s /f /t 0")
         else:
             log.info("锄地结束！")
+    
+    def allow_buy_item(self):
+        """
+        购买物品检测
+        """
+        round_disable = cv.imread("./picture/round_disable.png")
+        if self.on_interface(check_list=[round_disable], timeout=5, interface_desc='无法购买', threshold=0.95):
+            return False
+        else:
+            return True
