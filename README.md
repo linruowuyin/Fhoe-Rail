@@ -55,10 +55,12 @@ This software is open source, free of charge and for learning and exchange purpo
 
 ### 功能区分
 
-- 相比原版更轻量，启动更快
-- 但是相对缺失了一些功能
-- 但同时我又增加了原版没有的功能
-- 比如：购买过期邮包、使用秘技、自动启动
+- [x] 疾跑
+- [x] 过期邮包
+- [x] 使用秘技
+- [x] 自动开/关机
+- [x] 地图拖拽
+- [ ] GUI
 
 ---
 
