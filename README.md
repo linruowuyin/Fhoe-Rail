@@ -1,14 +1,12 @@
-原项目地址：https://github.com/Starry-Wind/StarRailAssistant
+[原项目:StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)
 
-聚合使用请去：https://github.com/moesnow/March7thAssistant
+[聚合使用March7thAssistant:](https://github.com/moesnow/March7thAssistant)
 
-同类程序可以去：https://github.com/DoctorReid/StarRailAutoProxy
-                           https://github.com/Souloco/StarRail-FastRun
+[同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy)
 
-模拟器运行请去：https://github.com/LmeSzinc/StarRailCopilot
-### 托帕版本
-请移步https://github.com/linruowuyin/Fhoe-Rail/tree/Topaz
-注：暂时挖坑，还没填
+[同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)           
+
+[模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)                    
 
 ### 如何选图？
 
@@ -27,6 +25,7 @@ Fhoe-Rail.exe --debug
 可以，你需要把picture文件夹下的所有图标重新截图，如果能跑，欢迎提交pr.格式为picture（分辨率）的文件夹
 
 ### 全自动锄地流程
+
 仅提供思路作为参考：
 
 进入电脑bios开启来电自启功能，需智能插座*1（如米家智能插座3），定时开启电源（推荐峰谷电的谷电时间），将星铁的游戏快捷方式（不是启动器）放到map文件夹和开启自启动文件夹，开启跑完关机
@@ -74,19 +73,20 @@ This software is open source, free of charge and for learning and exchange purpo
 
 ### 键位映射
 
-| 键位       | 映射                                                   |
-| ---------- | ------------------------------------------------------ |
-| other       | 未列出的任意键都视为移动键，后面的数字代表按下的时间长短                   |
-| X          | 进入战斗，map映射为fighting=1                          |
-| 鼠标左键   | 打障碍物，map映射为fighting=2                          |
-| f/r/space          | 交互键，后面的数字代表反复按键的时间次数，间隔随机      |
-| shutdown   | 关机标志，键值无意义，控制开关在配置文件中             |
-| mouse_move | 视角转动，因数值计算复杂（不同设备数值不同），已被弃用 |
-| scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用             |
-| e          | 只有键值为1时有意义，使用秘技并追加普通攻击            |
-| esc          | 只有键值为1时有意义，等同于按下了一次Esc键            |
+| 键位       | 映射                                                     |
+| ---------- | -------------------------------------------------------- |
+| other      | 未列出的任意键都视为移动键，后面的数字代表按下的时间长短 |
+| X          | 进入战斗，map映射为fighting=1                            |
+| 鼠标左键   | 打障碍物，map映射为fighting=2                            |
+| f/r/space  | 交互键，后面的数字代表反复按键的时间次数，间隔随机       |
+| shutdown   | 关机标志，键值无意义，控制开关在配置文件中               |
+| mouse_move | 视角转动，因数值计算复杂（不同设备数值不同），已被弃用   |
+| scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用               |
+| e          | 只有键值为1时有意义，使用秘技并追加普通攻击              |
+| esc        | 只有键值为1时有意义，等同于按下了一次Esc键               |
 
 ### 关于地图录制
+
 感谢[@AlisaCat](https://github.com/AlisaCat-S)
 
 禁止用鼠标移动视角，只能使用方向键左右来移动视角（脚本运行后方向键左右会映射鼠标移动）
