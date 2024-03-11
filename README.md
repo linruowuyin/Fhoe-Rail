@@ -1,6 +1,6 @@
-[原项目:StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)  [聚合使用March7thAssistant](https://github.com/moesnow/March7thAssistant) [同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy) 
+[原项目:StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)         [聚合使用March7thAssistant](https://github.com/moesnow/March7thAssistant)      [同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy) 
 
-[同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)     [模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)             
+[同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)       [模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)             
 
 ------
 
@@ -27,7 +27,7 @@ This software is open source, free of charge and for learning and exchange purpo
 
 程序只支持**1920*1080游戏分辨率**，部分屏幕无法识别全屏幕，请切换非全屏幕重试
 
-**程序缺陷：**程序闪退可能造成atl键或shift键持续处于按下状态，需要手动按下解除
+**程序缺陷**：程序闪退可能造成atl键或shift键持续处于按下状态，需要手动按下解除
 
 识图为截取游戏画面，所以不能有任何覆盖（小心各类弹窗）
 
@@ -75,6 +75,8 @@ This software is open source, free of charge and for learning and exchange purpo
 | scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用               |
 | e          | 只有键值为1时有意义，使用秘技并追加普通攻击              |
 | esc        | 只有键值为1时有意义，等同于按下了一次Esc键               |
+
+---
 
 ## 关于跑图
 
