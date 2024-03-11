@@ -19,7 +19,7 @@ class Map:
         self.open_map = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME).get("open_map", "m")
         self.map_list = []
         self.map_list_map = {}
-        self.read_maps()
+        self.map_versions = self.read_maps_versions()
         self.now = datetime.now()
 
     def map_init(self, max_attempts=60):
@@ -32,7 +32,7 @@ class Map:
             result = self.calculated.scan_screenshot(target, offset=(550,960,-1050,-50))
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
-                log.debug(points)
+                log.info(f"识别点位{points}")
                 log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
                 pyautogui.click(points, clicks=5, interval=0.1)
                 break
@@ -42,9 +42,15 @@ class Map:
             pyautogui.press(self.open_map)
             time.sleep(3)  # 3秒延迟
 
-    def read_maps(self):
-        # 从'./map'目录获取地图文件列表（排除'old'）
+    def read_maps_versions(self):
         map_dir = './map'
+        map_versions = [f for f in os.listdir(map_dir) if os.path.isdir(os.path.join(map_dir, f))]
+        
+        return map_versions
+    
+    def read_maps(self, map_version):
+        # 从'./map'目录获取地图文件列表（排除'old'）
+        map_dir = os.path.join('./map', map_version)
         json_files = [f for f in os.listdir(map_dir) if f.endswith('.json') and not f.startswith('old')]
         json_files = sorted(json_files, key=lambda x: [int(y) for y in x.replace('-','_').replace('.','_').split('_')[1:-1]])
     
@@ -52,7 +58,7 @@ class Map:
         self.map_list_map.clear()
     
         for map_ in json_files:
-            map_data = self.cfg.read_json_file(f"map/{map_}")
+            map_data = self.cfg.read_json_file(f"map/{map_version}/{map_}")
             key1 = map_[map_.index('_') + 1:map_.index('-')]
             key2 = map_[map_.index('-') + 1:map_.index('.')]
             value = self.map_list_map.get(key1)
@@ -63,8 +69,8 @@ class Map:
             value[key2] = map_data["name"]
             self.map_list_map[key1] = value
     
-        log.debug(self.map_list)
-        log.debug(self.map_list_map)
+        log.info(f"self.map_list:{self.map_list}")
+        log.info(f"self.map_list_map:{self.map_list_map}")
 
 
     def format_time(self, seconds):
@@ -120,14 +126,12 @@ class Map:
         else:
             map_list = self.map_list[start_index:]
         
-        log.debug(map_list)
         return map_list
     
     def auto_map(self, start, start_in_mid: bool=False):
         total_processing_time = 0
         teleport_click_count = 0  
         today_weekday_str = self.now.strftime('%A')
-
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
@@ -146,7 +150,7 @@ class Map:
                 self.calculated.on_main_interface(timeout=5)  # 地图json，start运行前保证在主界面
                 for start in map_data['start']:
                     key = list(start.keys())[0]
-                    log.debug(key)
+                    log.info(key)
                     value = start[key]
                     allow_drap_map = 0  # 初始化禁止拖动地图
                     if "drag" in start:
@@ -236,7 +240,7 @@ class Map:
                     total_fight_time = self.calculated.total_fight_time
                     log.info(f"结束运行，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
                     error_fight_cnt = self.calculated.error_fight_cnt
-                    log.debug(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
+                    log.info(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
                     log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
                     log.info(f"战斗次数{self.calculated.total_fight_cnt}")
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")

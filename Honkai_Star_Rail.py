@@ -16,15 +16,18 @@ from utils.exceptions import Exception
 cfg = ConfigurationManager()
 
 def choose_map(map_instance: Map):
-    main_map = "1"  # 选择第一星球
-    side_map = "1_0"  # 选择第一星球的第一个地图的第一个节点
+    map_version = cfg.CONFIG.get("map_version", "default")
+    map_instance.read_maps(map_version=map_version)
+    main_map = min(list(map_instance.map_list_map.keys()))
+    side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
     return f"{main_map}-{side_map}"
 
 def choose_map_debug(map_instance: Map):
     is_selecting_main_map = True
     main_map = None
     side_map = None
-
+    map_version = cfg.CONFIG.get("map_version", "default")
+    map_instance.read_maps(map_version=map_version)
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
@@ -84,7 +87,10 @@ def main():
             start = start[0]
     elif len(sys.argv) > 1 and sys.argv[1] == "--config":
         main_start_rewrite()  
-        start = choose_map_debug(map_instance) 
+        start = choose_map_debug(map_instance)
+        if isinstance(start, tuple):
+            start_in_mid = start[1]
+            start = start[0]
     else:
         main_start()
         start = choose_map(map_instance)
@@ -136,7 +142,14 @@ def set_config(slot: str = 'start'):
     save_config(config)
 
 def get_questions_for_slot(slot: str) -> list:
+    map_instance = Map()
+    map_versions = map_instance.read_maps_versions()
     default_questions = [
+        {
+            "title": "选择地图版本",
+            "choices": {version: version for version in map_versions},
+            "config_key": "map_version"
+        },
         {
             "title": "想要跑完自动关机吗？",
             "choices": {'不想': False, '↑↑↓↓←→←→BABA': True},

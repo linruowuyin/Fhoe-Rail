@@ -45,9 +45,9 @@ def update_extra(record):
 log = logger.patch(update_extra)
     
 logger.remove()
-logger.add(sys.stdout, level='INFO', colorize=True,
-            format="<cyan>{module}</cyan>.<cyan>{function}</cyan>"
-                    ":<cyan>{line}</cyan> - "+"<cyan>{VER}</cyan> - "
+log.add(sys.stdout, level='INFO', colorize=True,
+            format="{time:HH:mm:ss} - "
+                    "<cyan>{module}.{function}:{line}</cyan> - "+"<cyan>{VER}</cyan> - "
                     "<level>{message}</level>"
             )
 
