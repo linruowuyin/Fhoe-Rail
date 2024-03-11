@@ -1,4 +1,4 @@
-[原项目:StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)         [聚合使用March7thAssistant](https://github.com/moesnow/March7thAssistant)      [同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy) 
+[原项目StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)         [聚合使用March7thAssistant](https://github.com/moesnow/March7thAssistant)      [同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy) 
 
 [同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)       [模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)             
 
@@ -86,7 +86,7 @@ This software is open source, free of charge and for learning and exchange purpo
 
 成年模型且攻击为远程无位移跑图最佳、少女模型可能会卡
 
-| 幼女 |                                               |
+|  |                                               |
 | ---- | --------------------------------------------- |
 | 少女 | 青雀、佩拉、符玄、三月七、艾丝妲              |
 | 成女 | 阮•梅、托帕、黑天鹅、布洛妮娅、驭空、娜塔莎、 |
