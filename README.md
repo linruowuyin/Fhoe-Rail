@@ -1,59 +1,16 @@
-[原项目:StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)
+[原项目:StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)  [聚合使用March7thAssistant](https://github.com/moesnow/March7thAssistant) [同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy) 
 
-[聚合使用March7thAssistant:](https://github.com/moesnow/March7thAssistant)
+[同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)     [模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)             
 
-[同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy)
-
-[同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)           
-
-[模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)                    
-
-### 如何选图？
-
-Fhoe-Rail.exe --debug
-
-### 地图支持问题
-
-需要开启窗口1920*1080 部分屏幕无法识别全屏幕，请切换非全屏幕重试
-
-### 偶发性程序缺陷
-
-程序闪退可能按下atl键没释放导致alt键处于一直被按下的状态，需要手动按一下alt键
-
-### 我想让程序支持其他分辨率
-
-可以，你需要把picture文件夹下的所有图标重新截图，如果能跑，欢迎提交pr.格式为picture（分辨率）的文件夹
-
-### 全自动锄地流程
-
-仅提供思路作为参考：
-
-进入电脑bios开启来电自启功能，需智能插座*1（如米家智能插座3），定时开启电源（推荐峰谷电的谷电时间），将星铁的游戏快捷方式（不是启动器）放到map文件夹和开启自启动文件夹，开启跑完关机
-
-缺点：遇到更新或者网络卡顿会卡死住（脚本未设计点击方案），所以建议再设定一个定时关闭电源（时间可参考之前跑完全图后的日志计时）
-
-### 关于更新
-
-锄地现阶段收益不明显，可能版本更新才会看一次（
-
-### 关于地图
-
-【仅适用于最新版本】禁闭舱段未开启的，请删除1-4-X；绥园未开启的，请删除3-5-X
-
-
-其他地方卡住的，请留意是否有未开启的机关或者地图上有任务标识等影响识别
-
-### 关于修改按键
-
-/utils/calculated（改按键）.py,请移除calculated.py，然后把改按键的命名为calculated.py。此文件为E和F键互换
-脚本默认适配游戏默认配置（开箱即用），如自行修改按键，请自己想办法解决
-
+------
 
 ### 免责声明
 
 本软件是一个外部工具旨在自动化崩坏星轨的游戏玩法。它被设计成仅通过现有用户界面与游戏交互,并遵守相关法律法规。该软件包旨在提供简化和用户通过功能与游戏交互,并且它不打算以任何方式破坏游戏平衡或提供任何不公平的优势。该软件包不会以任何方式修改任何游戏文件或游戏代码。
 
 This software is open source, free of charge and for learning and exchange purposes only. The developer team has the final right to interpret this project. All problems arising from the use of this software are not related to this project and the developer team. If you encounter a merchant using this software to practice on your behalf and charging for it, it may be the cost of equipment and time, etc. The problems and consequences arising from this software have nothing to do with it.
+
+本ソフトウェアは、崩壊：スターレイルのゲームプレイを自動化するために設計された外部ツールです。 既存のユーザーインターフェイスを通じてのみゲームと連動し、関連法規を遵守するように設計されています。 本パッケージは、その機能性により、シンプルさとゲームとのユーザーインタラクションを提供することを目的としており、ゲームバランスを崩したり、不当な利益を提供することは一切意図していません。 本パッケージはゲームファイルやゲームコードを一切変更しません。
 
 本软件开源、免费，仅供学习交流使用。开发者团队拥有本项目的最终解释权。使用本软件产生的所有问题与本项目与开发者团队无关。若您遇到商家使用本软件进行代练并收费，可能是设备与时间等费用，产生的问题及后果与本软件无关。
 
@@ -64,12 +21,46 @@ This software is open source, free of charge and for learning and exchange purpo
 "一经发现，米哈游（下亦称“我们”）将视违规严重程度及违规次数，采取扣除违规收益、冻结游戏账号、永久封禁游戏账号等措施。"
 ```
 
+------
+
+**集成版本选图**请在命令行输入：Fhoe-Rail.exe --debug
+
+程序只支持**1920*1080游戏分辨率**，部分屏幕无法识别全屏幕，请切换非全屏幕重试
+
+**程序缺陷：**程序闪退可能造成atl键或shift键持续处于按下状态，需要手动按下解除
+
+识图为截取游戏画面，所以不能有任何覆盖（小心各类弹窗）
+
+请勿在非自动战斗状态时移动鼠标或操作键盘
+
+---
+
+### 全自动锄地流程
+
+仅提供思路作为参考：
+
+进入电脑bios开启来电自启功能，需智能插座*1（如米家智能插座3），定时开启电源（推荐峰谷电的谷电时间），将星铁的游戏快捷方式（不是启动器）放到map文件夹和开启自启动文件夹，开启跑完关机
+
+缺点：遇到更新或者网络卡顿会卡死住（脚本未设计点击方案），所以建议再设定一个定时关闭电源（时间可参考之前跑完全图后的日志计时）
+
+---
+
+### 关于地图
+
+【仅适用于最新版本】禁闭舱段未开启的，请删除1-4-X；绥园未开启的，请删除3-5-X
+
+其他地方卡住的，请留意是否有未开启的机关或者地图上有任务标识等影响识别
+
+---
+
 ### 功能区分
 
 - 相比原版更轻量，启动更快
 - 但是相对缺失了一些功能
 - 但同时我又增加了原版没有的功能
 - 比如：购买过期邮包、使用秘技、自动启动
+
+---
 
 ### 键位映射
 
@@ -84,6 +75,24 @@ This software is open source, free of charge and for learning and exchange purpo
 | scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用               |
 | e          | 只有键值为1时有意义，使用秘技并追加普通攻击              |
 | esc        | 只有键值为1时有意义，等同于按下了一次Esc键               |
+
+## 关于跑图
+
+请事先开完全部锚点，完成地图上可以干扰图片识别传送的一切任务，因此造成的卡图现象本项目不予处理
+
+请不要修改默认键位，由此造成的卡图请自行解决
+
+现有模型分类：
+
+成年女性模型（且攻击为远程无位移）跑图最佳，如：娜塔莎、艾丝妲、三月七、布洛妮娅
+
+少女模型可能会卡（概率较小），如：青雀、佩拉、符玄
+
+成女有位移，如：驭空
+
+青年男有位移，如：饮月丹恒
+
+---
 
 ### 关于地图录制
 
@@ -116,35 +125,3 @@ This software is open source, free of charge and for learning and exchange purpo
        ]
    }
    ~~~
-
-   
-
-### 关于识别问题
-
-识图为截取游戏画面，所以不能有任何覆盖（小心各类弹窗）
-
-### 关于秘技
-
-当前版本的秘技功能仅为顺带做日常任务，只在1图实装。尚未制作匹配未实装的托帕，如作者抽到，可能会单独制作一个适用托帕的版本
-
-### 设计缺陷
-
-游戏闪退时程序无法正常识别错误，需要人工解决
-请勿在非自动战斗状态时移动鼠标或操作键盘
-
-### 关于跑图
-
-请事先开完全部锚点，完成地图上可以干扰图片识别传送的一切任务，因此造成的卡图现象本项目不予处理
-
-请不要修改默认键位，由此造成的卡图请自行解决
-
-现有模型分类：
-
-成年女性模型（且攻击为远程无位移）跑图最佳，如：娜塔莎、艾丝妲、三月七、布洛妮娅
-
-少女模型可能会卡（概率较小），如：青雀、佩拉、符玄
-
-成女有位移，如：驭空
-
-青年男有位移，如：饮月丹恒
-
