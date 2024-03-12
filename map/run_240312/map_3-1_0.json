@@ -1,0 +1,47 @@
+{
+    "name": "过期邮包",
+    "author": "lrwy",
+    "start": [
+        {
+            "check": 1
+		},
+        {
+            "map": 1
+		},
+        {
+            "picture\\map_4-2_point_3.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_4.png": 1.5
+        },
+        {
+            "picture\\map_3-1.png": 2
+        },
+        {
+            "picture\\map_9-7.png": 2
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "check": 1
+        },
+        {
+            "w": 8
+        },
+        {
+            "d": 1
+        },
+        {
+            "f": 2
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}
