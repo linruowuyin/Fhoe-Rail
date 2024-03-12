@@ -17,6 +17,7 @@ from .config import ConfigurationManager
 from .exceptions import Exception
 from .log import log
 from .mini_asu import ASU
+from .switch_window import switch_window
 
 class Calculated:
     def __init__(self):
@@ -70,8 +71,18 @@ class Calculated:
         if self.hwnd and win32gui.IsWindowVisible(self.hwnd):
             return True
         else:
-            log.debug(f'窗口不可见或窗口句柄无效，窗口句柄为：{self.hwnd}')
-            return False
+            log.info(f'窗口不可见或窗口句柄无效，窗口句柄为：{self.hwnd}')
+            # 等待用户输入回车键继续
+            input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
+            time.sleep(1)
+            self.hwnd = None
+            self.get_hwnd()
+
+            if self.hwnd:
+                switch_window()
+                return True
+            else:
+                return False
 
     def get_hwnd(self, hwnd_max_retries=10):
         for _ in range(hwnd_max_retries):
@@ -81,7 +92,7 @@ class Calculated:
                     return
                 time.sleep(2)
             except Exception as e:
-                log.debug(f'查找窗口失败，{e}')
+                log.info(f'查找窗口失败，{e}')
                 time.sleep(2)
 
         raise Exception("无法找到窗口，已达到最大重试次数")
@@ -108,7 +119,7 @@ class Calculated:
             :param points: 坐标
         """
         x, y = int(points[0]), int(points[1])
-        log.debug((x, y))
+        log.info(f"点击坐标{(x, y)}")
         self.mouse_press(x, y)
 
     def keyboard_press(self, key_name: str, delay: float=0): 
@@ -263,7 +274,7 @@ class Calculated:
             if all([new_left < new_right, new_top < new_bottom]):
                 screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = new_left, new_top, new_right, new_bottom
             else:
-                log.debug(f'截图区域无效，偏移值错误({offset[0]},{offset[1]},{offset[2]},{offset[3]})，将使用窗口截图')
+                log.info(f'截图区域无效，偏移值错误({offset[0]},{offset[1]},{offset[2]},{offset[3]})，将使用窗口截图')
             
             retries = 0
             while retries <= max_retries:
@@ -274,7 +285,7 @@ class Calculated:
                     self.temp_screenshot = screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
                     return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
                 except Exception as e:
-                    log.debug(f"截图失败，原因: {str(e)}，等待 {retry_interval} 秒后重试")
+                    log.info(f"截图失败，原因: {str(e)}，等待 {retry_interval} 秒后重试")
                     retries += 1
                     time.sleep(retry_interval)
             raise RuntimeError(f"截图尝试失败，已达到最大重试次数 {max_retries} 次）")
@@ -330,7 +341,7 @@ class Calculated:
         original_target = cv.imread(target_path)
         target,  result_inverted = self.img_trans_bitwise(target_path)
         result_original = self.scan_screenshot(original_target)
-        log.debug(f"颜色反转后的匹配值为：{result_inverted['max_val']}")
+        log.info(f"颜色反转后的匹配值为：{result_inverted['max_val']}")
         if result_original["max_val"] > result_inverted["max_val"]:
             return True
         else:
@@ -455,7 +466,7 @@ class Calculated:
             elapsed_time = time.time() - start_time
             if result["max_val"] > 0.92:
                 points = self.calculated(result, self.main_ui.shape)
-                log.debug(points)
+                log.info(f"识别点位{points}")
                 self.total_fight_time += elapsed_time
                 self.fight_error_cnt(elapsed_time)
                 elapsed_minutes = int(elapsed_time // 60)
@@ -583,7 +594,7 @@ class Calculated:
                     result = self.scan_temp_screenshot(img)
                 if result['max_val'] > 0.96:
                     found_targets[name] = img
-                    log.debug(f"扫描'F'：{name}，匹配度：{result['max_val']:.3f}")
+                    log.info(f"扫描'F'：{name}，匹配度：{result['max_val']:.3f}")
 
             # 匹配到2个条件时结束
             if len(found_targets) == 2:
@@ -804,7 +815,7 @@ class Calculated:
         result = self.scan_screenshot(target)
         if result["max_val"] > 0.92:
             points = self.calculated(result, target.shape)
-            log.debug(points)
+            log.info(f"识别点位{points}")
             match_details = f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
             log.info(match_details)
             self.monthly_pass_success = True  # 月卡检查完成，无月卡
@@ -878,7 +889,7 @@ class Calculated:
                     target = cv.imread(os.path.join(image_folder, image_name))
                     result = self.scan_screenshot(target)
                     if result and result["max_val"] > 0.9:
-                        log.debug(f"匹配到{image_name}，匹配度{result['max_val']:.3f}")
+                        log.info(f"匹配到{image_name}，匹配度{result['max_val']:.3f}")
                         return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
                 attempts += 1
                 time.sleep(2)  # 等待2秒再尝试匹配
@@ -1006,7 +1017,7 @@ class Calculated:
                 result = self.scan_screenshot(img)
                 if result["max_val"] > threshold:
                     log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
-                    log.debug(f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
+                    log.info(f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
                     return True
                 else:
                     temp_max_val.append(result['max_val'])
