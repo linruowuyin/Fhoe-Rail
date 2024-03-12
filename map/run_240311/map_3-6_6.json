@@ -23,10 +23,13 @@
       "a": 0.15
 	},
     {
-      "fighting": 2
+      "fighting": 1
     },
     {
-      "fighting": 1
+      "fighting": 2
+	},
+    {
+      "fighting": 2
     }
   ]
 }
