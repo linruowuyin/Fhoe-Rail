@@ -93,30 +93,42 @@ class ConfigurationManager:
         with open(file_path, "wb") as f:
             f.write(orjson.dumps(data))
 
+    def config_keys(self, real_width, real_height):
+        config_keys = {
+            "version": "",
+            "real_width": real_width,
+            "real_height": real_height,
+            "map_debug": False,
+            "github_proxy": "",
+            "rawgithub_proxy": "",
+            "webhook_url": "",
+            "start": False,
+            "picture_version": "0",
+            "star_version": "0",
+            "open_map": "m",
+            "script_debug": False,
+            "auto_shutdown": False,
+            "auto_final_fight_e": False,
+            "auto_run_in_map": False,
+            "detect_fight_status_time": 15,
+            "map_version": "default"
+        }
+        
+        
+        return config_keys
+    
+    def config_all_keys(self):
+        all_key = self.config_keys(real_width=0,real_height=0).keys()
+        
+        return all_key
+    
     def init_config_file(self, real_width, real_height):
+        
         if self.normalize_file_path(self.CONFIG_FILE_NAME) is None:
             with open(self.CONFIG_FILE_NAME, "wb+") as f:
                 f.write(
                     orjson.dumps(
-                        {
-                            "version": "",
-                            "real_width": real_width,
-                            "real_height": real_height,
-                            "map_debug": False,
-                            "github_proxy": "",
-                            "rawgithub_proxy": "",
-                            "webhook_url": "",
-                            "start": False,
-                            "picture_version": "0",
-                            "star_version": "0",
-                            "open_map": "m",
-                            "script_debug": False,
-                            "auto_shutdown": False,
-                            "auto_final_fight_e": False,
-                            "auto_run_in_map": False,
-                            "detect_fight_status_time": 15,
-                            "map_version": "default"
-                        }
+                        self.config_keys(real_width, real_height)
                     )
                 )
 

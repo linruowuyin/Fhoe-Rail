@@ -621,7 +621,7 @@ class Calculated:
             
 
     def auto_map(self, map, old=True, rotate=False):
-        map_version = self.cfg.CONFIG.get("map_version")
+        map_version = self.cfg.CONFIG.get("map_version", "default")
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
         self.need_rotate = rotate
