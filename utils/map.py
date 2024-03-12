@@ -149,7 +149,7 @@ class Map:
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                 temp_point = ""  # 用于输出传送前的点位
-                self.calculated.back_to_main()  # 地图json，start运行前保证在主界面
+                # self.calculated.back_to_main()  # 地图json，start运行前保证在主界面
                 for start in map_data['start']:
                     key = list(start.keys())[0]
                     log.info(key)
