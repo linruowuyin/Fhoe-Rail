@@ -1,0 +1,32 @@
+{
+    "name": "稚子的梦-6",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+	    },
+        {
+            "picture\\map_4-2_point_3.png": 1.5
+        },
+        {
+            "picture\\map_4-2_point_4.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+    {
+      "w": 5.36
+    },
+    {
+      "a": 3.192274332046509
+    },
+    {
+      "fighting": 1
+	},
+    {
+      "fighting": 2
+    }
+  ]
+}

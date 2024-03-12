@@ -1,0 +1,41 @@
+{
+    "name": "筑梦边境-4",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_4-1_point_4.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+    {
+      "s": 1.87
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "a": 2.9
+    },
+    {
+      "w": 0.99
+    },
+    {
+      "a": 1.88
+    },
+    {
+      "s": 0.20
+    },
+    {
+      "fighting": 1      
+	},
+    {
+      "fighting": 2
+    }
+  ]
+}
