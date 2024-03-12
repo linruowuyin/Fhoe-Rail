@@ -1,0 +1,35 @@
+{
+    "name": "酒店梦境-2",
+    "author": "喵不可言",
+    "start": [
+    ],
+    "map": [
+    {
+      "w": 4.68
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "w": 2.25
+    },
+    {
+      "fighting": 2
+	},
+    {
+      "fighting": 1
+	},
+    {
+      "fighting": 1
+	},
+    {
+      "w": 2.25
+    },
+    {
+      "fighting": 2
+	},
+    {
+      "fighting": 1
+    }
+  ]
+}
