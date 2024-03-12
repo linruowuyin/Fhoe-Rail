@@ -114,12 +114,19 @@ def main():
         return choose_map_debug(map_instance)
 
 def main_start():
-    if not cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('start'):
-        #title = "开启连续自动战斗了吗喵？："
-        #options = ['打开了', '没打开', '我啷个晓得嘛']
-        #option = questionary.select(title, options).ask()
-        #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
-        #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
+    all_keys = cfg.config_all_keys()
+    existing_keys = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).keys()
+    if set(all_keys).issubset(existing_keys):
+        if not cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('start'):
+            #title = "开启连续自动战斗了吗喵？："
+            #options = ['打开了', '没打开', '我啷个晓得嘛']
+            #option = questionary.select(title, options).ask()
+            #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
+            #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
+            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
+            set_config()
+    else:
+        log.info(f"检测到需要进行必要的配置，请配置")
         cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
         set_config()
 
