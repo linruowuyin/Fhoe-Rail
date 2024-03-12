@@ -20,6 +20,7 @@ class Map:
         self.map_list = []
         self.map_list_map = {}
         self.map_versions = self.read_maps_versions()
+        self.map_version = ""
         self.now = datetime.now()
 
     def map_init(self, max_attempts=60):
@@ -56,6 +57,7 @@ class Map:
     
         self.map_list = json_files
         self.map_list_map.clear()
+        self.map_version = map_version
     
         for map_ in json_files:
             map_data = self.cfg.read_json_file(f"map/{map_version}/{map_}")
@@ -141,7 +143,7 @@ class Map:
                 # 选择地图
                 start_time = time.time() 
                 map_ = map_.split('.')[0]
-                map_data = self.cfg.read_json_file(f"map/{map_}.json")
+                map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                 self.calculated.monthly_pass()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")

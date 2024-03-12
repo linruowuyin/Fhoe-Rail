@@ -503,10 +503,10 @@ class Calculated:
                     not_auto_result_c = self.scan_screenshot(not_auto_c)
 
             if elapsed_time > 90:
-                self.click_target("./picture/auto.png", 0.98, False)
+                # self.click_target("./picture/auto.png", 0.98, False)
                 self.click_target("./picture/continue_fighting.png", 0.98, False)
                 self.click_target("./picture/defeat.png", 0.98, False)
-                self.click_target("./picture/map_4-2_point_3.png", 0.98, False)
+                # self.click_target("./picture/map_4-2_point_3.png", 0.98, False)
                 self.click_target("./picture/orientation_close.png", 0.98, False)
                 if elapsed_time > 600:
                     log.info("战斗超时")
@@ -621,6 +621,7 @@ class Calculated:
             
 
     def auto_map(self, map, old=True, rotate=False):
+        map_version = self.cfg.CONFIG.get("map_version")
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
         self.need_rotate = rotate
@@ -629,7 +630,7 @@ class Calculated:
         map_data = (
             self.cfg.read_json_file(f"map\\old\\{map}.json")
             if old
-            else self.cfg.read_json_file(f"map\\{map}.json")
+            else self.cfg.read_json_file(f"map\\{map_version}\\{map}.json")
         )
         map_filename = map
         self.fighting_count = sum(1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
