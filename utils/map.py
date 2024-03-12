@@ -184,7 +184,7 @@ class Map:
                             break
                     elif key in ["picture\\transfer.png"]:
                         time.sleep(0.1)
-                        self.calculated.click_target_with_alt(key, 0.93)
+                        self.calculated.click_target(key, 0.93)
                         self.calculated.run_mapload_check()
                         if temp_point:
                             log.info(f'地图加载前的传送点为 {temp_point}')
@@ -192,26 +192,29 @@ class Map:
                         value = min(value, 0.8)
                         time.sleep(value)
                         if key == "picture\\map_0.png":
-                            self.calculated.click_target_with_alt(key, 0.93)
+                            self.calculated.click_target(key, 0.93)
                             self.calculated.run_mapload_check()
                         elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
                             self.calculated.click_target_with_alt(key, 0.93)
                             self.calculated.run_dreambuild_check()
                         elif key in ["picture\\first_floor.png","picture\\second_floor.png","picture\\third_floor.png"]:
                             if self.calculated.img_bitwise_check(key):
-                                self.calculated.click_target_with_alt(key, 0.93)
+                                self.calculated.click_target(key, 0.93)
                             else:
                                 log.info(f"已在对应楼层，跳过选择楼层")
                                 pass
                         elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
                             self.find_transfer_point(key, threshold=0.97)
-                            self.calculated.click_target_with_alt(key, 0.93)
+                            self.calculated.click_target(key, 0.93)
                             temp_point = key
                             time.sleep(1.7)
                         else:
                             if allow_drap_map:
                                 self.find_transfer_point(key, threshold=0.97)
-                            self.calculated.click_target_with_alt(key, 0.93)
+                            if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
+                                self.calculated.click_target_with_alt(key, 0.93)
+                            else:
+                                self.calculated.click_target(key, 0.93)
                             temp_point = key
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
