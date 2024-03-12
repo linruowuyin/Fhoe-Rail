@@ -1,0 +1,83 @@
+{
+    "name": "工造司-1",
+    "author": "雪见璃",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_4.png": 1.5
+        },
+        {
+            "picture\\map_3-4.png": 2
+        },
+        {
+            "picture\\map_3-4_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "w": 7.35
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "d": 2.5
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "d": 1.08
+        },
+        {
+            "d": 2.46
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "s": 2.33
+        },
+        {
+            "d": 2.33
+        },
+        {
+            "s": 1.82
+        },
+        {
+            "a": 1.4
+        },
+        {
+            "w": 0.38
+        },
+        {
+            "a": 3.77
+        },
+        {
+            "a": 0.65
+        },
+        {
+            "s": 2.41
+        },
+        {
+            "d": 2.84
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "d": 0.82
+        },
+        {
+            "fighting": 1
+        }
+    ]
+}

@@ -627,11 +627,7 @@ class Calculated:
         self.need_rotate = rotate
         now = datetime.now()
         today_weekday_str = now.strftime('%A')
-        map_data = (
-            self.cfg.read_json_file(f"map\\old\\{map}.json")
-            if old
-            else self.cfg.read_json_file(f"map\\{map_version}\\{map}.json")
-        )
+        map_data = self.cfg.read_json_file(f"map/{map_version}/{map}.json")
         map_filename = map
         self.fighting_count = sum(1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
         self.current_fighting_index = 0

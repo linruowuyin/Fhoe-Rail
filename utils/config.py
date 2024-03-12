@@ -114,7 +114,8 @@ class ConfigurationManager:
                             "auto_shutdown": False,
                             "auto_final_fight_e": False,
                             "auto_run_in_map": False,
-                            "detect_fight_status_time": 15
+                            "detect_fight_status_time": 15,
+                            "map_version": "default"
                         }
                     )
                 )

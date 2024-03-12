@@ -1,0 +1,71 @@
+{
+    "name": "酒店梦境-16",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+		},
+        {
+            "picture\\map_4-2_point_3.png": 1.5
+		},
+        {
+            "picture\\third_floor.png": 1.5
+        },
+        {
+            "picture\\map_4-3_point_5.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+    {
+      "s": 1.1
+    },
+    {
+      "a": 5.94
+    },
+    {
+      "w": 1.15
+    },
+    {
+      "a": 9.73
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "d": 0.58
+    },
+    {
+      "s": 1.19
+    },
+    {
+      "a": 6.68
+    },
+    {
+      "r": 2.5
+	},
+    {
+	  "a": 7.06
+    },
+    {
+      "w": 0.11
+	},
+    {
+      "fighting": 2
+	},
+    {
+      "fighting": 1
+	},
+    {
+      "s": 0.35
+	},
+    {
+      "fighting": 2
+	},
+    {
+      "fighting": 1
+    }
+  ]
+}
