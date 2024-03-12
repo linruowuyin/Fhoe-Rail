@@ -109,9 +109,10 @@ class ConfigurationManager:
             "script_debug": False,
             "auto_shutdown": False,
             "auto_final_fight_e": False,
-            "auto_run_in_map": False,
+            "auto_run_in_map": True,
             "detect_fight_status_time": 15,
-            "map_version": "default"
+            "map_version": "default",
+            "main_map": "1"
         }
         
         

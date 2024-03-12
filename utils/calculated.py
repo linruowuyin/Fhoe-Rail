@@ -523,7 +523,7 @@ class Calculated:
             time.sleep(0.5)
 
 
-    def fightE(self):
+    def fightE(self, value):
         """
         使用'E'攻击，补充秘技点数
         """
@@ -551,12 +551,17 @@ class Calculated:
                 pyautogui.press('e')
             time.sleep(1)
 
-        self.click_center()
-        fight_status = self.fight_elapsed()
+        if value == 1:
+            self.click_center()
+            fight_status = self.fight_elapsed()
+            if not fight_status:
+                log.info(f'未进入战斗')
+        elif value == 2:
+            pass
 
-        if not fight_status:
-            log.info(f'未进入战斗')
-            time.sleep(0.5)
+        time.sleep(0.5)
+
+
 
     def rotate(self):
         if self.need_rotate:
@@ -706,7 +711,9 @@ class Calculated:
 
     def handle_e(self, value):
         if value == 1:  
-            self.fightE()
+            self.fightE(value=1)
+        elif value == 2:
+            self.fightE(value=2)
 
     def handle_esc(self, value):
         if value == 1:
@@ -976,7 +983,7 @@ class Calculated:
             pyautogui.press('esc')
             time.sleep(2)
     
-    def on_main_interface(self, check_list=[], timeout=60, threshold=0.9):
+    def on_main_interface(self, check_list=[], timeout=60, threshold=0.9, allow_log=True):
         """
         说明：
             检测主页面
@@ -991,9 +998,9 @@ class Calculated:
             check_list = [self.main_ui]
         interface_desc = '游戏主界面，非战斗/传送/黑屏状态'
         
-        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold)
+        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold, allow_log=allow_log)
 
-    def on_interface(self, check_list=[], timeout=60, interface_desc='', threshold=0.9):
+    def on_interface(self, check_list=[], timeout=60, interface_desc='', threshold=0.9, allow_log=True):
         """
         说明：
             检测check_list中的图片是否在某个页面
@@ -1013,14 +1020,16 @@ class Calculated:
             for index, img in enumerate(check_list):
                 result = self.scan_screenshot(img)
                 if result["max_val"] > threshold:
-                    log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
-                    log.info(f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
+                    if allow_log:
+                        log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
+                        log.info(f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
                     return True
                 else:
                     temp_max_val.append(result['max_val'])
                     time.sleep(1)
         else:
-            log.info(f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
+            if allow_log:
+                log.info(f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
             return False
 
     def handle_shutdown(self):

@@ -18,7 +18,9 @@ cfg = ConfigurationManager()
 def choose_map(map_instance: Map):
     map_version = cfg.CONFIG.get("map_version", "default")
     map_instance.read_maps(map_version=map_version)
-    main_map = min(list(map_instance.map_list_map.keys()))
+    main_map = cfg.read_json_file(cfg.CONFIG_FILE_NAME).get("main_map", None)
+    if main_map is None:
+        main_map = min(list(map_instance.map_list_map.keys()))
     side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
     return f"{main_map}-{side_map}"
 
@@ -31,16 +33,16 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "其他地图": "9", "优先地图（默认匹诺康尼）": "first_map"}
+            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "其他地图": "9", "优先星球": "first_map"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
-            if option_ == "优先地图（默认匹诺康尼）":
-                default = "4"
-                options_map_first = {"默认": default, "空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"}
+            if option_ == "优先星球":
+                options_map_first = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"}
                 option_ = questionary.select(title_, list(options_map_first.keys())).ask()
                 main_map = options_map_first.get(option_)
                 side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
+                cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
                 return (f"{main_map}-{side_map}", True)
             main_map = options_map.get(option_)
             is_selecting_main_map = False
@@ -124,14 +126,17 @@ def main_start():
             #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
             #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
             cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
+            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "auto_run_in_map", True)
             set_config()
     else:
         log.info(f"检测到需要进行必要的配置，请配置")
         cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "auto_run_in_map", True)
         set_config()
 
 
 def main_start_rewrite():
+    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "auto_run_in_map", True)
     set_config(slot='start_rewrite')
 
 def set_config(slot: str = 'start'):
@@ -168,14 +173,14 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "auto_final_fight_e"
         },
         {
-            "title": "跑图时使用疾跑模式？（实验性功能，默认关闭，未测试过不同角色的影响，请自行斟酌打开）",
-            "choices": {'关闭疾跑': False, '开启疾跑': True},
-            "config_key": "auto_run_in_map"
-        },
-        {
             "title": "设置识别怪物超时时间，默认为15秒。需要自定义设置可以直接修改config.json中的detect_fight_status_time为指定的秒数",
             "choices": {'较短识别时间（5秒）': 5, '较长识别时间（15秒）': 15},
             "config_key": "detect_fight_status_time"
+        },
+        {
+            "title": "优先星球",
+            "choices": {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"},
+            "config_key": "main_map"
         }
     ]
 
