@@ -50,10 +50,10 @@ This software is open source, free of charge and for learning and exchange purpo
 ### 功能区分
 
 - [x] 疾跑
-- [x] 过期邮包
-- [x] 艾迪恩代币
+- [x] 过期邮包/艾迪恩代币
+- [x] 4点续锄(跨日)
 - [x] 使用秘技
-- [x] 自动开/关机
+- [x] 自动开/关机/注销
 - [x] 地图拖拽
 - [ ] GUI
 
