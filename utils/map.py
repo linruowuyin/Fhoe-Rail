@@ -10,7 +10,7 @@ import random
 from .calculated import Calculated
 from .config import ConfigurationManager
 from .log import log, webhook_and_log
-from datetime import datetime
+import datetime
 
 class Map:
     def __init__(self):
@@ -21,7 +21,7 @@ class Map:
         self.map_list_map = {}
         self.map_versions = self.read_maps_versions()
         self.map_version = ""
-        self.now = datetime.now()
+        self.now = datetime.datetime.now()
 
     def map_init(self, max_attempts=60):
 
@@ -95,6 +95,57 @@ class Map:
         
         return in_day
 
+    def get_target_datetime(self, hour, minute, second):
+        now = datetime.datetime.now()
+        target_date = now.date()
+        target_time = datetime.datetime.combine(target_date, datetime.time(hour, minute, second))  # 设置目标时间    
+
+        return target_time  
+    
+    def get_valid_hour(self):
+        default_hour = 4
+
+        while True:
+            try:
+                hour_input = input(f"请输入需要几点运行，默认为{default_hour}点 (0-23): ")
+                if not hour_input:
+                    log.debug(f"未输入小时数，使用默认值 {default_hour}。")
+                    return default_hour
+                hour = int(hour_input)  # 尝试将输入转换为整数  
+                if 0 <= hour <= 23:  # 检查小时数是否在合法范围内  
+                    return hour  
+                else:
+                    log.debug(f"输入的小时数不合法，请输入0-23之间的数字。")
+            except ValueError:
+                log.debug(f"未输入一个有效的数字。使用默认值 {default_hour}")
+                return default_hour
+
+    def wait_and_run(self, minute=0, second=0):  
+        
+        hour = self.get_valid_hour()  
+
+        target_time = self.get_target_datetime(hour, minute, second)  # 计算目标时间  
+        time_diff = target_time - datetime.datetime.now()  # 计算目标时间与当前时间的时间差  
+        if time_diff.total_seconds() < 0:  # 如果目标时间已经过去，则设置为明天的这个时间  
+            target_time += datetime.timedelta(days=1)  
+
+        wait_time = time_diff.total_seconds()  # 等待到目标时间    
+        log.info(f"将在 {target_time.strftime('%Y-%m-%d %H:%M:%S')}")  
+        log.info(f"需要等待 {wait_time:.0f} 秒")  
+        time.sleep(wait_time)
+
+    def has_crossed_4am(self, start, end):
+        """
+        检查是否从开始时间到结束时间跨越了凌晨4点
+        """
+        # 获取开始时间的凌晨4点
+        start_4am = start.replace(hour=4, minute=0, second=0, microsecond=0)
+        if start.hour >= 4:
+            # 如果开始时间在4点之后，则4点时间应该是下一天的4点
+            start_4am += datetime.timedelta(days=1)
+        
+        return start < start_4am <= end
+
     def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
         """
         说明:
@@ -136,6 +187,10 @@ class Map:
         today_weekday_str = self.now.strftime('%A')
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
+            self.calculated.total_fight_time = 0
+            self.calculated.tatol_save_time = 0
+            self.calculated.total_fight_cnt = 0
+            self.calculated.total_no_fight_cnt = 0
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
             map_list = self.get_map_list(start, start_in_mid)
             max_index = max(index for index, _ in enumerate(map_list))
@@ -149,7 +204,7 @@ class Map:
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                 temp_point = ""  # 用于输出传送前的点位
-                # self.calculated.back_to_main()  # 地图json，start运行前保证在主界面
+                
                 for start in map_data['start']:
                     key = list(start.keys())[0]
                     log.info(key)
@@ -171,6 +226,7 @@ class Map:
                         pyautogui.press('esc')
                         continue
                     elif key == 'map':
+                        self.calculated.back_to_main()  # 打开map运行前保证在主界面
                         self.map_init()
                     elif key == 'main':
                         self.calculated.back_to_main()  # 检测并回到主界面
@@ -243,12 +299,13 @@ class Map:
                 if index == max_index:
                     total_time = time.time() - total_start_time
                     total_fight_time = self.calculated.total_fight_time
-                    log.info(f"结束运行，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
+                    log.info(f"结束该阶段的锄地，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
                     error_fight_cnt = self.calculated.error_fight_cnt
                     log.info(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
                     log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
                     log.info(f"战斗次数{self.calculated.total_fight_cnt}")
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
+                    log.info(f"未战斗次数首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
 
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')

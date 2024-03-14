@@ -107,12 +107,14 @@ class ConfigurationManager:
             "star_version": "0",
             "open_map": "m",
             "script_debug": False,
-            "auto_shutdown": False,
+            "auto_shutdown": 0,
+            "taskkill_name": "",
             "auto_final_fight_e": False,
             "auto_run_in_map": True,
             "detect_fight_status_time": 15,
             "map_version": "default",
-            "main_map": "1"
+            "main_map": "1",
+            "allow_run_again": False
         }
         
         
@@ -132,6 +134,27 @@ class ConfigurationManager:
                         self.config_keys(real_width, real_height)
                     )
                 )
+
+    def config_issubset(self):
+        """检查是否配置中都包含了必要配置
+        """
+        all_keys = self.config_all_keys()
+        existing_keys = self.read_json_file(self.CONFIG_FILE_NAME, False).keys()
+        
+        return set(all_keys).issubset(existing_keys)
+        
+    def ensure_config_complete(self):
+        """写入未找到配置的默认值
+        """
+        if not self.config_issubset():
+            all_keys = self.config_all_keys()
+            existing_keys = self.read_json_file(self.CONFIG_FILE_NAME, False).keys()
+            missing_keys = set(all_keys) - set(existing_keys)
+            
+            if missing_keys:
+                initial_dict = self.config_keys(real_width=0, real_height=0)
+                for key in missing_keys:
+                    self.modify_json_file(self.CONFIG_FILE_NAME, key, initial_dict[key])
 
 
     def get_file(self, path, exclude, exclude_file=None, get_path=False):
