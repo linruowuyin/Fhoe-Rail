@@ -6,6 +6,8 @@ import ctypes
 import questionary
 import pyuac
 import json
+import datetime
+import subprocess
 from utils.log import log, webhook_and_log, fetch_php_file_content
 from get_width import get_width, check_mult_screen
 from utils.config import ConfigurationManager
@@ -22,7 +24,7 @@ def choose_map(map_instance: Map):
     if main_map is None:
         main_map = min(list(map_instance.map_list_map.keys()))
     side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
-    return f"{main_map}-{side_map}"
+    return (f"{main_map}-{side_map}", True)
 
 def choose_map_debug(map_instance: Map):
     is_selecting_main_map = True
@@ -33,7 +35,7 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "其他地图": "9", "优先星球": "first_map"}
+            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "优先星球": "first_map", "定时锄大地": "scheduled"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
@@ -44,6 +46,9 @@ def choose_map_debug(map_instance: Map):
                 side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
                 cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
                 return (f"{main_map}-{side_map}", True)
+            elif option_ == "定时锄大地":
+                map_instance.wait_and_run()
+                return f"1-1_0"
             main_map = options_map.get(option_)
             is_selecting_main_map = False
         else:
@@ -59,7 +64,7 @@ def choose_map_debug(map_instance: Map):
             else:
                 side_map = keys[values.index(option_)]
                 log.info(f"{main_map}-{side_map}")
-                return f"{main_map}-{side_map}"
+                return (f"{main_map}-{side_map}", True)
 
 
 def filter_content(content, keyword):
@@ -96,6 +101,9 @@ def main():
     else:
         main_start()
         start = choose_map(map_instance)
+        if isinstance(start, tuple):
+            start_in_mid = start[1]
+            start = start[0]
     
     if start:
         php_content = fetch_php_file_content()  # 获取PHP文件的内容
@@ -110,34 +118,47 @@ def main():
         log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
         log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
+        start_time = datetime.datetime.now()
         map_instance.auto_map(start, start_in_mid)  # 读取配置
+        allow_run_again = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get("allow_run_again", False)
+        if allow_run_again:
+            map_instance.auto_map(start, start_in_mid)
+        end_time = datetime.datetime.now()
+        shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
+        shutdown_computer(shutdown_type)
+        log.info(f"开始执行跨天自动锄大地")
+        if map_instance.has_crossed_4am(start=start_time, end=end_time):
+            log.info(f"跨越了凌晨4点，立即重新开始运行")
+            map_instance.auto_map(start, start_in_mid)
+        else:
+            now = datetime.datetime.now()
+            next_4am = now.replace(hour=4, minute=0, second=0, microsecond=0)
+            if now.hour >= 4:
+                next_4am += datetime.timedelta(days=1)
+            wait_time = (next_4am - now).total_seconds()
+            log.info(f"等待 {wait_time:.0f} 秒到下一个凌晨4点，将继续重新开始运行")
+            time.sleep(wait_time)
+            map_instance.auto_map(start, start_in_mid)
+        # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
+        # shutdown_computer(shutdown_type)
     else:
         log.info("前面的区域，以后再来探索吧")
         return choose_map_debug(map_instance)
 
 def main_start():
-    all_keys = cfg.config_all_keys()
-    existing_keys = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).keys()
-    if set(all_keys).issubset(existing_keys):
+    if cfg.config_issubset():
         if not cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('start'):
-            #title = "开启连续自动战斗了吗喵？："
-            #options = ['打开了', '没打开', '我啷个晓得嘛']
-            #option = questionary.select(title, options).ask()
-            #is_auto_battle_open = options.index(option) == 0  # 判断用户选择是否是打开了
-            #modify_json_file(CONFIG_FILE_NAME, "auto_battle_persistence", int(is_auto_battle_open))
             cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
-            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "auto_run_in_map", True)
             set_config()
     else:
         log.info(f"检测到需要进行必要的配置，请配置")
         cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "auto_run_in_map", True)
         set_config()
-
+        cfg.ensure_config_complete()
 
 def main_start_rewrite():
-    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "auto_run_in_map", True)
     set_config(slot='start_rewrite')
+    cfg.ensure_config_complete()
 
 def set_config(slot: str = 'start'):
     questions = get_questions_for_slot(slot)
@@ -158,13 +179,13 @@ def get_questions_for_slot(slot: str) -> list:
     map_versions = map_instance.read_maps_versions()
     default_questions = [
         {
-            "title": "选择地图版本",
+            "title": "选择地图版本，default：正常走路/疾跑，technique：过程中会大量使用秘技",
             "choices": {version: version for version in map_versions},
             "config_key": "map_version"
         },
         {
             "title": "想要跑完自动关机吗？",
-            "choices": {'不想': False, '↑↑↓↓←→←→BABA': True},
+            "choices": {'不想': 0, '关机↑↑↓↓←→←→BABA': 1, '注销': 2},
             "config_key": "auto_shutdown"
         },
         {
@@ -181,6 +202,11 @@ def get_questions_for_slot(slot: str) -> list:
             "title": "优先星球",
             "choices": {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"},
             "config_key": "main_map"
+        },
+        {
+            "title": "连续锄两次，会连续运行两次锄大地，避免漏怪，大约需要总计9小时",
+            "choices": {"只锄一次": False, "连锄两次": True},
+            "config_key": "allow_run_again"
         }
     ]
 
@@ -205,6 +231,23 @@ def save_config(config: dict):
 def ask_question(question: dict):
     return questionary.select(question["title"], list(question["choices"].keys())).ask()
 
+def shutdown_computer(shutdown_type):
+    if shutdown_type == 0:
+        pass
+    elif shutdown_type == 1:
+        log.info("下班喽！I'm free!")
+        os.system("shutdown /s /f /t 10")
+    elif shutdown_type == 2:
+        log.info("十秒后注销")
+        time.sleep(10)
+        os.system("shutdown /l /f")
+    elif shutdown_type == 3:
+        log.info("关闭指定进程")
+        taskkill_name = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('taskkill_name', None)
+        if taskkill_name:
+            subprocess.call(["taskkill", "/im", taskkill_name, "/f"])
+    else:
+        log.info("shutdown_type参数不正确")
 
 if __name__ == "__main__":
     try:

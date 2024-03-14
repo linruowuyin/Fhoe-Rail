@@ -574,56 +574,67 @@ class Calculated:
     
     def check_f_img(self, timeout=60):
         """
-        说明：
-            检查F的交互类型
-        返回:
-            是否使用绝对时间，默认为 10 秒
-            绝对时间的值（秒）
-        """
-        target_pic = "./picture/sw.png"
-        target_dream_pop_pic = "./picture/F_DreamPop.png"
-        target_Teleport_pic = "./picture/F_Teleport.png"
-        target = cv.imread(target_pic)
-        target_dream_pop = cv.imread(target_dream_pop_pic)
-        target_Teleport = cv.imread(target_Teleport_pic)
-        start_time = time.time()
-        log.info(f"扫描'F'图标")
+        检查F的交互类型。
         
-        delay_to_do = 10
-        found_targets = {}
+        :return: tuple, 包含三个元素：(是否使用绝对时间, 绝对时间的值（秒）, 是否允许按下F)
+        """
+        images = {
+            'target': cv.imread("./picture/sw.png"),
+            'dream_pop': cv.imread("./picture/F_DreamPop.png"),
+            'teleport': cv.imread("./picture/F_Teleport.png"),
+            'space_anchor': cv.imread("./picture/F_SpaceAnchor.png")
+        }
+        
+        start_time = time.time()
+        log.info("扫描'F'图标")
+
+        default_delay = 10
+        found_images = {}
+
         while time.time() - start_time < timeout:
-            for count, (name, img) in enumerate({'target': target, 'target_dream_pop': target_dream_pop, 'target_Teleport': target_Teleport}.items(), start=1):
-                if count == 1:
-                    result = self.scan_screenshot(img)
-                else:
-                    result = self.scan_temp_screenshot(img)
+            for count , (name, img) in enumerate(images.items(), start = 1):
+                result = self.scan_screenshot(img) if count == 1 else self.scan_temp_screenshot(img)
                 if result['max_val'] > 0.96:
-                    found_targets[name] = img
+                    found_images[name] = result['max_val']
                     log.info(f"扫描'F'：{name}，匹配度：{result['max_val']:.3f}")
 
-            # 匹配到2个条件时结束
-            if len(found_targets) == 2:
-                break
-
-            if 'target' in found_targets and time.time() - start_time >= 2:
+            if len(found_images) == 2 or ('target' in found_images and time.time() - start_time >= 2):
                 break
 
             time.sleep(0.5)
-        if 'target' in found_targets:
-            if 'target_dream_pop' in found_targets:
-                delay_to_do = 3
-                log.info(f'扫描到 梦泡充能')
-            elif 'target_Teleport' in found_targets:
-                log.info(f'扫描到 入画')
-                return False, 0
-            else: 
-                log.info(f"扫描到 'F'")
 
-        if not found_targets:
-            log.info(f"扫描失败！")
+        return self.analyze_found_images(found_images, default_delay)
 
-        return True, delay_to_do
-            
+    def analyze_found_images(self, found_images, default_delay):
+        """
+        分析找到的图片，决定下一步
+
+        :param found_images: dict, 找到的图片及其匹配度
+        :param default_delay: int, 默认延迟时间
+        :return: tuple, 包含三个元素：(是否使用绝对时间, 绝对时间的值（秒）, 是否允许按下F)
+        """
+        use_absolute_time = True
+        delay = default_delay
+        allow_press_f = True
+        if 'target' in found_images:
+            if 'dream_pop' in found_images:
+                log.info('扫描到 梦泡充能')
+                delay = 3
+            elif 'teleport' in found_images:
+                log.info('扫描到 入画')
+                use_absolute_time = False
+                delay = 0
+            elif 'space_anchor' in found_images:
+                log.info('扫描到 界域定锚')
+                use_absolute_time = False
+                delay = 0
+                allow_press_f = False
+            else:
+                log.info("扫描到 'F'")
+        else:
+            log.info("扫描失败！")
+
+        return use_absolute_time, delay, allow_press_f
 
     def auto_map(self, map, old=True, rotate=False):
         map_version = self.cfg.CONFIG.get("map_version", "default")
@@ -675,17 +686,20 @@ class Calculated:
 
 
     def handle_f(self):
-        use_time, delay = self.check_f_img()
-        if use_time:
-            self.keyboard_press('f', delay=0.1)
-            log.info(f"按下'F'，等待{delay}秒")
-            time.sleep(delay)
+        use_time, delay, allow_f = self.check_f_img()
+        if allow_f:
+            if use_time:
+                self.keyboard_press('f', delay=0.1)
+                log.info(f"按下'F'，等待{delay}秒")
+                time.sleep(delay)
+            else:
+                self.keyboard_press('f', delay=0.1)
+                log.info(f"按下'F'，等待主界面检测")
+                time.sleep(2)  # 2 秒后开始检测主界面
+                self.on_main_interface()
+                time.sleep(2)  # 等待 2 秒加载人物
         else:
-            self.keyboard_press('f', delay=0.1)
-            log.info(f"按下'F'，等待主界面检测")
-            time.sleep(2)  # 2 秒后开始检测主界面
-            self.on_main_interface()
-            time.sleep(2)  # 等待 2 秒加载人物
+            log.info(f"检测到非正常'F'情况，不执行并跳过'F'")
                 
 
     def handle_check(self, today_weekday_str):
