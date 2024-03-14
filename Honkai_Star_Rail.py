@@ -124,6 +124,8 @@ def main():
         if allow_run_again:
             map_instance.auto_map(start, start_in_mid)
         end_time = datetime.datetime.now()
+        shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
+        shutdown_computer(shutdown_type)
         log.info(f"开始执行跨天自动锄大地")
         if map_instance.has_crossed_4am(start=start_time, end=end_time):
             log.info(f"跨越了凌晨4点，立即重新开始运行")
@@ -137,8 +139,8 @@ def main():
             log.info(f"等待 {wait_time:.0f} 秒到下一个凌晨4点，将继续重新开始运行")
             time.sleep(wait_time)
             map_instance.auto_map(start, start_in_mid)
-        shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
-        shutdown_computer(shutdown_type)
+        # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
+        # shutdown_computer(shutdown_type)
     else:
         log.info("前面的区域，以后再来探索吧")
         return choose_map_debug(map_instance)
