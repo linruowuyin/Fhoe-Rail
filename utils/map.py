@@ -122,7 +122,7 @@ class Map:
                 log.debug(f"未输入一个有效的数字。使用默认值 {default_hour}")
                 return default_hour
 
-    def wait_and_run(self, minute=0, second=0):  
+    def wait_and_run(self, minute=1, second=0):  
         
         hour = self.get_valid_hour()  
 
