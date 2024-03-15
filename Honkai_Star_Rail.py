@@ -57,7 +57,13 @@ def choose_map_debug(map_instance: Map):
             if not options_map:
                 return None
             keys = list(options_map.keys())
-            values = list(options_map.values()) + ["【返回】"]
+            second_values = list(dict.fromkeys([value[1] for value in options_map.values() if isinstance(value, list) and len(value) >= 2] + ["【返回】"]))
+            second_option_ = questionary.select(title_, second_values).ask()
+            if second_option_ == "【返回】":
+                is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
+                continue
+            values = [value[0] for value in options_map.values() if isinstance(value, list) and len(value) >= 2 and value[1] == second_option_] + ["【返回】"]
+            # values = list(options_map.values()) + ["【返回】"]
             option_ = questionary.select(title_, values).ask()
             if option_ == "【返回】":
                 is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
@@ -143,7 +149,7 @@ def main():
         # shutdown_computer(shutdown_type)
     else:
         log.info("前面的区域，以后再来探索吧")
-        return choose_map_debug(map_instance)
+        main()
 
 def main_start():
     if cfg.config_issubset():
