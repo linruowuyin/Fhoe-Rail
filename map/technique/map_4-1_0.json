@@ -18,31 +18,19 @@
             "picture\\map_4-0.png": 2
         },
         {
-            "picture\\danxi.png": 2
+            "picture\\map_4-1_point_0.png": 1.5
         },
         {
-            "picture\\follow.png": 1.5
-        },
-        {
-            "picture\\round.png": 1.5
-        },
-        {
-          "blackscreen": 1
+            "picture\\transfer.png": 1.5
         }
     ],
     "map": [
         {
-          "w": 8
+          "w": 9.5
         },
         {
-          "a": 2.5
-        },
-        {
-          "f": 0.12
-        },
-        {
-          "fighting": 2
-        },
+          "f": 2
+		},
         {
           "fighting": 2
         }
