@@ -132,19 +132,21 @@ def main():
         end_time = datetime.datetime.now()
         shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         shutdown_computer(shutdown_type)
-        log.info(f"开始执行跨日连锄")
-        if map_instance.has_crossed_4am(start=start_time, end=end_time):
-            log.info(f"检测到换日，即将从头开锄")
-            map_instance.auto_map(start, start_in_mid)
-        else:
-            now = datetime.datetime.now()
-            next_4am = now.replace(hour=4, minute=0, second=0, microsecond=0)
-            if now.hour >= 4:
-                next_4am += datetime.timedelta(days=1)
-            wait_time = (next_4am - now).total_seconds()
-            log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
-            time.sleep(wait_time)
-            map_instance.auto_map(start, start_in_mid)
+        if cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('allow_run_next_day', False):
+            log.info(f"开始执行跨日连锄")
+            if map_instance.has_crossed_4am(start=start_time, end=end_time):
+                log.info(f"检测到换日，即将从头开锄")
+                map_instance.auto_map(start, start_in_mid)
+            else:
+                now = datetime.datetime.now()
+                next_4am = now.replace(hour=4, minute=0, second=0, microsecond=0)
+                if now.hour >= 4:
+                    next_4am += datetime.timedelta(days=1)
+                wait_time = (next_4am - now).total_seconds()
+                log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
+                wait_time += 60
+                time.sleep(wait_time)
+                map_instance.auto_map(start, start_in_mid)
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         # shutdown_computer(shutdown_type)
     else:
