@@ -55,6 +55,7 @@ This software is open source, free of charge and for learning and exchange purpo
 - [x] 使用秘技
 - [x] 自动开/关机/注销
 - [x] 地图拖拽
+- [x] 定时启动
 - [ ] GUI
 
 ---
