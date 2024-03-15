@@ -356,6 +356,8 @@ class Calculated:
             :param threshold:匹配阈值
             :param flag:True为一定要找到图片
             :param timeout: 最大搜索时间（秒）
+        返回：
+            :return 是否点击成功
         """
         # 定义目标图像与颜色反转后的图像
         original_target = cv.imread(target_path)
@@ -367,7 +369,7 @@ class Calculated:
             if result["max_val"] > threshold:
                 points = self.calculated(result, original_target.shape)
                 self.click(points)
-                return
+                return True
 
             # 如果超过5秒，同时匹配原图像和颜色反转后的图像
             if time.time() - start_time > 5:
@@ -376,15 +378,16 @@ class Calculated:
                     points = self.calculated(result, inverted_target.shape)
                     self.click(points)
                     log.info("阴阳变转")
-                    return
+                    return True
 
             if not flag:
-                return
+                return False
             
             # 添加短暂延迟避免性能消耗
             time.sleep(1)
         else:
             log.info(f"查找图片超时 {target_path}")
+            return False
             
     def click_target_with_alt(self, target_path, threshold, flag=True):
         """
@@ -507,7 +510,7 @@ class Calculated:
                 self.click_target("./picture/continue_fighting.png", 0.98, False)
                 self.click_target("./picture/defeat.png", 0.98, False)
                 # self.click_target("./picture/map_4-2_point_3.png", 0.98, False)
-                self.click_target("./picture/orientation_close.png", 0.98, False)
+                # self.click_target("./picture/orientation_close.png", 0.98, False)
                 if elapsed_time > 600:
                     log.info("战斗超时")
                     return True
@@ -636,7 +639,7 @@ class Calculated:
 
         return use_absolute_time, delay, allow_press_f
 
-    def auto_map(self, map, old=True, rotate=False):
+    def auto_map(self, map, old=True, normal_run=False, rotate=False):
         map_version = self.cfg.CONFIG.get("map_version", "default")
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
@@ -672,7 +675,7 @@ class Calculated:
             elif key == "esc":
                 self.handle_esc(value)
             else:
-                self.handle_move(value, key)
+                self.handle_move(value, key, normal_run)
 
     def handle_space_or_r(self, value, key):
         random_interval = random.uniform(0.3, 0.7)
@@ -738,14 +741,15 @@ class Calculated:
         else:
             raise Exception(f"map数据错误, esc参数只能为1")
 
-    def handle_move(self, value, key):
+    def handle_move(self, value, key, normal_run=False):
+        log.info(f"normal_run:{normal_run}")
         self.keyboard.press(key)
         start_time = time.perf_counter()
         allow_run = self.cfg.CONFIG.get("auto_run_in_map", False)
         add_time = True
         run_in_road = False
         while time.perf_counter() - start_time < value:
-            if value > 2 and time.perf_counter() - start_time > 1 and not run_in_road and allow_run:
+            if value > 2 and time.perf_counter() - start_time > 1 and not run_in_road and allow_run and not normal_run:
                 self.keyboard.press(self.shift_btn)
                 run_in_road = True
                 temp_value = value
@@ -997,7 +1001,7 @@ class Calculated:
             pyautogui.press('esc')
             time.sleep(2)
     
-    def on_main_interface(self, check_list=[], timeout=60, threshold=0.9, allow_log=True):
+    def on_main_interface(self, check_list=[], timeout=60, threshold=0.9, offset=(0,0,0,0), allow_log=True):
         """
         说明：
             检测主页面
@@ -1010,11 +1014,12 @@ class Calculated:
         """
         if check_list == []:
             check_list = [self.main_ui]
+            offset=(0,0,-1630,-800)
         interface_desc = '游戏主界面，非战斗/传送/黑屏状态'
         
-        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold, allow_log=allow_log)
+        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold, offset=offset, allow_log=allow_log)
 
-    def on_interface(self, check_list=[], timeout=60, interface_desc='', threshold=0.9, allow_log=True):
+    def on_interface(self, check_list=[], timeout=60, interface_desc='', threshold=0.9, offset=(0,0,0,0),allow_log=True):
         """
         说明：
             检测check_list中的图片是否在某个页面
@@ -1032,7 +1037,7 @@ class Calculated:
         temp_max_val = []
         while time.time() - start_time < timeout:
             for index, img in enumerate(check_list):
-                result = self.scan_screenshot(img)
+                result = self.scan_screenshot(img, offset=offset)
                 if result["max_val"] > threshold:
                     if allow_log:
                         log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")

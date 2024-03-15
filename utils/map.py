@@ -67,12 +67,14 @@ class Map:
         
             if value is None:
                 value = {}
-        
-            value[key2] = map_data["name"]
+
+            map_data_first_name = map_data["name"].replace(' ','')
+            map_data_first_name = map_data_first_name[:map_data_first_name.index('-')]
+            value[key2] = [map_data["name"], map_data_first_name]
             self.map_list_map[key1] = value
-    
-        log.info(f"self.map_list:{self.map_list}")
-        log.info(f"self.map_list_map:{self.map_list_map}")
+            
+        # log.info(f"self.map_list:{self.map_list}")
+        # log.info(f"self.map_list_map:{self.map_list_map}")
 
 
     def format_time(self, seconds):
@@ -181,16 +183,26 @@ class Map:
         
         return map_list
     
+    def reset_round_count(self):
+        """重置该锄地轮次相关的计数
+        """
+        self.calculated.total_fight_time = 0
+        self.calculated.tatol_save_time = 0
+        self.calculated.total_fight_cnt = 0
+        self.calculated.total_no_fight_cnt = 0
+    
+    def allow_map_drag(self, start):
+        self.allow_drap_map_switch = 0  # 初始化禁止拖动地图
+        if "drag" in start:
+            self.allow_drap_map_switch = start["drag"]
+
     def auto_map(self, start, start_in_mid: bool=False):
         total_processing_time = 0
         teleport_click_count = 0  
         today_weekday_str = self.now.strftime('%A')
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
-            self.calculated.total_fight_time = 0
-            self.calculated.tatol_save_time = 0
-            self.calculated.total_fight_cnt = 0
-            self.calculated.total_no_fight_cnt = 0
+            self.reset_round_count()  # 重置该锄地轮次相关的计数
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
             map_list = self.get_map_list(start, start_in_mid)
             max_index = max(index for index, _ in enumerate(map_list))
@@ -204,14 +216,12 @@ class Map:
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                 temp_point = ""  # 用于输出传送前的点位
-                
+                normal_run = False  # 初始化跑步模式为默认
                 for start in map_data['start']:
                     key = list(start.keys())[0]
                     log.info(key)
                     value = start[key]
-                    allow_drap_map = 0  # 初始化禁止拖动地图
-                    if "drag" in start:
-                        allow_drap_map = start["drag"]
+                    self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
                     self.calculated.monthly_pass_check()
                     if key == "check" and value == 1:  # 判断是否为周二，周五，周日
                        if self.day_init([1,4,6]):  # 1代表周二，4代表周五，6代表周日
@@ -222,6 +232,12 @@ class Map:
                             log.info(f"{today_weekday_str}，非周二五日，跳过")
                             jump_this_map = True
                             break
+                    elif key == "normal_run":
+                        normal_run = True  # 此地图json将会被强制设定为禁止疾跑
+                        continue
+                    elif key == "blackscreen":
+                        self.calculated.run_mapload_check()  # 强制执行地图加载检测
+                        continue
                     elif key == "esc":
                         pyautogui.press('esc')
                         continue
@@ -234,13 +250,16 @@ class Map:
                     elif key == "picture\\max.png":
                         if self.calculated.allow_buy_item():
                             jump_this_map = False
+                            self.calculated.click_target(key, 0.93)
                             continue
                         else:
                             jump_this_map = True
                             break
                     elif key in ["picture\\transfer.png"]:
                         time.sleep(0.1)
-                        self.calculated.click_target(key, 0.93)
+                        if not self.calculated.click_target(key, 0.93):
+                            jump_this_map = True
+                            break
                         self.calculated.run_mapload_check()
                         if temp_point:
                             log.info(f'地图加载前的传送点为 {temp_point}')
@@ -265,7 +284,7 @@ class Map:
                             temp_point = key
                             time.sleep(1.7)
                         else:
-                            if allow_drap_map:
+                            if self.allow_drap_map_switch:
                                 self.find_transfer_point(key, threshold=0.97)
                             if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
                                 self.calculated.click_target_with_alt(key, 0.93)
@@ -278,14 +297,14 @@ class Map:
                 
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
-                # 'check'过期邮包跳过，执行下一张图
+                # 'check'过期邮包/传送识别失败/无法购买 时 跳过，执行下一张图
                 if jump_this_map:
                     continue
                 
                 # 记录处理开始时间
                 start_time = time.time()
 
-                self.calculated.auto_map(map_, False)
+                self.calculated.auto_map(map_, False, normal_run)
 
                 # 记录处理结束时间
                 end_time = time.time()
