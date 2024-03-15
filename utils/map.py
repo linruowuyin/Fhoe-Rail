@@ -130,7 +130,7 @@ class Map:
         time_diff = target_time - datetime.datetime.now()  # 计算目标时间与当前时间的时间差  
         if time_diff.total_seconds() < 0:  # 如果目标时间已经过去，则设置为明天的这个时间  
             target_time += datetime.timedelta(days=1)  
-
+            time_diff = target_time - datetime.datetime.now()
         wait_time = time_diff.total_seconds()  # 等待到目标时间    
         log.info(f"将在 {target_time.strftime('%Y-%m-%d %H:%M:%S')}")  
         log.info(f"需要等待 {wait_time:.0f} 秒")  
