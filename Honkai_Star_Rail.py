@@ -210,9 +210,14 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "main_map"
         },
         {
-            "title": "连续锄两次，会连续运行两次锄大地，避免漏怪，大约需要总计9小时",
+            "title": "连续锄两次，避免漏怪，需要约7小时",
             "choices": {"只锄一次": False, "连锄两次": True},
             "config_key": "allow_run_again"
+        },
+        {
+            "title": "是否结束后等待游戏换日后继续锄地",
+            "choices": {"否": False, "是": True},
+            "config_key": "allow_run_next_day"
         }
     ]
 

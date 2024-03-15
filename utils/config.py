@@ -114,7 +114,8 @@ class ConfigurationManager:
             "detect_fight_status_time": 15,
             "map_version": "default",
             "main_map": "1",
-            "allow_run_again": False
+            "allow_run_again": False,
+            "allow_run_next_day": False
         }
         
         
