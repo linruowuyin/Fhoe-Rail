@@ -35,7 +35,7 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "优先星球": "first_map", "定时锄大地": "scheduled"}
+            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "优先星球": "first_map", "[定时]": "scheduled"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
@@ -46,7 +46,7 @@ def choose_map_debug(map_instance: Map):
                 side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
                 cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
                 return (f"{main_map}-{side_map}", True)
-            elif option_ == "定时锄大地":
+            elif option_ == "[定时]":
                 map_instance.wait_and_run()
                 return f"1-1_0"
             main_map = options_map.get(option_)
@@ -132,9 +132,9 @@ def main():
         end_time = datetime.datetime.now()
         shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         shutdown_computer(shutdown_type)
-        log.info(f"开始执行跨天自动锄大地")
+        log.info(f"开始执行跨日连锄")
         if map_instance.has_crossed_4am(start=start_time, end=end_time):
-            log.info(f"跨越了凌晨4点，立即重新开始运行")
+            log.info(f"检测到换日，即将从头开锄")
             map_instance.auto_map(start, start_in_mid)
         else:
             now = datetime.datetime.now()
@@ -142,7 +142,7 @@ def main():
             if now.hour >= 4:
                 next_4am += datetime.timedelta(days=1)
             wait_time = (next_4am - now).total_seconds()
-            log.info(f"等待 {wait_time:.0f} 秒到下一个凌晨4点，将继续重新开始运行")
+            log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
             time.sleep(wait_time)
             map_instance.auto_map(start, start_in_mid)
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
@@ -157,7 +157,7 @@ def main_start():
             cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
             set_config()
     else:
-        log.info(f"检测到需要进行必要的配置，请配置")
+        log.info(f"检测到未进行必要配置，请配置")
         cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
         set_config()
         cfg.ensure_config_complete()
@@ -185,13 +185,13 @@ def get_questions_for_slot(slot: str) -> list:
     map_versions = map_instance.read_maps_versions()
     default_questions = [
         {
-            "title": "选择地图版本，default：正常走路/疾跑，technique：过程中会大量使用秘技",
+            "title": "选择地图版本，default：正常走路/疾跑，technique：强化型秘技角色适用，参考托帕",
             "choices": {version: version for version in map_versions},
             "config_key": "map_version"
         },
         {
-            "title": "想要跑完自动关机吗？",
-            "choices": {'不想': 0, '关机↑↑↓↓←→←→BABA': 1, '注销': 2},
+            "title": "锄后系统设置",
+            "choices": {'无操作': 0, '关机': 1, '注销': 2},
             "config_key": "auto_shutdown"
         },
         {
@@ -201,7 +201,7 @@ def get_questions_for_slot(slot: str) -> list:
         },
         {
             "title": "设置识别怪物超时时间，默认为15秒。需要自定义设置可以直接修改config.json中的detect_fight_status_time为指定的秒数",
-            "choices": {'较短识别时间（5秒）': 5, '较长识别时间（15秒）': 15},
+            "choices": {'较短识别（5秒）': 5, '较长识别（15秒）': 15},
             "config_key": "detect_fight_status_time"
         },
         {
@@ -249,7 +249,7 @@ def shutdown_computer(shutdown_type):
         log.info("下班喽！I'm free!")
         os.system("shutdown /s /f /t 10")
     elif shutdown_type == 2:
-        log.info("十秒后注销")
+        log.info("10秒后注销")
         time.sleep(10)
         os.system("shutdown /l /f")
     elif shutdown_type == 3:
