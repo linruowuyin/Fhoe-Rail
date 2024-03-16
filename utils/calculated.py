@@ -464,6 +464,8 @@ class Calculated:
         not_auto_c = cv.imread("./picture/not_auto.png")
         auto_switch = False
         auto_switch_clicked = False
+        auto_check_cnt = 0
+        screenshot_auto_check = None
         while True:
             result = self.scan_screenshot(self.main_ui)
             elapsed_time = time.time() - start_time
@@ -496,6 +498,21 @@ class Calculated:
                     auto_switch_clicked = True
     
                 auto_switch = True
+            
+            if elapsed_time > 10 and auto_check_cnt < 2:
+                if screenshot_auto_check is None:
+                    screenshot_auto_check, *_ = self.take_screenshot(offset=(40,20,-1725,-800))
+                if elapsed_time > 15:
+                    if auto_check_cnt == 0:
+                        first_auto_check = self.on_interface(check_list=[screenshot_auto_check],timeout=1,threshold=0.97,offset=(40,20,-1725,-800),allow_log=False)
+                        auto_check_cnt += 1
+                    if elapsed_time > 20 and first_auto_check and auto_check_cnt == 1:
+                        auto_check_cnt += 1
+                        if self.on_interface(check_list=[screenshot_auto_check],timeout=1,threshold=0.97,offset=(40,20,-1725,-800),allow_log=False):
+                            pyautogui.press('v')
+                            log.info("开启自动战斗（通过行动条识别）")
+                            time.sleep(1)
+                            auto_switch_clicked = True
 
             if auto_switch_clicked and auto_switch and elapsed_time > 10:
                 not_auto_result_c = self.scan_screenshot(not_auto_c)
@@ -742,7 +759,8 @@ class Calculated:
             raise Exception(f"map数据错误, esc参数只能为1")
 
     def handle_move(self, value, key, normal_run=False):
-        log.info(f"normal_run:{normal_run}")
+        if normal_run:
+            log.info(f"强制关闭疾跑normal_run:{normal_run}")
         self.keyboard.press(key)
         start_time = time.perf_counter()
         allow_run = self.cfg.CONFIG.get("auto_run_in_map", False)
