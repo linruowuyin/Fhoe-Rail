@@ -57,6 +57,7 @@ def choose_map_debug(map_instance: Map):
             if not options_map:
                 return None
             keys = list(options_map.keys())
+            index_values = list(options_map.values())
             second_values = list(dict.fromkeys([value[1] for value in options_map.values() if isinstance(value, list) and len(value) >= 2] + ["【返回】"]))
             second_option_ = questionary.select(title_, second_values).ask()
             if second_option_ == "【返回】":
@@ -68,7 +69,9 @@ def choose_map_debug(map_instance: Map):
             if option_ == "【返回】":
                 is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
             else:
-                side_map = keys[values.index(option_)]
+                index = next((i for i, sublist in enumerate(index_values) if sublist[0] == option_), 0)
+                side_map = keys[index]
+                log.info(f"{side_map}")
                 log.info(f"{main_map}-{side_map}")
                 return (f"{main_map}-{side_map}", True)
 
