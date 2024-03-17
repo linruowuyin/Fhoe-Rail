@@ -62,7 +62,7 @@ class Calculated:
         for i in [self.shift_btn, self.alt_btn]:
             self.keyboard.release(i)
 
-    def _check_window_visibility(self):
+    def _check_window_visibility(self, depth=0):
         """
         检查窗口是否可见
         """
@@ -71,18 +71,24 @@ class Calculated:
         if self.hwnd and win32gui.IsWindowVisible(self.hwnd):
             return True
         else:
-            log.info(f'窗口不可见或窗口句柄无效，窗口句柄为：{self.hwnd}')
-            # 等待用户输入回车键继续
-            input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
-            time.sleep(1)
-            self.hwnd = None
-            self.get_hwnd()
-
-            if self.hwnd:
-                switch_window()
-                return True
-            else:
+            if depth >= 3:
+                log.info("尝试次数过多，程序退出。")
                 return False
+            cnt = 1
+            while cnt < 3:
+                time.sleep(1)
+                log.info(f'窗口不可见或窗口句柄无效，窗口句柄为：{self.hwnd}，尝试重新查找窗口 {cnt} 次')
+                self.get_hwnd()
+                if self.hwnd:
+                    switch_window()
+                    return True
+                else:
+                    cnt += 1
+            else:
+                # 等待用户输入回车键继续
+                input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
+                time.sleep(1)
+                return self._check_window_visibility(depth + 1)
 
     def get_hwnd(self, hwnd_max_retries=10):
         for _ in range(hwnd_max_retries):
@@ -668,6 +674,7 @@ class Calculated:
         self.fighting_count = sum(1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
         self.current_fighting_index = 0
         total_map_count = len(map_data['map'])
+        self.first_role_check()  # 1号位为跑图角色
         for map_index, map in enumerate(map_data["map"]):
             log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map}")
             key, value = next(iter(map.items()))
@@ -1063,7 +1070,7 @@ class Calculated:
                     return True
                 else:
                     temp_max_val.append(result['max_val'])
-                    time.sleep(1)
+                    time.sleep(0.2)
         else:
             if allow_log:
                 log.info(f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
@@ -1085,3 +1092,25 @@ class Calculated:
             return False
         else:
             return True
+    
+    def first_role_check(self):
+        """
+        按下'1'，确认队伍中的1号位属于跑图角色
+        """
+        log.info("开始判断1号位")
+        image, *_ = self.take_screenshot(offset=(1670,339,-160,-739))
+        image_hsv = cv.cvtColor(image, cv.COLOR_RGB2HSV)
+
+        # 定义HSV颜色范围
+        color_ranges = [
+            (np.array([28, 49, 253]), np.array([32, 189, 255])),
+            (np.array([114, 240, 216]), np.array([116, 246, 226]))
+        ]
+
+        # 检查符合条件的像素
+        for lower, upper in color_ranges:
+            pixels = cv.inRange(image_hsv, lower, upper)
+            if np.any(pixels):
+                pyautogui.press('1')
+                log.info("设置1号位为跑图角色")
+                break
