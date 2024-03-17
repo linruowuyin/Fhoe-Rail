@@ -157,6 +157,7 @@ def main():
         main()
 
 def main_start():
+    cfg.ensure_config_complete()
     if cfg.config_issubset():
         if not cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('start'):
             cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)

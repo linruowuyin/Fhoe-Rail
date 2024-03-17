@@ -232,6 +232,14 @@ class Map:
                             log.info(f"{today_weekday_str}，非周二五日，跳过")
                             jump_this_map = True
                             break
+                    elif key == "need_allow_map_buy":
+                        if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_map_buy', False):
+                            jump_this_map = False
+                            continue
+                        else:
+                            log.info(f" config.json 中的 allow_map_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
+                            jump_this_map = True
+                            break
                     elif key == "normal_run":
                         normal_run = True  # 此地图json将会被强制设定为禁止疾跑
                         continue
