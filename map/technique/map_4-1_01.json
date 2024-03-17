@@ -3,6 +3,9 @@
     "author": "lrwy",
     "start": [
         {
+            "need_allow_map_buy": 1
+        },
+        {
             "check": 1
         },
         {
