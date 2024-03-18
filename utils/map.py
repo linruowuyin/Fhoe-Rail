@@ -288,6 +288,8 @@ class Map:
                             else:
                                 log.info(f"已在对应楼层，跳过选择楼层")
                                 pass
+                        elif key == "picture\\map_4-2_point_3_point":
+                            self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925))
                         elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
                             self.find_transfer_point(key, threshold=0.97)
                             self.calculated.click_target(key, 0.93)
