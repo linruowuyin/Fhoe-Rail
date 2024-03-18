@@ -680,16 +680,17 @@ class Calculated:
         dev_restart = True  # 初始化开发者重开
         while dev_restart:
             dev_restart = False  # 不进行重开
-            for map_index, map in enumerate(map_data["map"]):
+            for map_index, map_value in enumerate(map_data["map"]):
                 if self.pause.check_pause(dev, last_point):
                     dev_restart = True  # 检测到需要重开
                     switch_window()
                     time.sleep(1)
                     self.click_target("picture\\transfer.png", 0.93)
                     self.run_mapload_check()
+                    map_data = self.cfg.read_json_file(f"map/{map_version}/{map}.json")  # 重新读取最新地图文件
                     break
-                log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map}")
-                key, value = next(iter(map.items()))
+                log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map_value}")
+                key, value = next(iter(map_value.items()))
                 self.monthly_pass_check()  # 行进前识别是否接近月卡时间
                 self._last_step_run = False  # 初始化上一次为走路
                 if key == "space" or key == "r": 
