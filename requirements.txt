@@ -34,3 +34,6 @@ pyuac
 
 requests
 
+keyboard
+
+
