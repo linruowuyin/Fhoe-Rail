@@ -35,12 +35,12 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4", "螺丝星": "5", "优先星球": "first_map", "[定时]": "scheduled"}
+            options_map = {"1 空间站「黑塔」": "1", "2 雅利洛-VI": "2", "3 仙舟「罗浮」": "3", "4 匹诺康尼": "4", "5 螺丝星": "5", "优先星球": "first_map", "[定时]": "scheduled"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
             if option_ == "优先星球":
-                options_map_first = {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"}
+                options_map_first = {"1 空间站「黑塔」": "1", "2 雅利洛-VI": "2", "3 仙舟「罗浮」": "3", "4 匹诺康尼": "4"}
                 option_ = questionary.select(title_, list(options_map_first.keys())).ask()
                 main_map = options_map_first.get(option_)
                 side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
@@ -95,24 +95,28 @@ def print_version():
 def main():
     map_instance = Map()
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
-    if len(sys.argv) > 1 and sys.argv[1] == "--debug":
-        main_start()
-        start = choose_map_debug(map_instance)
-        if isinstance(start, tuple):
-            start_in_mid = start[1]
-            start = start[0]
-    elif len(sys.argv) > 1 and sys.argv[1] == "--config":
-        main_start_rewrite()  
-        start = choose_map_debug(map_instance)
-        if isinstance(start, tuple):
-            start_in_mid = start[1]
-            start = start[0]
+    dev = False  # 初始开发者模式，为否
+
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--debug":
+            main_start()
+            start = choose_map_debug(map_instance)
+        elif sys.argv[1] == "--config":
+            main_start_rewrite()
+            start = choose_map_debug(map_instance)
+        elif sys.argv[1] == "--dev":
+            main_start()
+            start = choose_map_debug(map_instance)
+            dev = True  # 设置开发者模式
+        else:
+            main_start()
+            start = choose_map(map_instance)
     else:
         main_start()
         start = choose_map(map_instance)
-        if isinstance(start, tuple):
-            start_in_mid = start[1]
-            start = start[0]
+
+    if isinstance(start, tuple):
+        start_in_mid, start = start[1], start[0]
     
     if start:
         php_content = fetch_php_file_content()  # 获取PHP文件的内容
@@ -128,10 +132,10 @@ def main():
         log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         start_time = datetime.datetime.now()
-        map_instance.auto_map(start, start_in_mid)  # 读取配置
+        map_instance.auto_map(start, start_in_mid, dev=dev)  # 读取配置
         allow_run_again = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get("allow_run_again", False)
         if allow_run_again:
-            map_instance.auto_map(start, start_in_mid)
+            map_instance.auto_map(start, start_in_mid, dev=dev)
         end_time = datetime.datetime.now()
         shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         shutdown_computer(shutdown_type)
@@ -139,7 +143,7 @@ def main():
             log.info(f"开始执行跨日连锄")
             if map_instance.has_crossed_4am(start=start_time, end=end_time):
                 log.info(f"检测到换日，即将从头开锄")
-                map_instance.auto_map(start, start_in_mid)
+                map_instance.auto_map(start, start_in_mid, dev=dev)
             else:
                 now = datetime.datetime.now()
                 next_4am = now.replace(hour=4, minute=0, second=0, microsecond=0)
@@ -149,7 +153,7 @@ def main():
                 log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
                 wait_time += 60
                 time.sleep(wait_time)
-                map_instance.auto_map(start, start_in_mid)
+                map_instance.auto_map(start, start_in_mid, dev=dev)
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         # shutdown_computer(shutdown_type)
     else:

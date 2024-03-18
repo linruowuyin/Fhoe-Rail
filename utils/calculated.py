@@ -18,6 +18,7 @@ from .exceptions import Exception
 from .log import log
 from .mini_asu import ASU
 from .switch_window import switch_window
+from .pause import Pause
 
 class Calculated:
     def __init__(self):
@@ -662,7 +663,8 @@ class Calculated:
 
         return use_absolute_time, delay, allow_press_f
 
-    def auto_map(self, map, old=True, normal_run=False, rotate=False):
+    def auto_map(self, map, old=True, normal_run=False, rotate=False, dev=False, last_point=''):
+        self.pause = Pause(dev=dev)
         map_version = self.cfg.CONFIG.get("map_version", "default")
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
@@ -675,31 +677,41 @@ class Calculated:
         self.current_fighting_index = 0
         total_map_count = len(map_data['map'])
         self.first_role_check()  # 1号位为跑图角色
-        for map_index, map in enumerate(map_data["map"]):
-            log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map}")
-            key, value = next(iter(map.items()))
-            self.monthly_pass_check()  # 行进前识别是否接近月卡时间
-            self._last_step_run = False  # 初始化上一次为走路
-            if key == "space" or key == "r": 
-                self.handle_space_or_r(value, key)
-            elif key == "f":
-                self.handle_f()
-            elif key == "check" and value == 1:
-                self.handle_check(today_weekday_str)
-            elif key == "mouse_move":
-                self.mouse_move(value)
-            elif key == "fighting":
-                self.handle_fighting(value)
-            elif key == "scroll":
-                self.scroll(value)
-            elif key == "shutdown":
-                self.handle_shutdown()
-            elif key == "e":
-                self.handle_e(value)  # 用E进入战斗
-            elif key == "esc":
-                self.handle_esc(value)
-            else:
-                self.handle_move(value, key, normal_run)
+        dev_restart = True  # 初始化开发者重开
+        while dev_restart:
+            dev_restart = False  # 不进行重开
+            for map_index, map in enumerate(map_data["map"]):
+                if self.pause.check_pause(dev, last_point):
+                    dev_restart = True  # 检测到需要重开
+                    switch_window()
+                    time.sleep(1)
+                    self.click_target("picture\\transfer.png", 0.93)
+                    self.run_mapload_check()
+                    break
+                log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map}")
+                key, value = next(iter(map.items()))
+                self.monthly_pass_check()  # 行进前识别是否接近月卡时间
+                self._last_step_run = False  # 初始化上一次为走路
+                if key == "space" or key == "r": 
+                    self.handle_space_or_r(value, key)
+                elif key == "f":
+                    self.handle_f()
+                elif key == "check" and value == 1:
+                    self.handle_check(today_weekday_str)
+                elif key == "mouse_move":
+                    self.mouse_move(value)
+                elif key == "fighting":
+                    self.handle_fighting(value)
+                elif key == "scroll":
+                    self.scroll(value)
+                elif key == "shutdown":
+                    self.handle_shutdown()
+                elif key == "e":
+                    self.handle_e(value)  # 用E进入战斗
+                elif key == "esc":
+                    self.handle_esc(value)
+                else:
+                    self.handle_move(value, key, normal_run)
 
     def handle_space_or_r(self, value, key):
         random_interval = random.uniform(0.3, 0.7)

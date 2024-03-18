@@ -41,12 +41,21 @@ echo   [4] 配置（配置后选地图）
 echo.
 echo   [5] 录制
 echo.
+echo   [6] 开发者模式（带有F8暂停功能）
+echo.
 
 REM 等待用户输入或超时
-choice /C 12345 /T 15 /D 2 /N >nul
+choice /C 123456 /T 15 /D 2 /N >nul
 
 REM 检查用户输入
-if errorlevel 5 (
+if errorlevel 6 (
+    echo.
+    echo 正在启动程式...F8暂停，暂停后F8继续，F9点击传送重跑该图
+    python -i -X utf8 Honkai_Star_Rail.py --dev
+    echo.
+    pause
+    goto :end
+) else if errorlevel 5 (
     echo.
     python -i -X utf8 utils/record.py
     echo.

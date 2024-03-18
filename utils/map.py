@@ -63,6 +63,7 @@ class Map:
             map_data = self.cfg.read_json_file(f"map/{map_version}/{map_}")
             key1 = map_[map_.index('_') + 1:map_.index('-')]
             key2 = map_[map_.index('-') + 1:map_.index('.')]
+            key2_front = key2[:key2.index('_')]
             value = self.map_list_map.get(key1)
         
             if value is None:
@@ -70,7 +71,8 @@ class Map:
 
             map_data_first_name = map_data["name"].replace(' ','')
             map_data_first_name = map_data_first_name[:map_data_first_name.index('-')]
-            value[key2] = [map_data["name"], map_data_first_name]
+            format_map_data_first_name = key1 + '-' + key2_front + ' ' + map_data_first_name
+            value[key2] = [map_data["name"], format_map_data_first_name]
             self.map_list_map[key1] = value
             
         # log.info(f"self.map_list:{self.map_list}")
@@ -196,7 +198,7 @@ class Map:
         if "drag" in start:
             self.allow_drap_map_switch = start["drag"]
 
-    def auto_map(self, start, start_in_mid: bool=False):
+    def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
         teleport_click_count = 0  
         today_weekday_str = self.now.strftime('%A')
@@ -215,7 +217,7 @@ class Map:
                 self.calculated.monthly_pass()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
-                temp_point = ""  # 用于输出传送前的点位
+                self.temp_point = ""  # 用于输出传送前的点位
                 normal_run = False  # 初始化跑步模式为默认
                 for start in map_data['start']:
                     key = list(start.keys())[0]
@@ -269,8 +271,8 @@ class Map:
                             jump_this_map = True
                             break
                         self.calculated.run_mapload_check()
-                        if temp_point:
-                            log.info(f'地图加载前的传送点为 {temp_point}')
+                        if self.temp_point:
+                            log.info(f'地图加载前的传送点为 {self.temp_point}')
                     else:
                         value = min(value, 0.8)
                         time.sleep(value)
@@ -289,7 +291,7 @@ class Map:
                         elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
                             self.find_transfer_point(key, threshold=0.97)
                             self.calculated.click_target(key, 0.93)
-                            temp_point = key
+                            self.temp_point = key
                             time.sleep(1.7)
                         else:
                             if self.allow_drap_map_switch:
@@ -298,7 +300,7 @@ class Map:
                                 self.calculated.click_target_with_alt(key, 0.93)
                             else:
                                 self.calculated.click_target(key, 0.93)
-                            temp_point = key
+                            self.temp_point = key
                         teleport_click_count += 1 
                         log.info(f'传送点击（{teleport_click_count}）')
                         # time.sleep(1.7)  # 传送点击后等待2秒
@@ -312,7 +314,7 @@ class Map:
                 # 记录处理开始时间
                 start_time = time.time()
 
-                self.calculated.auto_map(map_, False, normal_run)
+                self.calculated.auto_map(map_, False, normal_run, dev=dev, last_point=self.temp_point)
 
                 # 记录处理结束时间
                 end_time = time.time()
