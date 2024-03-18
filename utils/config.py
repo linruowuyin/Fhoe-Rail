@@ -68,7 +68,10 @@ class ConfigurationManager:
         file_path = self.normalize_file_path(filename)
         if file_path:
             with open(file_path, "rb") as f:
-                data = orjson.loads(f.read())
+                content = f.read()
+                if content.startswith(b'\xef\xbb\xbf'):
+                    content = content[3:]
+                data = orjson.loads(content)
                 if path:
                     return data, file_path
                 else:
