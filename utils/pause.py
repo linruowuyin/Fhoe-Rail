@@ -50,7 +50,8 @@ class Pause:
                         image = cv.imread(last_point)
                         if image is not None:
                             cv.imshow('temp_point', image)
-                            cv.waitKey()
+                            while self.pause_event.is_set():
+                                cv.waitKey(1)
             if press:
                 cv.destroyAllWindows()
                 return self.last_key_pressed == 'F9'
