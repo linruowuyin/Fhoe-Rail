@@ -59,7 +59,7 @@ class Calculated:
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
     
-    def error_stop(self):
+    def error_stop(self, signum=None, frame=None):
         for i in [self.shift_btn, self.alt_btn]:
             self.keyboard.release(i)
 
@@ -354,7 +354,7 @@ class Calculated:
         else:
             return False
 
-    def click_target(self, target_path, threshold, flag=True, timeout=30):
+    def click_target(self, target_path, threshold, flag=True, timeout=30, offset=(0,0,0,0)):
         """
         说明：
             点击指定图片
@@ -363,6 +363,7 @@ class Calculated:
             :param threshold:匹配阈值
             :param flag:True为一定要找到图片
             :param timeout: 最大搜索时间（秒）
+            :param offset: 左、上、右、下，正值为向右或向下偏移
         返回：
             :return 是否点击成功
         """
@@ -372,7 +373,7 @@ class Calculated:
         start_time = time.time()
         
         while time.time() - start_time < timeout:
-            result = self.scan_screenshot(original_target)
+            result = self.scan_screenshot(original_target, offset)
             if result["max_val"] > threshold:
                 points = self.calculated(result, original_target.shape)
                 self.click(points)
@@ -380,7 +381,7 @@ class Calculated:
 
             # 如果超过5秒，同时匹配原图像和颜色反转后的图像
             if time.time() - start_time > 5:
-                result = self.scan_screenshot(inverted_target)
+                result = self.scan_screenshot(inverted_target, offset)
                 if result["max_val"] > threshold:
                     points = self.calculated(result, inverted_target.shape)
                     self.click(points)
