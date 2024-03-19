@@ -6,7 +6,7 @@
             "need_allow_map_buy": 1
         },
         {
-            "check": 1
+            "check": [0]
         },
         {
             "picture\\buy.png": 1.5

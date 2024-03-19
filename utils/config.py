@@ -119,7 +119,8 @@ class ConfigurationManager:
             "main_map": "1",
             "allow_run_again": False,
             "allow_run_next_day": False,
-            "allow_map_buy": False
+            "allow_map_buy": False,
+            "allow_snack_buy": False
         }
         
         

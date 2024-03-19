@@ -214,7 +214,7 @@ class Map:
                 map_ = map_.split('.')[0]
                 map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
-                self.calculated.monthly_pass()
+                self.calculated.monthly_pass_check()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
                 jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                 self.temp_point = ""  # 用于输出传送前的点位
@@ -224,22 +224,31 @@ class Map:
                     log.info(key)
                     value = start[key]
                     self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
-                    self.calculated.monthly_pass_check()
-                    if key == "check" and value == 1:  # 判断是否为周二，周五，周日
-                       if self.day_init([1,4,6]):  # 1代表周二，4代表周五，6代表周日
-                            log.info(f"{today_weekday_str}，周二五日，尝试购买")
-                            jump_this_map = False
-                            continue
-                       else:
-                            log.info(f"{today_weekday_str}，非周二五日，跳过")
-                            jump_this_map = True
-                            break
+                    if key == "check":  # 判断周几
+                        if value == 1:
+                            value = [0,1,2,3,4,5,6]
+                        if self.day_init(value):  # 1代表周二，4代表周五，6代表周日
+                                log.info(f"今天{today_weekday_str}，尝试购买")
+                                jump_this_map = False
+                                continue
+                        else:
+                                log.info(f"今天{today_weekday_str}，跳过")
+                                jump_this_map = True
+                                break
                     elif key == "need_allow_map_buy":
                         if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_map_buy', False):
                             jump_this_map = False
                             continue
                         else:
                             log.info(f" config.json 中的 allow_map_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
+                            jump_this_map = True
+                            break
+                    elif key == "need_allow_snack_buy":
+                        if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_snack_buy', False):
+                            jump_this_map = False
+                            continue
+                        else:
+                            log.info(f" config.json 中的 allow_snack_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
                             jump_this_map = True
                             break
                     elif key == "normal_run":
