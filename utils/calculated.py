@@ -53,8 +53,8 @@ class Calculated:
         self.alt_btn = KeyboardKey.alt_l  # alt左键
         
         self.total_fight_time = 0  # 总计战斗时间
-        self.error_fight_cnt = 0  # 异常战斗<1秒的计数
-        self.error_fight_threshold = 1  # 异常战斗为战斗时间<1秒
+        self.error_fight_cnt = 0  # 异常战斗<3秒的计数
+        self.error_fight_threshold = 3  # 异常战斗为战斗时间<3秒
         self.tatol_save_time = 0  # 疾跑节约时间
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
@@ -118,7 +118,7 @@ class Calculated:
         
         return left, top, right, bottom
 
-    def click(self, points):
+    def click(self, points, slot=0):
         """
         说明：
             点击指定屏幕坐标
@@ -126,7 +126,10 @@ class Calculated:
             :param points: 坐标
         """
         x, y = int(points[0]), int(points[1])
-        log.info(f"点击坐标{(x, y)}")
+        if slot:
+            log.info(f"点击坐标{(x, y)}")
+        else:
+            log.info(f"点击坐标{(x, y)}，坐标来源图片匹配度{slot:.3f}")
         self.mouse_press(x, y)
 
     def keyboard_press(self, key_name: str, delay: float=0): 
@@ -353,6 +356,24 @@ class Calculated:
             return True
         else:
             return False
+    
+    def click_target_above_threshold(self, target, threshold, offset):
+        """
+        尝试点击匹配度大于阈值的目标图像。
+        参数:
+            :param target: 目标图像
+            :param threshold: 匹配阈值
+            :param offset: 左、上、右、下，正值为向右或向下偏移
+        返回:
+            :return: 是否点击成功
+        """
+        result = self.scan_screenshot(target, offset)
+        if result["max_val"] > threshold:
+            points = self.calculated(result, target.shape)
+            self.click(points, result['max_val'])
+            return True
+        return False
+
 
     def click_target(self, target_path, threshold, flag=True, timeout=30, offset=(0,0,0,0)):
         """
@@ -373,26 +394,15 @@ class Calculated:
         start_time = time.time()
         
         while time.time() - start_time < timeout:
-            result = self.scan_screenshot(original_target, offset)
-            if result["max_val"] > threshold:
-                points = self.calculated(result, original_target.shape)
-                self.click(points)
+            if self.click_target_above_threshold(original_target, threshold, offset):
                 return True
-
-            # 如果超过5秒，同时匹配原图像和颜色反转后的图像
-            if time.time() - start_time > 5:
-                result = self.scan_screenshot(inverted_target, offset)
-                if result["max_val"] > threshold:
-                    points = self.calculated(result, inverted_target.shape)
-                    self.click(points)
+            if time.time() - start_time > 5:  # 如果超过5秒，同时匹配原图像和颜色反转后的图像
+                if self.click_target_above_threshold(inverted_target, threshold, offset):
                     log.info("阴阳变转")
                     return True
-
-            if not flag:
+            if not flag:  # 是否一定要找到
                 return False
-            
-            # 添加短暂延迟避免性能消耗
-            time.sleep(1)
+            time.sleep(1)  # 添加短暂延迟避免性能消耗
         else:
             log.info(f"查找图片超时 {target_path}")
             return False
@@ -414,7 +424,7 @@ class Calculated:
         start_time = time.time()
         action_executed = False
         self.attack_once = False
-        log.info("识别进入战斗")
+        log.info("开始识别是否进入战斗")
         while time.time() - start_time < timeout:
             main_result = self.scan_screenshot(self.main_ui, offset=(0,0,-1630,-800))
             doubt_result = self.scan_temp_screenshot(self.doubt_ui)
@@ -428,7 +438,7 @@ class Calculated:
             if action_executed:
                 return action_executed
             time.sleep(0.5)
-        log.info("识别超时,此处可能无敌人")
+        log.info(f"结束识别，识别时长{timeout}秒，此处可能无敌人")
         return False
 
     def click_action(self, is_warning, timeout=8):
@@ -464,10 +474,11 @@ class Calculated:
         detect_fight_status_time = self.cfg.CONFIG.get("detect_fight_status_time", 15)
         fight_status = self.detect_fight_status(timeout=detect_fight_status_time)
         if not fight_status:
-            # 识别超时，此处可能无敌人
+            # 结束识别，此处可能无敌人
             return False
 
         start_time = time.time()
+        log.info(f"战斗开始")
         not_auto = cv.imread("./picture/auto.png")
         not_auto_c = cv.imread("./picture/not_auto.png")
         auto_switch = False
@@ -833,6 +844,8 @@ class Calculated:
         if current_time.hour == 3 and 55 <= current_time.minute < 60:
             while datetime.now().hour == 3:
                 time.sleep(2)
+            else:
+                current_time = datetime.now()  # 等待后重新赋值当前时间
 
         # 如果是首次运行或者距离上次检查已经过了凌晨4点且日期发生了变更，则需要执行一次月卡检查
         if self.last_check_time is None or \
@@ -844,6 +857,7 @@ class Calculated:
             
             # 更新上次检查时间
             self.last_check_time = current_time
+            log.info(f"月卡检查时间更新至：{self.last_check_time}")
 
     def monthly_pass(self):
         """

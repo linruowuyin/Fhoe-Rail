@@ -3,7 +3,7 @@
   "author": "喵不可言",
   "start": [
     {
-      "need_allow_map_buy": 1
+      "need_allow_snack_buy": 1
     },
     {
       "picture\\buy.png": 1.5
