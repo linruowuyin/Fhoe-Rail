@@ -72,7 +72,8 @@ This software is open source, free of charge and for learning and exchange purpo
 | shutdown   | 关机标志，键值无意义，控制开关在配置文件中               |
 | mouse_move | 视角转动，因数值计算复杂（不同设备数值不同），已被弃用   |
 | scroll     | 鼠标滚轮滚动的数值，同样较为复杂，未被启用               |
-| e          | 只有键值为1时有意义，使用秘技并追加普通攻击              |
+| e          | 键值为1时，使用秘技并追加普通攻击              |
+| e          | 键值为2时，仅使用秘技；适用于强化型秘技角色              |
 | esc        | 只有键值为1时有意义，等同于按下了一次Esc键               |
 
 ---
