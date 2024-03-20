@@ -200,7 +200,8 @@ class Map:
 
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
-        teleport_click_count = 0  
+        teleport_click_count = 0
+        error_check_point = False  # 初始化筑梦机关检查为通过
         today_weekday_str = self.now.strftime('%A')
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
@@ -299,6 +300,18 @@ class Map:
                                 pass
                         elif key == "picture\\map_4-2_point_3.png":
                             self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925))
+                        elif key.startswith("picture\\check_4-1_point"):
+                            self.find_transfer_point(key, threshold=0.97)
+                            if self.calculated.click_target(key, 0.95):
+                                log.info(f"筑梦机关检查通过")
+                            else:
+                                log.info(f"筑梦机关检查不通过，请将机关调整到正确的位置上")
+                                error_check_point = True
+                            time.sleep(1)
+                        elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
+                            self.find_transfer_point(key, threshold=0.97)
+                            self.calculated.click_target(key, 0.95)
+                            self.temp_point = key
                         elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
                             self.find_transfer_point(key, threshold=0.97)
                             self.calculated.click_target(key, 0.93)
@@ -342,6 +355,8 @@ class Map:
                     log.info(f"结束该阶段的锄地，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
                     error_fight_cnt = self.calculated.error_fight_cnt
                     log.info(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
+                    if error_check_point:
+                        log.info(f"筑梦机关检查不通过，请将机关调整到正确的位置上")
                     log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
                     log.info(f"战斗次数{self.calculated.total_fight_cnt}")
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
