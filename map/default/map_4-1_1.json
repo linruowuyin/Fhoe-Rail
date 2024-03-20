@@ -22,6 +22,24 @@
         },
         {
             "picture\\transfer.png": 1.5
+        },
+        {
+            "map": 1
+        },
+        {
+            "picture\\check_4-1_point_1.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\check_4-1_point_2.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\check_4-1_point_3.png": 1.5,
+            "drag": 1
+        },
+        {
+            "main": 1
         }
     ],
     "map": [

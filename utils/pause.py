@@ -12,6 +12,8 @@ class Pause:
             self.pause_event.clear()
             keyboard.on_press_key("F8", self.toggle_pause)
             keyboard.on_press_key("F9", self.continue_and_restart)
+            keyboard.on_press_key("F10", self.continue_new_map)
+            
         else:
             self.pause_event = None
 
@@ -34,6 +36,14 @@ class Pause:
             log.info("检测到按下'F9'，即将重新传送至地图")
             self.pause_event.clear()
             self.last_key_pressed = 'F9'
+            
+    def continue_new_map(self, event):
+        if not self.dev:
+            return
+        if self.pause_event.is_set():
+            log.info("检测到按下'F10'，即将重跑map")
+            self.pause_event.clear()
+            self.last_key_pressed = 'F10'
 
     def check_pause(self, dev, last_point):
         if not self.dev:
@@ -54,7 +64,7 @@ class Pause:
                                 cv.waitKey(1)
             if press:
                 cv.destroyAllWindows()
-                return self.last_key_pressed == 'F9'
+                return self.last_key_pressed
             else:
                 return False
         else:

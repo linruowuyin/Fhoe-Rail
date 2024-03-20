@@ -156,6 +156,8 @@ def main():
                 map_instance.auto_map(start, start_in_mid, dev=dev)
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         # shutdown_computer(shutdown_type)
+        if dev:  # 开发者模式自动重选地图
+            main()
     else:
         log.info("前面的区域，以后再来探索吧")
         main()
