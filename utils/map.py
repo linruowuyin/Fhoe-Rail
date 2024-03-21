@@ -192,6 +192,7 @@ class Map:
         self.calculated.tatol_save_time = 0
         self.calculated.total_fight_cnt = 0
         self.calculated.total_no_fight_cnt = 0
+        self.calculated.auto_final_fight_e_cnt = 0
     
     def allow_map_drag(self, start):
         self.allow_drap_map_switch = 0  # 初始化禁止拖动地图
