@@ -31,11 +31,20 @@ jobs:
         run: |
           pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries --uac-admin -n "Fhoe-Rail" Honkai_Star_Rail.py -y
 
+      - name: Create batch file
+        run: |
+          $batContent = @"
+          @echo off
+          .\Fhoe-Rail.exe --debug
+          "@
+          $batContent | Out-File -FilePath "自选地图.bat" -Encoding ASCII
+
       - name: Move assets to dist directory
         run: |
           xcopy /E /I /Y .\map\ .\dist\Fhoe-Rail\map\
           xcopy /E /I /Y .\新图注意事项\ .\dist\Fhoe-Rail\新图注意事项\
           xcopy /E /I /Y .\picture\ .\dist\Fhoe-Rail\picture\
+          xcopy /Y .\自选地图.bat .\dist\Fhoe-Rail\
           xcopy /Y .\README.md .\dist\Fhoe-Rail\
 
       - name: Upload artifact
