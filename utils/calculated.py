@@ -58,6 +58,7 @@ class Calculated:
         self.tatol_save_time = 0  # 疾跑节约时间
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
+        self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
     
     def error_stop(self, signum=None, frame=None):
         for i in [self.shift_btn, self.alt_btn]:
@@ -574,21 +575,21 @@ class Calculated:
         while result_A is None and time.time() - start_time < 3:
             result_A = self.scan_screenshot(image_A)
         if result_A is not None and result_A["max_val"] > 0.9:
-            time.sleep(1)
-            round_disable = cv.imread("./picture/round_disable.png")
-            if self.on_interface(check_list=[round_disable], timeout=5, interface_desc='无法购买', threshold=0.95):
-                allow_buy = False
-            else:
-                self.click_target("./picture/round.png", 0.9, timeout=8)
-                allow_buy = True
-            main_result = self.scan_screenshot(self.main_ui)
-            while main_result['max_val'] < 0.9:
-                self.keyboard_press(self.esc_btn)
+            allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
+            if allow_fight_e_buy_prop:
                 time.sleep(1)
-                main_result = self.scan_screenshot(self.main_ui)
-            if allow_buy:
-                pyautogui.press('e')
-            time.sleep(1)
+                round_disable = cv.imread("./picture/round_disable.png")
+                if self.on_interface(check_list=[round_disable], timeout=5, interface_desc='无法购买', threshold=0.95):
+                    allow_buy = False
+                else:
+                    self.click_target("./picture/round.png", 0.9, timeout=8)
+                    allow_buy = True
+                self.back_to_main()
+                if allow_buy:
+                    pyautogui.press('e')
+                time.sleep(1)
+            else:
+                self.back_to_main()
 
         if value == 1:
             self.click_center()
@@ -771,7 +772,9 @@ class Calculated:
     def handle_fighting(self, value):
         if value == 1:  # 战斗
             self.current_fighting_index += 1
-            if self.cfg.CONFIG.get("auto_final_fight_e", False) and self.current_fighting_index == self.fighting_count:
+            auto_final_fight_e_cnt_max = self.cfg.CONFIG.get("auto_final_fight_e_cnt")
+            if self.cfg.CONFIG.get("auto_final_fight_e", False) and self.current_fighting_index == self.fighting_count and self.auto_final_fight_e_cnt < auto_final_fight_e_cnt_max:
+                self.auto_final_fight_e_cnt += 1
                 log.info(f"地图最后一个fighting:1，改为使用e")
                 self.handle_e(value)
             else:
@@ -858,8 +861,12 @@ class Calculated:
         if self.last_check_time is None or \
                 (self.last_check_time.date() < current_time.date() and current_time.hour >= 4) or \
                 (self.last_check_time.hour < 4 and current_time.hour >= 4):
-            # 如果当前时间大于上次检查时间，则执行一次月卡检查
-            if self.last_check_time is None or current_time > self.last_check_time:
+            four_am_today = current_time.replace(hour=4, minute=0, second=0, microsecond=0)
+            if 0 <= (current_time - four_am_today).total_seconds() < 30:  # 4点之后的30秒内，触发的尝试点击月卡将延迟30秒，避免月卡弹出前尝试识别月卡
+                delay = 30
+                log.info(f"等待{delay}秒后尝试识别点击月卡")
+                self.try_click_pass(delay)
+            elif self.last_check_time is None or current_time > self.last_check_time:  # 如果当前时间大于上次检查时间，则执行一次月卡检查
                 self.try_click_pass()
             
             # 更新上次检查时间
@@ -887,11 +894,12 @@ class Calculated:
             time.sleep(5)  # 延时，等待动画可能的加载
             self.try_click_pass()
 
-    def try_click_pass(self, threshold=0.92, max_click_attempts=2):
+    def try_click_pass(self, threshold=0.92, max_click_attempts=2, delay=0):
         """
         说明：
             尝试点击月卡。
         """
+        time.sleep(abs(delay))
         log.info("判断是否存在月卡")
         target = cv.imread("./picture/finish_fighting.png")
         result = self.scan_screenshot(target)

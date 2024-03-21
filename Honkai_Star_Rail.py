@@ -35,7 +35,7 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"1 空间站「黑塔」": "1", "2 雅利洛-VI": "2", "3 仙舟「罗浮」": "3", "4 匹诺康尼": "4", "5 螺丝星": "5", "优先星球": "first_map", "[定时]": "scheduled"}
+            options_map = {"1 空间站「黑塔」": "1", "2 雅利洛-VI": "2", "3 仙舟「罗浮」": "3", "4 匹诺康尼": "4", "5 螺丝星": "5", "优先星球": "first_map", "[设置]":"option", "[定时]": "scheduled"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
@@ -46,6 +46,10 @@ def choose_map_debug(map_instance: Map):
                 side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
                 cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
                 return (f"{main_map}-{side_map}", True)
+            elif option_ == "[设置]":
+                main_start_rewrite()
+                log.info(f"设置完成")
+                main()
             elif option_ == "[定时]":
                 map_instance.wait_and_run()
                 return f"1-1_0"
@@ -73,7 +77,7 @@ def choose_map_debug(map_instance: Map):
                 side_map = keys[index]
                 log.info(f"{side_map}")
                 log.info(f"{main_map}-{side_map}")
-                return (f"{main_map}-{side_map}", True)
+                return (f"{main_map}-{side_map}", False)
 
 
 def filter_content(content, keyword):
@@ -133,9 +137,10 @@ def main():
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         start_time = datetime.datetime.now()
         map_instance.auto_map(start, start_in_mid, dev=dev)  # 读取配置
+        start_map = f"1-1_0"
         allow_run_again = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get("allow_run_again", False)
         if allow_run_again:
-            map_instance.auto_map(start, start_in_mid, dev=dev)
+            map_instance.auto_map(start_map, start_in_mid, dev=dev)
         end_time = datetime.datetime.now()
         shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         shutdown_computer(shutdown_type)
@@ -143,17 +148,18 @@ def main():
             log.info(f"开始执行跨日连锄")
             if map_instance.has_crossed_4am(start=start_time, end=end_time):
                 log.info(f"检测到换日，即将从头开锄")
-                map_instance.auto_map(start, start_in_mid, dev=dev)
+                map_instance.auto_map(start_map, start_in_mid, dev=dev)
             else:
                 now = datetime.datetime.now()
                 next_4am = now.replace(hour=4, minute=0, second=0, microsecond=0)
                 if now.hour >= 4:
                     next_4am += datetime.timedelta(days=1)
                 wait_time = (next_4am - now).total_seconds()
-                log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
                 wait_time += 60
-                time.sleep(wait_time)
-                map_instance.auto_map(start, start_in_mid, dev=dev)
+                if wait_time <= 14400:
+                    log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
+                    time.sleep(wait_time)
+                    map_instance.auto_map(start_map, start_in_mid, dev=dev)
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         # shutdown_computer(shutdown_type)
         if dev:  # 开发者模式自动重选地图
@@ -163,18 +169,13 @@ def main():
         main()
 
 def main_start():
+    """写入未找到的默认配置
+    """
     cfg.ensure_config_complete()
-    if cfg.config_issubset():
-        if not cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('start'):
-            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
-            set_config()
-    else:
-        log.info(f"检测到未进行必要配置，请配置")
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "start", True)
-        set_config()
-        cfg.ensure_config_complete()
 
 def main_start_rewrite():
+    """写入需要询问的配置
+    """
     set_config(slot='start_rewrite')
     cfg.ensure_config_complete()
 
@@ -207,29 +208,9 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "auto_shutdown"
         },
         {
-            "title": "map最后一次攻击自动转换为秘技攻击？默认为不转换",
-            "choices": {'不转换': False, '转换': True},
-            "config_key": "auto_final_fight_e"
-        },
-        {
-            "title": "设置识别怪物超时时间，默认为15秒。需要自定义设置可以直接修改config.json中的detect_fight_status_time为指定的秒数",
-            "choices": {'较短识别（5秒）': 5, '较长识别（15秒）': 15},
-            "config_key": "detect_fight_status_time"
-        },
-        {
             "title": "优先星球",
             "choices": {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"},
             "config_key": "main_map"
-        },
-        {
-            "title": "连续锄两次，避免漏怪，需要约7小时",
-            "choices": {"只锄一次": False, "连锄两次": True},
-            "config_key": "allow_run_again"
-        },
-        {
-            "title": "是否结束后等待游戏换日后继续锄地",
-            "choices": {"否": False, "是": True},
-            "config_key": "allow_run_next_day"
         }
     ]
 
