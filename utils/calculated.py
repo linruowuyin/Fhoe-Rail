@@ -861,8 +861,12 @@ class Calculated:
         if self.last_check_time is None or \
                 (self.last_check_time.date() < current_time.date() and current_time.hour >= 4) or \
                 (self.last_check_time.hour < 4 and current_time.hour >= 4):
-            # 如果当前时间大于上次检查时间，则执行一次月卡检查
-            if self.last_check_time is None or current_time > self.last_check_time:
+            four_am_today = current_time.replace(hour=4, minute=0, second=0, microsecond=0)
+            if 0 <= (current_time - four_am_today).total_seconds() < 30:  # 4点之后的30秒内，触发的尝试点击月卡将延迟30秒，避免月卡弹出前尝试识别月卡
+                delay = 30
+                log.info(f"等待{delay}秒后尝试识别点击月卡")
+                self.try_click_pass(delay)
+            elif self.last_check_time is None or current_time > self.last_check_time:  # 如果当前时间大于上次检查时间，则执行一次月卡检查
                 self.try_click_pass()
             
             # 更新上次检查时间
@@ -890,11 +894,12 @@ class Calculated:
             time.sleep(5)  # 延时，等待动画可能的加载
             self.try_click_pass()
 
-    def try_click_pass(self, threshold=0.92, max_click_attempts=2):
+    def try_click_pass(self, threshold=0.92, max_click_attempts=2, delay=0):
         """
         说明：
             尝试点击月卡。
         """
+        time.sleep(abs(delay))
         log.info("判断是否存在月卡")
         target = cv.imread("./picture/finish_fighting.png")
         result = self.scan_screenshot(target)
