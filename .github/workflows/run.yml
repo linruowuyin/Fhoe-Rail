@@ -34,7 +34,7 @@ jobs:
       - name: Move assets to dist directory
         run: |
           xcopy /E /I /Y .\map\ .\dist\Fhoe-Rail\map\
-          xcopy /E /I /Y .\map_data\ .\dist\Fhoe-Rail\map_data\
+          xcopy /E /I /Y .\新图注意事项\ .\dist\Fhoe-Rail\新图注意事项\
           xcopy /E /I /Y .\picture\ .\dist\Fhoe-Rail\picture\
           xcopy /Y .\README.md .\dist\Fhoe-Rail\
 
