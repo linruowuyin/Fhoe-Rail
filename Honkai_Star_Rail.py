@@ -160,6 +160,8 @@ def main():
                     log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
                     time.sleep(wait_time)
                     map_instance.auto_map(start_map, start_in_mid, dev=dev)
+                else:
+                    log.info(f"等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         # shutdown_computer(shutdown_type)
         if dev:  # 开发者模式自动重选地图
