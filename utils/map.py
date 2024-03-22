@@ -215,6 +215,10 @@ class Map:
                 start_time = time.time() 
                 map_ = map_.split('.')[0]
                 map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
+                if index == 0:
+                    start_map_name = map_data['name']
+                elif index == max_index:
+                    end_map_name = map_data['name']
                 webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                 self.calculated.monthly_pass_check()
                 log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
@@ -362,6 +366,7 @@ class Map:
                     log.info(f"战斗次数{self.calculated.total_fight_cnt}")
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
                     log.info(f"未战斗次数首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
+                    log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
 
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')
