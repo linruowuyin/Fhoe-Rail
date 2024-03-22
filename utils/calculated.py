@@ -677,7 +677,7 @@ class Calculated:
         return use_absolute_time, delay, allow_press_f
 
     def auto_map(self, map, old=True, normal_run=False, rotate=False, dev=False, last_point=''):
-        self.pause = Pause(dev=dev)
+        self.pause = Pause(dev=True)
         map_version = self.cfg.CONFIG.get("map_version", "default")
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
@@ -694,7 +694,7 @@ class Calculated:
         while dev_restart:
             dev_restart = False  # 不进行重开
             for map_index, map_value in enumerate(map_data["map"]):
-                press_key = self.pause.check_pause(dev, last_point)
+                press_key = self.pause.check_pause(dev=True, last_point=last_point)
                 if press_key:
                     if press_key == 'F8':
                         pass
