@@ -29,7 +29,7 @@ jobs:
 
       - name: Generate program
         run: |
-          pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries --uac-admin -n "Fhoe-Rail" Honkai_Star_Rail.py -y
+          pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries --uac-admin -n "Fhoe-Rail" fhoe -y
 
       - name: Create batch file
         run: |
