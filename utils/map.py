@@ -22,6 +22,7 @@ class Map:
         self.map_versions = self.read_maps_versions()
         self.map_version = ""
         self.now = datetime.datetime.now()
+        self.retry_cnt_max = 2
 
     def map_init(self, max_attempts=60):
 
@@ -210,132 +211,147 @@ class Map:
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
             map_list = self.get_map_list(start, start_in_mid)
             max_index = max(index for index, _ in enumerate(map_list))
+            next_map_drag = False  # 初始化下一张图拖动为否
             for index, map_ in enumerate(map_list):
-                # 选择地图
-                start_time = time.time() 
-                map_ = map_.split('.')[0]
-                map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
-                if index == 0:
-                    start_map_name = map_data['name']
-                elif index == max_index:
-                    end_map_name = map_data['name']
-                webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
-                self.calculated.monthly_pass_check()
-                log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
-                jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
-                self.temp_point = ""  # 用于输出传送前的点位
-                normal_run = False  # 初始化跑步模式为默认
-                for start in map_data['start']:
-                    key = list(start.keys())[0]
-                    log.info(key)
-                    value = start[key]
-                    self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
-                    if key == "check":  # 判断周几
-                        if value == 1:
-                            value = [0,1,2,3,4,5,6]
-                        if self.day_init(value):  # 1代表周二，4代表周五，6代表周日
+                self.map_drag = next_map_drag
+                next_map_drag = False
+                
+                retry = True
+                retry_cnt = 0
+                while retry and retry_cnt < self.retry_cnt_max:
+                    retry = False
+                    # 选择地图
+                    start_time = time.time() 
+                    map_ = map_.split('.')[0]
+                    map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
+                    if index == 0:
+                        start_map_name = map_data['name']
+                    elif index == max_index:
+                        end_map_name = map_data['name']
+                    webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
+                    self.calculated.monthly_pass_check()  # 月卡检查
+                    log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
+                    jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
+                    self.temp_point = ""  # 用于输出传送前的点位
+                    normal_run = False  # 初始化跑步模式为默认
+                    for start in map_data['start']:
+                        key = list(start.keys())[0]
+                        log.info(key)
+                        value = start[key]
+                        self.calculated.search_img_allow_retry = False
+                        self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
+                        if key == "check":  # 判断周几
+                            if value == 1:
+                                value = [0,1,2,3,4,5,6]
+                            if self.day_init(value):  # 1代表周二，4代表周五，6代表周日
                                 log.info(f"今天{today_weekday_str}，尝试购买")
                                 jump_this_map = False
                                 continue
-                        else:
+                            else:
                                 log.info(f"今天{today_weekday_str}，跳过")
                                 jump_this_map = True
                                 break
-                    elif key == "need_allow_map_buy":
-                        if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_map_buy', False):
-                            jump_this_map = False
+                        elif key == "need_allow_map_buy":
+                            if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_map_buy', False):
+                                jump_this_map = False
+                                continue
+                            else:
+                                log.info(f" config.json 中的 allow_map_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
+                                jump_this_map = True
+                                break
+                        elif key == "need_allow_snack_buy":
+                            if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_snack_buy', False):
+                                jump_this_map = False
+                                continue
+                            else:
+                                log.info(f" config.json 中的 allow_snack_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
+                                jump_this_map = True
+                                break
+                        elif key == "normal_run":
+                            normal_run = True  # 此地图json将会被强制设定为禁止疾跑
                             continue
-                        else:
-                            log.info(f" config.json 中的 allow_map_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
-                            jump_this_map = True
-                            break
-                    elif key == "need_allow_snack_buy":
-                        if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_snack_buy', False):
-                            jump_this_map = False
+                        elif key == "blackscreen":
+                            self.calculated.run_mapload_check()  # 强制执行地图加载检测
                             continue
-                        else:
-                            log.info(f" config.json 中的 allow_snack_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
-                            jump_this_map = True
-                            break
-                    elif key == "normal_run":
-                        normal_run = True  # 此地图json将会被强制设定为禁止疾跑
-                        continue
-                    elif key == "blackscreen":
-                        self.calculated.run_mapload_check()  # 强制执行地图加载检测
-                        continue
-                    elif key == "esc":
-                        pyautogui.press('esc')
-                        continue
-                    elif key == 'map':
-                        self.calculated.back_to_main()  # 打开map运行前保证在主界面
-                        self.map_init()
-                    elif key == 'main':
-                        self.calculated.back_to_main()  # 检测并回到主界面
-                        time.sleep(2)
-                    elif key == "picture\\max.png":
-                        if self.calculated.allow_buy_item():
-                            jump_this_map = False
-                            self.calculated.click_target(key, 0.93)
+                        elif key == "esc":
+                            pyautogui.press('esc')
                             continue
-                        else:
-                            jump_this_map = True
-                            break
-                    elif key in ["picture\\transfer.png"]:
-                        time.sleep(0.1)
-                        if not self.calculated.click_target(key, 0.93):
-                            jump_this_map = True
-                            break
-                        self.calculated.run_mapload_check()
-                        if self.temp_point:
-                            log.info(f'地图加载前的传送点为 {self.temp_point}')
-                    else:
-                        value = min(value, 0.8)
-                        time.sleep(value)
-                        if key == "picture\\map_0.png":
-                            self.calculated.click_target(key, 0.93)
+                        elif key == 'map':
+                            self.calculated.back_to_main()  # 打开map运行前保证在主界面
+                            self.map_init()
+                        elif key == 'main':
+                            self.calculated.back_to_main()  # 检测并回到主界面
+                            time.sleep(2)
+                        elif key == "picture\\max.png":
+                            if self.calculated.allow_buy_item():
+                                jump_this_map = False
+                                self.calculated.click_target(key, 0.93)
+                                continue
+                            else:
+                                jump_this_map = True
+                                break
+                        elif key in ["picture\\transfer.png"]:
+                            time.sleep(0.1)
+                            if not self.calculated.click_target(key, 0.93):
+                                jump_this_map = True
+                                break
                             self.calculated.run_mapload_check()
-                        elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
-                            self.calculated.click_target_with_alt(key, 0.93)
-                            self.calculated.run_dreambuild_check()
-                        elif key in ["picture\\first_floor.png","picture\\second_floor.png","picture\\third_floor.png"]:
-                            if self.calculated.img_bitwise_check(key):
-                                self.calculated.click_target(key, 0.93)
-                            else:
-                                log.info(f"已在对应楼层，跳过选择楼层")
-                                pass
-                        elif key == "picture\\map_4-2_point_3.png":
-                            self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925))
-                        elif key.startswith("picture\\check_4-1_point"):
-                            self.find_transfer_point(key, threshold=0.97)
-                            if self.calculated.click_target(key, 0.95):
-                                log.info(f"筑梦机关检查通过")
-                            else:
-                                log.info(f"筑梦机关检查不通过，请将机关调整到正确的位置上")
-                                error_check_point = True
-                            time.sleep(1)
-                        elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
-                            self.find_transfer_point(key, threshold=0.97)
-                            self.calculated.click_target(key, 0.95)
-                            self.temp_point = key
-                        elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
-                            self.find_transfer_point(key, threshold=0.97)
-                            self.calculated.click_target(key, 0.93)
-                            self.temp_point = key
-                            time.sleep(1.7)
+                            if self.temp_point:
+                                log.info(f'地图加载前的传送点为 {self.temp_point}')
                         else:
-                            if self.allow_drap_map_switch:
-                                self.find_transfer_point(key, threshold=0.97)
-                            if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
-                                self.calculated.click_target_with_alt(key, 0.93)
-                            else:
+                            value = min(value, 0.8)
+                            time.sleep(value)
+                            if key == "picture\\map_0.png":
                                 self.calculated.click_target(key, 0.93)
-                            self.temp_point = key
-                        teleport_click_count += 1 
-                        log.info(f'传送点击（{teleport_click_count}）')
-                        # time.sleep(1.7)  # 传送点击后等待2秒
+                                self.calculated.run_mapload_check()
+                            elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
+                                self.calculated.click_target_with_alt(key, 0.93)
+                                self.calculated.run_dreambuild_check()
+                            elif key in ["picture\\first_floor.png","picture\\second_floor.png","picture\\third_floor.png"]:
+                                if self.calculated.img_bitwise_check(key):
+                                    self.calculated.click_target(key, 0.93)
+                                else:
+                                    log.info(f"已在对应楼层，跳过选择楼层")
+                                    pass
+                            elif key == "picture\\map_4-2_point_3.png":  # 有可能未找到该图片，冗余查找
+                                self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925), retry_in_map=False)
+                            elif key.startswith("picture\\check_4-1_point"):
+                                self.find_transfer_point(key, threshold=0.97)
+                                if self.calculated.click_target(key, 0.95, retry_in_map=False):
+                                    log.info(f"筑梦机关检查通过")
+                                else:
+                                    log.info(f"筑梦机关检查不通过，请将机关调整到正确的位置上")
+                                    error_check_point = True
+                                time.sleep(1)
+                            elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
+                                self.find_transfer_point(key, threshold=0.97)
+                                self.calculated.click_target(key, 0.95)
+                                self.temp_point = key
+                            elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
+                                self.find_transfer_point(key, threshold=0.97)
+                                self.calculated.click_target(key, 0.93)
+                                self.temp_point = key
+                                time.sleep(1.7)
+                            else:
+                                if self.allow_drap_map_switch or self.map_drag:
+                                    self.find_transfer_point(key, threshold=0.97)
+                                if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
+                                    self.calculated.click_target_with_alt(key, 0.93)
+                                else:
+                                    self.calculated.click_target(key, 0.93)
+                                self.temp_point = key
+                            teleport_click_count += 1 
+                            log.info(f'传送点击（{teleport_click_count}）')
+                            if self.calculated.search_img_allow_retry:
+                                retry = True
+                                retry_cnt += 1
+                                if retry_cnt == self.retry_cnt_max:
+                                    jump_this_map = True
+                                    next_map_drag = True
+                                break
                 
                 teleport_click_count = 0  # 在每次地图循环结束后重置计数器
-
+                
                 # 'check'过期邮包/传送识别失败/无法购买 时 跳过，执行下一张图
                 if jump_this_map:
                     continue
