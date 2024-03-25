@@ -210,6 +210,11 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "auto_shutdown"
         },
         {
+            "title": "地图最后一击自动秘技（不建议龙丹、驭空开启",
+            "choices": {'关闭': False, '开启': True},
+            "config_key": "auto_final_fight_e"
+        },
+        {
             "title": "优先星球",
             "choices": {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"},
             "config_key": "main_map"

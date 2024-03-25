@@ -35,6 +35,7 @@ class Calculated:
         self.monthly_pass_success = False  # 标志是否成功执行月卡检测
         self.temp_screenshot = ()  # 初始化临时截图
         self.last_check_time = None  # 月卡检测时间
+        self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
         
         # 识别图片初始化
         self.main_ui = cv.imread("./picture/finish_fighting.png")
@@ -376,7 +377,7 @@ class Calculated:
         return False
 
 
-    def click_target(self, target_path, threshold, flag=True, timeout=30, offset=(0,0,0,0)):
+    def click_target(self, target_path, threshold, flag=True, timeout=30, offset=(0,0,0,0), retry_in_map: bool=True):
         """
         说明：
             点击指定图片
@@ -386,6 +387,7 @@ class Calculated:
             :param flag:True为一定要找到图片
             :param timeout: 最大搜索时间（秒）
             :param offset: 左、上、右、下，正值为向右或向下偏移
+            :param retry_in_map: 是否允许地图中重试查找
         返回：
             :return 是否点击成功
         """
@@ -406,6 +408,7 @@ class Calculated:
             time.sleep(1)  # 添加短暂延迟避免性能消耗
         else:
             log.info(f"查找图片超时 {target_path}")
+            self.search_img_allow_retry = retry_in_map
             return False
             
     def click_target_with_alt(self, target_path, threshold, flag=True):
@@ -696,7 +699,7 @@ class Calculated:
             for map_index, map_value in enumerate(map_data["map"]):
                 press_key = self.pause.check_pause(dev=True, last_point=last_point)
                 if press_key:
-                    if press_key == 'F8':
+                    if press_key == 'F7':
                         pass
                     else:
                         dev_restart = True  # 检测到需要重开
@@ -852,6 +855,7 @@ class Calculated:
 
         # 如果当前时间在3点55分到4点之间，则等待直到4点
         if current_time.hour == 3 and 55 <= current_time.minute < 60:
+            log.info(f"正在03:55-04:00之间，等待至4点准备识别月卡")
             while datetime.now().hour == 3:
                 time.sleep(2)
             else:
@@ -865,7 +869,7 @@ class Calculated:
             if 0 <= (current_time - four_am_today).total_seconds() < 30:  # 4点之后的30秒内，触发的尝试点击月卡将延迟30秒，避免月卡弹出前尝试识别月卡
                 delay = 30
                 log.info(f"等待{delay}秒后尝试识别点击月卡")
-                self.try_click_pass(delay)
+                self.try_click_pass(delay=delay)
             elif self.last_check_time is None or current_time > self.last_check_time:  # 如果当前时间大于上次检查时间，则执行一次月卡检查
                 self.try_click_pass()
             
