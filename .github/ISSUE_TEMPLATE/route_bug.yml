@@ -22,6 +22,7 @@ body:
     attributes:
       label: 日志
       description: 日志在logs文件夹下。
+      description: 使用三月七请在\3rdparty\Fhoe-Rail\logs下查找
       placeholder: 点击文本框下面小长条可以上传文件
     validations:
       required: true
