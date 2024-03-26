@@ -10,13 +10,6 @@ body:
       description: 说明你遇到的路线问题、最好附带截图
     validations:
       required: true
-  - type: checkboxes
-    id: role
-    attributes:
-      label: 是否使用三月七跑图
-      options:
-        - label: 是
-        - label: 否
   - type: textarea
     id: logs
     attributes:
