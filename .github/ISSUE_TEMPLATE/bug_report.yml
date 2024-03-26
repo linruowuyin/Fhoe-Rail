@@ -41,16 +41,6 @@ body:
       placeholder: 2.1.
     validations:
       required: true
-  - type: dropdown
-    id: server
-    attributes:
-    validations:
-      required: true
-  - type: dropdown
-    id: equipment
-    attributes:
-    validations:
-      required: true
   - type: textarea
     id: logs
     attributes:
