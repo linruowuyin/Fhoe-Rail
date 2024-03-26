@@ -7,7 +7,7 @@ body:
     id: bug
     attributes:
       label: 问题描述
-      description: 说明你遇到的路线问题
+      description: 说明你遇到的路线问题、最好附带截图
     validations:
       required: true
   - type: checkboxes
