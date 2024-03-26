@@ -9,14 +9,14 @@ body:
       label: 原因
       description: 为什么想要这个功能
     validations:
-      required: true
+      required: false
   - type: textarea
     id: desc
     attributes:
       label: 功能简述
       description: 想要个怎样的功能
     validations:
-      required: true
+      required: false
   - type: textarea
     id: logic
     attributes:
