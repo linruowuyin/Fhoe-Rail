@@ -1,0 +1,38 @@
+{
+    "name": "残响回廊-4",
+    "author": "喵不可言,Starry-Wind,CDCP,lrwy",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_2-3_point_4.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "w": 1.82
+        },
+        {
+            "d": 2.12
+        },
+        {
+            "w": 2.95
+        },
+        {
+			"e": 2
+        },
+        {
+            "e": 2
+        },
+        {
+            "e": 2
+        },
+        {
+            "e": 2			
+		}
+    ]
+}

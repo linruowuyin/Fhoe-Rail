@@ -1,0 +1,74 @@
+{
+    "name": "基座舱段-1",
+    "author": "Starry-Wind,小明,喵不可言",
+    "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\map_4-2_point_3.png": 1.5
+    },
+    {
+      "picture\\orientation_1.png": 1.5
+    },
+    {
+      "picture\\orientation_2.png": 1.5
+    },
+    {
+      "picture\\map_1.png": 2
+    },
+    {
+      "picture\\map_1_point.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+],
+    "map": [
+    {
+      "a": 1.55
+	},
+    {
+      "e": 2			
+	},
+    {
+      "w": 1.0
+    },
+    {
+      "a": 0.49
+	},
+    {
+      "e": 2
+    },
+    {		
+      "d": 1.955			
+    },
+    {		
+      "s": 2.33
+    },
+    {
+      "e": 2
+    },
+    {
+      "e": 2
+    },
+    {
+      "e": 2
+    },
+    {
+      "d": 1.37
+    },
+    {
+      "w": 2.65
+    },
+    {
+      "e": 2
+    },
+    {
+      "s": 6.55
+    },
+    {
+      "e": 2		
+    }
+ ]
+}

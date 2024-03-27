@@ -1,0 +1,38 @@
+{
+    "name": "支援舱段-3",
+    "author": "喵不可言,lrwy",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_1-3_point_3.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 0.5
+        },
+        {
+            "a": 0.25
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "s": 5.03
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "a": 0.3
+        },
+        {
+            "f": 1
+        }
+    ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "零食材料-1",
+  "author": "喵不可言",
+  "start": [
+    {
+      "need_allow_map_buy": 1
+    },
+    {	  
+      "map": 1
+    },
+    {
+      "picture\\orientation_1.png": 1.5
+    },
+    {
+      "picture\\orientation_4.png": 1.5	  
+    },
+    {
+      "picture\\map_3-0.png": 1.5
+    },
+    {
+      "picture\\map_3-0_point_1.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    } 
+],
+  "map": [
+    {
+      "d": 6.13
+    },
+    {
+      "s": 9.74
+    },
+    {
+      "d": 1.62
+    },
+    {
+      "w": 1.16
+    },
+    {
+      "f": 2
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "fighting": 2
+    }
+  ]
+}
