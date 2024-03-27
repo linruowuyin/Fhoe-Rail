@@ -582,9 +582,11 @@ class Calculated:
             if allow_fight_e_buy_prop:
                 time.sleep(1)
                 round_disable = cv.imread("./picture/round_disable.png")
-                if self.on_interface(check_list=[round_disable], timeout=5, interface_desc='无法购买', threshold=0.95):
+                if self.on_interface(check_list=[round_disable], timeout=2, interface_desc='无法购买', threshold=0.95):
                     allow_buy = False
                 else:
+                    self.click_target("./picture/round.png", 0.9, timeout=8)
+                    time.sleep(0.5)
                     self.click_target("./picture/round.png", 0.9, timeout=8)
                     allow_buy = True
                 self.back_to_main()
@@ -736,6 +738,17 @@ class Calculated:
                     self.handle_esc(value)
                 else:
                     self.handle_move(value, key, normal_run)
+                last_key = key
+            
+            # 黄泉临时方案，全部结束后等待2秒识别战斗
+            if map_version == "HuangQuan" and last_key == "e":
+                time.sleep(2)
+                if self.on_main_interface(timeout=2,allow_log=False):
+                    pass
+                else:
+                    fight_status = self.fight_elapsed()
+                    if not fight_status:
+                        log.info(f'未进入战斗')    
 
     def handle_space_or_r(self, value, key):
         random_interval = random.uniform(0.3, 0.7)
@@ -793,6 +806,15 @@ class Calculated:
             self.fightE(value=1)
         elif value == 2:
             self.fightE(value=2)
+            # 黄泉临时方案，E2后检测进战斗
+            time.sleep(0.5)
+            if self.on_main_interface(timeout=2,allow_log=False):
+                pass
+            else:
+                fight_status = self.fight_elapsed()
+                if not fight_status:
+                    log.info(f'未进入战斗')
+                
 
     def handle_esc(self, value):
         if value == 1:

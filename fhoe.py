@@ -192,7 +192,10 @@ def set_config(slot: str = 'start'):
     for question in questions:
         option = ask_question(question)
         config[question["config_key"]] = question["choices"][option]
-
+    
+    if config["map_version"] == "HuangQuan":
+        config["allow_fight_e_buy_prop"] = True
+    
     save_config(config)
 
 def get_questions_for_slot(slot: str) -> list:
