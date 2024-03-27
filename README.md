@@ -90,7 +90,7 @@ This software is open source, free of charge and for learning and exchange purpo
 | ---------- | -------------------------------------------------------- |
 | default       | 默认地图，适配大部分远程角色 |
 | technique     | 加入了较多的击打紫色秘技，且在战斗中使用较多秘技 |
-| HuangQuan     | 黄泉专用地图 |
+| HuangQuan     | 黄泉专用地图，自行备足秘技零食 |
 
 ## 关于地图录制
 
