@@ -197,8 +197,8 @@ class Map:
     
     def allow_map_drag(self, start):
         self.allow_drap_map_switch = 0  # 初始化禁止拖动地图
-        if "drag" in start:
-            self.allow_drap_map_switch = start["drag"]
+        if "drag" in start and start["drag"] >= 1:
+            self.allow_drap_map_switch = True
 
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
@@ -307,13 +307,13 @@ class Map:
                             elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
                                 self.calculated.click_target_with_alt(key, 0.93)
                                 self.calculated.run_dreambuild_check()
-                            elif key in ["picture\\first_floor.png","picture\\second_floor.png","picture\\third_floor.png"]:
+                            elif key in ["picture\\1floor.png","picture\\2floor.png","picture\\3floor.png"]:
                                 if self.calculated.img_bitwise_check(key):
                                     self.calculated.click_target(key, 0.93)
                                 else:
                                     log.info(f"已在对应楼层，跳过选择楼层")
                                     pass
-                            elif key == "picture\\map_4-2_point_3.png":  # 有可能未找到该图片，冗余查找
+                            elif key == "picture\\fanhui_1.png":  # 有可能未找到该图片，冗余查找
                                 self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925), retry_in_map=False)
                             elif key.startswith("picture\\check_4-1_point"):
                                 self.find_transfer_point(key, threshold=0.97)
