@@ -226,7 +226,7 @@ class Map:
                     map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
                     if index == 0:
                         start_map_name = map_data['name']
-                    elif index == max_index:
+                    if index == max_index:
                         end_map_name = map_data['name']
                     webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
                     self.calculated.monthly_pass_check()  # 月卡检查

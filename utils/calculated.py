@@ -52,6 +52,7 @@ class Calculated:
         self.esc_btn = KeyboardKey.esc  # esc键
         self.shift_btn = KeyboardKey.shift_l  # shift左键
         self.alt_btn = KeyboardKey.alt_l  # alt左键
+        self.space_btn = KeyboardKey.space  # space键
         
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<3秒的计数
@@ -134,10 +135,19 @@ class Calculated:
             log.info(f"点击坐标{(x, y)}，坐标来源图片匹配度{slot:.3f}")
         self.mouse_press(x, y)
 
+    def translate_key(self, key_name: str):
+        """转换key
+        """
+        if key_name == "space":
+            key_name = self.space_btn
+        
+        return key_name
+    
     def keyboard_press(self, key_name: str, delay: float=0): 
         """
         按下键盘后延迟抬起
         """
+        key_name = self.translate_key(key_name)
         self.keyboard.press(key_name)
         time.sleep(delay)
         self.keyboard.release(key_name)

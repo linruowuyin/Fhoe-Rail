@@ -92,6 +92,26 @@ This software is open source, free of charge and for learning and exchange purpo
 | technique     | 加入了较多的击打紫色秘技，且在战斗中使用较多秘技 |
 | HuangQuan     | 黄泉专用地图，自行备足秘技零食 |
 
+## 关于配置
+
+### 配置说明
+
+配置对应项目时，是均为true，否均为false
+
+| 配置项目 | 配置说明 |
+| ----------------------- | ----------------------------------- |
+| auto_final_fight_e | 是否允许每个地图最后一击改为秘技攻击 |
+| auto_final_fight_e_cnt | 每个地图最后一击为秘技攻击上限次数 |
+| allow_fight_e_buy_prop | 是否允许自动吃秘技零食，使用黄泉地图时会自动设置为允许 |
+| auto_run_in_map | 是否允许在地图中疾跑 |
+| detect_fight_status_time | 识别是否进入战斗的时间（秒），默认5 |
+| map_version | 使用的地图文件夹 |
+| main_map | 优先星球，1-空间站，2-雅利洛VI，3-仙舟，4-匹诺康尼 |
+| allow_run_again | 是否允许每次运行连续锄地2次避免漏怪 |
+| allow_run_next_day | 是否允许等待至下一个凌晨4点继续从头锄地 |
+| allow_map_buy | 是否允许购买 代币 与 过期邮包 |
+| allow_snack_buy | 是否允许购买秘技零食的制作材料 |
+
 ## 关于地图录制
 
 ### 录制方式
