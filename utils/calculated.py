@@ -363,7 +363,7 @@ class Calculated:
         original_target = cv.imread(target_path)
         target,  result_inverted = self.img_trans_bitwise(target_path)
         result_original = self.scan_screenshot(original_target)
-        log.info(f"颜色反转后的匹配值为：{result_inverted['max_val']}")
+        log.info(f"颜色反转后的匹配值为：{result_inverted['max_val']:.3f}")
         if result_original["max_val"] > result_inverted["max_val"]:
             return True
         else:
@@ -598,11 +598,12 @@ class Calculated:
                     self.click_target("./picture/round.png", 0.9, timeout=8)
                     allow_buy = True
                     time.sleep(1)
-                self.back_to_main(delay=0.2)
+                self.back_to_main(delay=0.1)
                 if allow_buy:
                     pyautogui.press('e')
+                    time.sleep(0.3)
             else:
-                self.back_to_main(delay=0.2)
+                self.back_to_main(delay=0.1)
 
         if value == 1:
             time.sleep(1)
