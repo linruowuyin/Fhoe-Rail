@@ -170,7 +170,7 @@ class Map:
             directions = [(250, 900, 250, 300), (250, 900, 850, 900), (1330, 200, 1330, 800), (1330, 200, 730, 200)]
             for index, direction in enumerate(directions):
                 log.info(f"开始移动地图，{direction_names[index]}，当前所需匹配值{threshold}")
-                for i in range(3):
+                for i in range(2):
                     if not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold):
                         self.calculated.mouse_drag(*direction)
                     else:
@@ -317,7 +317,7 @@ class Map:
                             elif key == "picture\\fanhui_1.png":  # 有可能未找到该图片，冗余查找
                                 self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925), retry_in_map=False)
                             elif key.startswith("picture\\check_4-1_point"):
-                                self.find_transfer_point(key, threshold=0.97)
+                                self.find_transfer_point(key, threshold=0.975)
                                 if self.calculated.click_target(key, 0.95, retry_in_map=False):
                                     log.info(f"筑梦机关检查通过")
                                 else:
@@ -325,17 +325,17 @@ class Map:
                                     error_check_point = True
                                 time.sleep(1)
                             elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
-                                self.find_transfer_point(key, threshold=0.97)
+                                self.find_transfer_point(key, threshold=0.975)
                                 self.calculated.click_target(key, 0.95)
                                 self.temp_point = key
                             elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
-                                self.find_transfer_point(key, threshold=0.97)
+                                self.find_transfer_point(key, threshold=0.975)
                                 self.calculated.click_target(key, 0.93)
                                 self.temp_point = key
                                 time.sleep(1.7)
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:
-                                    self.find_transfer_point(key, threshold=0.97)
+                                    self.find_transfer_point(key, threshold=0.975)
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
                                     self.calculated.click_target_with_alt(key, 0.93)
                                 else:

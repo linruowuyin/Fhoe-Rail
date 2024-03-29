@@ -55,7 +55,7 @@ log.add(path_log,
             format="{time:HH:mm:ss} - "
                     "{level:<6} \t| "
                     "<cyan>{new_module:<40}</cyan> \t- "+"<cyan>{VER}</cyan> - "+"{message}",
-            rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="10 days")
+            rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="7 days")
 
 def webhook_and_log(message):
     log.info(message)
