@@ -584,8 +584,10 @@ class Calculated:
         pyautogui.press('e')
         start_time = time.time()
         result_A = None
-        while result_A is None and time.time() - start_time < 0.8:
+        time.sleep(0.5)
+        while time.time() - start_time < 0.8:
             result_A = self.scan_screenshot(image_A)
+            time.sleep(0.1)
         if result_A is not None and result_A["max_val"] > 0.9:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
             if allow_fight_e_buy_prop:
