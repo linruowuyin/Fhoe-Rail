@@ -582,12 +582,9 @@ class Calculated:
         """
         image_A = cv.imread("./picture/eat.png")
         pyautogui.press('e')
-        start_time = time.time()
         result_A = None
-        time.sleep(0.5)
-        while time.time() - start_time < 0.8:
-            result_A = self.scan_screenshot(image_A)
-            time.sleep(0.1)
+        time.sleep(0.55)
+        result_A = self.scan_screenshot(image_A)
         if result_A is not None and result_A["max_val"] > 0.9:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
             if allow_fight_e_buy_prop:
@@ -600,14 +597,15 @@ class Calculated:
                     time.sleep(0.5)
                     self.click_target("./picture/round.png", 0.9, timeout=8)
                     allow_buy = True
-                self.back_to_main()
+                pyautogui.press('esc')
                 if allow_buy:
+                    time.sleep(0.15)
                     pyautogui.press('e')
-                time.sleep(0.2)
             else:
                 self.back_to_main()
 
         if value == 1:
+            time.sleep(1)
             self.click_center()
             fight_status = self.fight_elapsed()
             if not fight_status:
@@ -615,7 +613,7 @@ class Calculated:
         elif value == 2:
             pass
 
-        time.sleep(0.2)
+        time.sleep(0.15)
 
 
 
