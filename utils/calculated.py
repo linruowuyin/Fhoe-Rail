@@ -583,7 +583,7 @@ class Calculated:
         image_A = cv.imread("./picture/eat.png")
         pyautogui.press('e')
         result_A = None
-        time.sleep(0.55)
+        time.sleep(0.3)
         result_A = self.scan_screenshot(image_A)
         if result_A is not None and result_A["max_val"] > 0.9:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
@@ -597,12 +597,12 @@ class Calculated:
                     time.sleep(0.5)
                     self.click_target("./picture/round.png", 0.9, timeout=8)
                     allow_buy = True
-                pyautogui.press('esc')
+                    time.sleep(1)
+                self.back_to_main(delay=0.2)
                 if allow_buy:
-                    time.sleep(0.15)
                     pyautogui.press('e')
             else:
-                self.back_to_main()
+                self.back_to_main(delay=0.2)
 
         if value == 1:
             time.sleep(1)
@@ -613,7 +613,7 @@ class Calculated:
         elif value == 2:
             pass
 
-        time.sleep(0.15)
+        time.sleep(0.2)
 
 
 
@@ -1080,13 +1080,13 @@ class Calculated:
             log.info(f'移动模块成功，用时 {loading_time:.1f} 秒')
         time.sleep(0.5)  #短暂延迟后开始下一步
 
-    def back_to_main(self):
+    def back_to_main(self, delay=2.0):
         """
         检测并回到主界面
         """
         while not self.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
             pyautogui.press('esc')
-            time.sleep(2)
+            time.sleep(delay)
     
     def on_main_interface(self, check_list=[], timeout=60, threshold=0.9, offset=(0,0,0,0), allow_log=True):
         """
