@@ -28,8 +28,9 @@ class Map:
 
         target = cv.imread('./picture/contraction.png')
         attempts = 0
-
-        time.sleep(2)  # 增加2秒识别延迟，避免偶现的识别错误
+        
+        pyautogui.press(self.open_map)
+        time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
         while attempts < max_attempts:
             result = self.calculated.scan_screenshot(target, offset=(550,960,-1050,-50))
             if result['max_val'] > 0.95:

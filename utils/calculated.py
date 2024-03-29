@@ -584,7 +584,7 @@ class Calculated:
         pyautogui.press('e')
         start_time = time.time()
         result_A = None
-        while result_A is None and time.time() - start_time < 1:
+        while result_A is None and time.time() - start_time < 0.8:
             result_A = self.scan_screenshot(image_A)
         if result_A is not None and result_A["max_val"] > 0.9:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
@@ -749,16 +749,7 @@ class Calculated:
                 else:
                     self.handle_move(value, key, normal_run)
                 last_key = key
-            
-            # 黄泉临时方案，全部结束后等待2秒识别战斗
-            if map_version == "HuangQuan" and last_key == "e":
-                time.sleep(2)
-                if self.on_main_interface(timeout=2,allow_log=False):
-                    pass
-                else:
-                    fight_status = self.fight_elapsed()
-                    if not fight_status:
-                        log.info(f'未进入战斗')    
+
 
     def handle_space_or_r(self, value, key):
         random_interval = random.uniform(0.3, 0.7)
@@ -816,14 +807,6 @@ class Calculated:
             self.fightE(value=1)
         elif value == 2:
             self.fightE(value=2)
-            # 黄泉临时方案，E2后检测进战斗
-            time.sleep(0.5)
-            if self.on_main_interface(timeout=2,allow_log=False):
-                pass
-            else:
-                fight_status = self.fight_elapsed()
-                if not fight_status:
-                    log.info(f'未进入战斗')
                 
 
     def handle_esc(self, value):
