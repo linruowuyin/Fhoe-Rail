@@ -708,6 +708,7 @@ class Calculated:
         dev_restart = True  # 初始化开发者重开
         while dev_restart:
             dev_restart = False  # 不进行重开
+            last_key = ""
             for map_index, map_value in enumerate(map_data["map"]):
                 press_key = self.pause.check_pause(dev=True, last_point=last_point)
                 if press_key:
