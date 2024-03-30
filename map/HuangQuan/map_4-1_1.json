@@ -6,7 +6,7 @@
             "map": 1
         },
         {
-          "picture\\map_4-2_point_3.png": 1.5
+          "picture\\fanhui_1.png": 1.5
         },
         {
            "picture\\orientation_1.png": 1.5
@@ -119,7 +119,13 @@
       "e": 2
     },
     {
-      "s": 1.0
+      "s": 0.5
+    },
+    {
+      "e": 2
+    },
+    {
+      "e": 2
     },
     {
       "e": 2

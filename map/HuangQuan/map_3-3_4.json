@@ -6,7 +6,7 @@
             "map": 1
         },
         {
-            "picture\\second_floor.png": 1.5
+            "picture\\2floor.png": 1.5
         },
         {
             "picture\\map_3-3_point_4.png": 1.5
@@ -45,6 +45,9 @@
         },
         {
             "s": 1.8
+        },
+        {
+            "e": 2
         },
         {
             "e": 2
