@@ -170,7 +170,7 @@ class Map:
             directions = [(250, 900, 250, 300), (250, 900, 850, 900), (1330, 200, 1330, 800), (1330, 200, 730, 200)]
             for index, direction in enumerate(directions):
                 log.info(f"开始移动地图，{direction_names[index]}，当前所需匹配值{threshold}")
-                for i in range(2):
+                for i in range(3):
                     if not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold):
                         self.calculated.mouse_drag(*direction)
                     else:

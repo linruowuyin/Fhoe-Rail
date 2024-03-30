@@ -583,7 +583,7 @@ class Calculated:
         image_A = cv.imread("./picture/eat.png")
         pyautogui.press('e')
         result_A = None
-        time.sleep(0.3)
+        time.sleep(0.25)
         result_A = self.scan_screenshot(image_A)
         if result_A is not None and result_A["max_val"] > 0.9:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
@@ -601,7 +601,7 @@ class Calculated:
                 self.back_to_main(delay=0.1)
                 if allow_buy:
                     pyautogui.press('e')
-                    time.sleep(0.3)
+                    time.sleep(0.25)
             else:
                 self.back_to_main(delay=0.1)
 
@@ -614,7 +614,7 @@ class Calculated:
         elif value == 2:
             pass
 
-        time.sleep(0.2)
+        time.sleep(0.05)
 
 
 
