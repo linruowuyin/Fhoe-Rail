@@ -1,4 +1,4 @@
-name: 路线异常
+name: 🧐路线异常
 description: 按键模拟未按正常路线走
 labels: [路线错误]
 title: "[路线错误] Please enter the map name or number, otherwise the Issue will be closed directly"
