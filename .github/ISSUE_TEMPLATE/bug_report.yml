@@ -1,4 +1,4 @@
-name: 反馈 Bug
+name: 🐛反馈 Bug
 description: 反馈程序bug/设计缺陷
 labels: [bug]
 title: "[Bug] 请在这里简要描述BUG，否则该Issue将直接关闭"
