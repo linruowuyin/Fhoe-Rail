@@ -309,8 +309,8 @@ class Map:
                                 self.calculated.click_target_with_alt(key, 0.93)
                                 self.calculated.run_dreambuild_check()
                             elif key in ["picture\\1floor.png","picture\\2floor.png","picture\\3floor.png"]:
-                                if self.calculated.img_bitwise_check(key):
-                                    self.calculated.click_target(key, 0.93)
+                                if self.calculated.img_bitwise_check(key, (30,740,-1820,-70)):
+                                    self.calculated.click_target(key, 0.93, offset=(30,740,-1820,-70))
                                 else:
                                     log.info(f"已在对应楼层，跳过选择楼层")
                                     pass
