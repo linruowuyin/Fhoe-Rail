@@ -347,23 +347,23 @@ class Calculated:
 
         return x, y
 
-    def img_trans_bitwise(self, target_path):
+    def img_trans_bitwise(self, target_path, offset=(0,0,0,0)):
         """
         颜色反转
         """
         original_target = cv.imread(target_path)
         inverted_target = cv.bitwise_not(original_target)
-        result = self.scan_screenshot(inverted_target)
+        result = self.scan_screenshot(inverted_target, offset)
         return inverted_target, result
         
-    def img_bitwise_check(self, target_path):
+    def img_bitwise_check(self, target_path, offset=(0,0,0,0)):
         """
         比对颜色反转
         """
         original_target = cv.imread(target_path)
-        target,  result_inverted = self.img_trans_bitwise(target_path)
-        result_original = self.scan_screenshot(original_target)
-        log.info(f"颜色反转后的匹配值为：{result_inverted['max_val']:.3f}")
+        target,  result_inverted = self.img_trans_bitwise(target_path, offset)
+        result_original = self.scan_screenshot(original_target, offset)
+        log.info(f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
         if result_original["max_val"] > result_inverted["max_val"]:
             return True
         else:
@@ -593,10 +593,14 @@ class Calculated:
                 if self.on_interface(check_list=[round_disable], timeout=2, interface_desc='无法购买', threshold=0.95):
                     allow_buy = False
                 else:
-                    self.click_target("./picture/round.png", 0.9, timeout=8)
-                    time.sleep(0.5)
-                    self.click_target("./picture/round.png", 0.9, timeout=8)
-                    allow_buy = True
+                    food_lab = cv.imread("./picture/qiqiao_lab.png")
+                    self.click_target("./picture/qiqiao.png", 0.95, False, 2, (900,300,-400,-300), False)
+                    if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
+                        time.sleep(0.1)
+                        self.click_target("./picture/round.png", 0.9, timeout=8)
+                        time.sleep(0.5)
+                        self.click_target("./picture/round.png", 0.9, timeout=8)
+                        allow_buy = True
                     time.sleep(1)
                 self.back_to_main(delay=0.1)
                 if allow_buy:
