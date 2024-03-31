@@ -23,6 +23,7 @@ class Map:
         self.map_version = ""
         self.now = datetime.datetime.now()
         self.retry_cnt_max = 2
+        self.map_statu_minimize = False  # 地图最小化
 
     def map_init(self, max_attempts=60):
 
@@ -36,8 +37,10 @@ class Map:
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.info(f"识别点位{points}")
-                log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
-                pyautogui.click(points, clicks=5, interval=0.1)
+                if not self.map_statu_minimize:
+                    log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
+                    pyautogui.click(points, clicks=10, interval=0.1)
+                    self.map_statu_minimize = True
                 break
             else:
                 attempts += 1
@@ -309,7 +312,7 @@ class Map:
                                 self.calculated.click_target_with_alt(key, 0.93)
                                 self.calculated.run_dreambuild_check()
                             elif key in ["picture\\1floor.png","picture\\2floor.png","picture\\3floor.png"]:
-                                if self.calculated.img_bitwise_check(key, (30,740,-1820,-70)):
+                                if self.calculated.img_bitwise_check(target_path=key, offset=(30,740,-1820,-70)):
                                     self.calculated.click_target(key, 0.93, offset=(30,740,-1820,-70))
                                 else:
                                     log.info(f"已在对应楼层，跳过选择楼层")

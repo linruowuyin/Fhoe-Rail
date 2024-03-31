@@ -356,7 +356,7 @@ class Calculated:
         result = self.scan_screenshot(inverted_target, offset)
         return inverted_target, result
         
-    def img_bitwise_check(self, target_path, offset=(0,0,0,0)):
+    def img_bitwise_check(self, target_path: str, offset: tuple=(0,0,0,0)):
         """
         比对颜色反转
         """
@@ -588,9 +588,9 @@ class Calculated:
         if result_A is not None and result_A["max_val"] > 0.9:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
             if allow_fight_e_buy_prop:
-                time.sleep(1)
+                time.sleep(0.5)
                 round_disable = cv.imread("./picture/round_disable.png")
-                if self.on_interface(check_list=[round_disable], timeout=2, interface_desc='无法购买', threshold=0.95):
+                if self.on_interface(check_list=[round_disable], timeout=0.5, interface_desc='无法购买', threshold=0.95):
                     allow_buy = False
                 else:
                     food_lab = cv.imread("./picture/qiqiao_lab.png")
@@ -631,7 +631,7 @@ class Calculated:
             ang = (ang + 900) % 360 - 180
             self.mouse_move(ang * 10.2)
     
-    def check_f_img(self, timeout=60):
+    def check_f_img(self, timeout=5):
         """
         检查F的交互类型。
         
@@ -752,8 +752,30 @@ class Calculated:
                 elif key == "esc":
                     self.handle_esc(value)
                 else:
-                    self.handle_move(value, key, normal_run)
-                last_key = key
+                    self.handle_move(value, key, normal_run, last_key)
+                
+                if map_version == "HuangQuan":
+                    last_key = key
+            
+            if map_version == "HuangQuan":
+                doubt_result = self.scan_screenshot(self.doubt_ui, offset=(0,0,-1630,-800))
+                if doubt_result["max_val"] > 0.92:
+                    log.info(f"检测到警告，有可能漏怪，进入黄泉乱砍模式")
+                    start_time = time.time()
+                    while time.time() - start_time < 60 and doubt_result["max_val"] > 0.92:
+                        directions = ["w", "a", "s", "d"]
+                        for index, direction in enumerate(directions):
+                            log.info(f"开砍，{directions[index]}")
+                            for i in range(3):
+                                self.handle_move(0.1, direction, False, "")
+                                self.fightE(value=2)
+                            doubt_result = self.scan_screenshot(self.doubt_ui, offset=(0,0,-1630,-800))
+            
+            if map_version == "HuangQuan" and last_key == "e":
+                if not self.on_main_interface(timeout=0.2):
+                    fight_status = self.fight_elapsed()
+                    if not fight_status:
+                        log.info(f'未进入战斗')
 
 
     def handle_space_or_r(self, value, key):
@@ -823,9 +845,14 @@ class Calculated:
         else:
             raise Exception(f"map数据错误, esc参数只能为1")
 
-    def handle_move(self, value, key, normal_run=False):
+    def handle_move(self, value, key, normal_run=False, last_key : str=""):
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
+        if last_key == "e":
+            if not self.on_main_interface(timeout=0.2):
+                fight_status = self.fight_elapsed()
+                if not fight_status:
+                    log.info(f'未进入战斗')
         self.keyboard.press(key)
         start_time = time.perf_counter()
         allow_run = self.cfg.CONFIG.get("auto_run_in_map", False)
@@ -1093,7 +1120,7 @@ class Calculated:
             pyautogui.press('esc')
             time.sleep(delay)
     
-    def on_main_interface(self, check_list=[], timeout=60, threshold=0.9, offset=(0,0,0,0), allow_log=True):
+    def on_main_interface(self, check_list=[], timeout=60.0, threshold=0.9, offset=(0,0,0,0), allow_log=True):
         """
         说明：
             检测主页面
@@ -1111,7 +1138,7 @@ class Calculated:
         
         return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold, offset=offset, allow_log=allow_log)
 
-    def on_interface(self, check_list=[], timeout=60, interface_desc='', threshold=0.9, offset=(0,0,0,0),allow_log=True):
+    def on_interface(self, check_list=[], timeout=60.0, interface_desc='', threshold=0.9, offset=(0,0,0,0),allow_log=True):
         """
         说明：
             检测check_list中的图片是否在某个页面
