@@ -49,7 +49,7 @@ def choose_map_debug(map_instance: Map):
             elif option_ == "[设置]":
                 main_start_rewrite()
                 log.info(f"设置完成")
-                main()
+                return choose_map_debug(map_instance)
             elif option_ == "[定时]":
                 map_instance.wait_and_run()
                 return f"1-1_0"
