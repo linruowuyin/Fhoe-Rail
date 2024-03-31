@@ -589,9 +589,10 @@ class Calculated:
             allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
             if allow_fight_e_buy_prop:
                 time.sleep(0.5)
+                allow_buy = False
                 round_disable = cv.imread("./picture/round_disable.png")
                 if self.on_interface(check_list=[round_disable], timeout=0.5, interface_desc='无法购买', threshold=0.95):
-                    allow_buy = False
+                    pass
                 else:
                     food_lab = cv.imread("./picture/qiqiao_lab.png")
                     self.click_target("./picture/qiqiao.png", 0.95, False, 2, (900,300,-400,-300), False)
