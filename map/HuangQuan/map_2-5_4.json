@@ -6,10 +6,7 @@
             "map": 1
         },
         {
-            "picture\\map_2-5_point_4.png": 1.5
-        },
-        {
-            "picture\\map_2-5_point_5.png": 1.5
+            "picture\\map_2-5_point_6.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
@@ -77,7 +74,25 @@
             "e": 2
         },
         {
-            "e": 2			
+            "e": 2
+        },
+        {
+            "e": 2
+        },
+        {
+            "w": 0.05
+        },
+        {
+            "e": 2
+        },
+        {
+            "e": 2
+        },
+        {
+            "e": 2
+        },
+        {
+            "e": 2	
         }
     ]
 }
