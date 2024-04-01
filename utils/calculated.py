@@ -173,7 +173,7 @@ class Calculated:
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         time.sleep(delay)
         win32api.SetCursorPos((end_x, end_y))
-        time.sleep(0.1)
+        time.sleep(0.01)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
     def mouse_drag(self, x, y, end_x, end_y):
@@ -415,7 +415,7 @@ class Calculated:
                     return True
             if not flag:  # 是否一定要找到
                 return False
-            time.sleep(1)  # 添加短暂延迟避免性能消耗
+            time.sleep(0.5)  # 添加短暂延迟避免性能消耗
         else:
             log.info(f"查找图片超时 {target_path}")
             self.search_img_allow_retry = retry_in_map
@@ -595,7 +595,7 @@ class Calculated:
                     pass
                 else:
                     food_lab = cv.imread("./picture/qiqiao_lab.png")
-                    self.click_target("./picture/qiqiao.png", 0.95, False, 2, (900,300,-400,-300), False)
+                    self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
                     if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
                         time.sleep(0.1)
                         self.click_target("./picture/round.png", 0.9, timeout=8)
