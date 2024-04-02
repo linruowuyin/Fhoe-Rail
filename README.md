@@ -117,7 +117,9 @@ This software is open source, free of charge and for learning and exchange purpo
 ### 图像识别截图
 
 如果截图文字识别，尽量避免有重复字样，如：支援舱段、禁闭舱段...此时应只截图支援和禁闭，否则一定识别不到就会乱点
+
 能不截图文字尽量不截图文字：便于以后适配繁中和英文
+
 截图图片尽量小：图片会越加越多，适当缩小截图范围
 
 
