@@ -318,7 +318,7 @@ class Map:
                                     log.info(f"已在对应楼层，跳过选择楼层")
                                     pass
                             elif key == "picture\\fanhui_1.png":  # 有可能未找到该图片，冗余查找
-                                self.calculated.click_target(key, 0.96,timeout=2, offset=(1660,100,-40,-925), retry_in_map=False)
+                                self.calculated.click_target(key, 0.95,timeout=3, offset=(1660,100,-40,-925), retry_in_map=False)
                             elif key.startswith("picture\\check_4-1_point"):
                                 self.find_transfer_point(key, threshold=0.975)
                                 if self.calculated.click_target(key, 0.95, retry_in_map=False):

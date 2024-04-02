@@ -1,34 +1,28 @@
 import threading
 import keyboard
 import cv2 as cv
+from typing import Union
 from .log import log
 
 class Pause:
     def __init__(self, dev=False):
         self.dev = dev
-        if self.dev:
-            self.pause_event = threading.Event()
-            self.last_key_pressed = None  # 记录最后按下的按键
-            self.pause_event.clear()
-            keyboard.on_press_key("F7", self.continue_in_map)
-            keyboard.on_press_key("F8", self.toggle_pause)
-            keyboard.on_press_key("F9", self.continue_and_restart)
-            keyboard.on_press_key("F10", self.continue_new_map)
-            
-        else:
-            self.pause_event = None
+        
+        self.pause_event = threading.Event()
+        self.last_key_pressed = None  # 记录最后按下的按键
+        self.pause_event.clear()
+        keyboard.on_press_key("F7", self.continue_in_map)
+        keyboard.on_press_key("F8", self.toggle_pause)
+        keyboard.on_press_key("F9", self.continue_and_restart)
+        keyboard.on_press_key("F10", self.continue_new_map)
 
     def continue_in_map(self, event):
-        if not self.dev:
-            return
         if self.pause_event.is_set():
             log.info("检测到按下'F7'，即将继续")
             self.pause_event.clear()
             self.last_key_pressed = 'F7'
             
     def toggle_pause(self, event):
-        if not self.dev:
-            return
         if self.pause_event.is_set():
             log.info("检测到按下'F8'，当前已在暂停，无操作")
             self.last_key_pressed = 'F8'
@@ -66,7 +60,7 @@ class Pause:
             while self.pause_event.is_set():
                 cv.waitKey(1)
 
-    def check_pause(self, dev: bool, last_point: str) -> str | bool:
+    def check_pause(self, dev: bool, last_point: str) -> Union[str, bool]:
         """检查是否暂停，暂停情况下返回取消暂停使用的按键
 
         Args:
@@ -77,20 +71,15 @@ class Pause:
             str | bool: 暂停取消时返回暂停取消的按键字符串'F10','F9','F8'，无暂停时返回False
         """
 
-        if not self.dev:
-            return False
-        if dev:
-            show = False
-            press = False
-            while self.pause_event.is_set():
-                press = True
-                if not show and last_point:
-                    show = True
-                    self._show_img(last_point)
-            if press:
-                cv.destroyAllWindows()
-                return self.last_key_pressed
-            else:
-                return False
+        show = False
+        press = False
+        while self.pause_event.is_set():
+            press = True
+            if not show and last_point and dev:
+                show = True
+                self._show_img(last_point)
+        if press:
+            cv.destroyAllWindows()
+            return self.last_key_pressed
         else:
             return False

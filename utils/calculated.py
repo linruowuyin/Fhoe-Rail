@@ -383,11 +383,11 @@ class Calculated:
         if result["max_val"] > threshold:
             points = self.calculated(result, target.shape)
             self.click(points, result['max_val'])
-            return True
-        return False
+            return True, result['max_val']
+        return False, result['max_val']
 
 
-    def click_target(self, target_path, threshold, flag=True, timeout=30, offset=(0,0,0,0), retry_in_map: bool=True):
+    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0,0,0,0), retry_in_map: bool=True):
         """
         说明：
             点击指定图片
@@ -407,17 +407,19 @@ class Calculated:
         start_time = time.time()
         
         while time.time() - start_time < timeout:
-            if self.click_target_above_threshold(original_target, threshold, offset):
+            click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset)
+            if click_it:
                 return True
             if time.time() - start_time > 5:  # 如果超过5秒，同时匹配原图像和颜色反转后的图像
-                if self.click_target_above_threshold(inverted_target, threshold, offset):
+                click_it, img_inverted_search_val = self.click_target_above_threshold(inverted_target, threshold, offset)
+                if click_it:
                     log.info("阴阳变转")
                     return True
             if not flag:  # 是否一定要找到
                 return False
             time.sleep(0.5)  # 添加短暂延迟避免性能消耗
         else:
-            log.info(f"查找图片超时 {target_path}")
+            log.info(f"查找图片超时 {target_path} ，最相似图片匹配值 {img_search_val}，所需匹配值 {threshold}")
             self.search_img_allow_retry = retry_in_map
             return False
             
@@ -697,7 +699,7 @@ class Calculated:
         return use_absolute_time, delay, allow_press_f
 
     def auto_map(self, map, old=True, normal_run=False, rotate=False, dev=False, last_point=''):
-        self.pause = Pause(dev=True)
+        self.pause = Pause(dev=dev)
         map_version = self.cfg.CONFIG.get("map_version", "default")
         self.ASU.screen = self.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
@@ -716,7 +718,7 @@ class Calculated:
             dev_restart = False  # 不进行重开
             last_key = ""
             for map_index, map_value in enumerate(map_data["map"]):
-                press_key = self.pause.check_pause(dev=True, last_point=last_point)
+                press_key = self.pause.check_pause(dev=dev, last_point=last_point)
                 if press_key:
                     if press_key == 'F7':
                         pass
