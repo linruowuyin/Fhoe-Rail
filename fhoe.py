@@ -251,7 +251,7 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "allow_map_buy"
         },
         {
-            "title": "购买秘技零食",
+            "title": "购买秘技零食并合成零食",
             "choices": {"不购买": False, "购买": True},
             "config_key": "allow_snack_buy"
         }
