@@ -44,6 +44,7 @@ class Map:
                 break
             else:
                 attempts += 1
+                self.calculated.back_to_main()  # 打开map运行前保证在主界面
                 log.info(f'打开地图')
             pyautogui.press(self.open_map)
             time.sleep(3)  # 3秒延迟
@@ -203,6 +204,13 @@ class Map:
         self.allow_drap_map_switch = 0  # 初始化禁止拖动地图
         if "drag" in start and start["drag"] >= 1:
             self.allow_drap_map_switch = True
+    
+    def allow_multi_click(self, start):
+        self.multi_click = 1
+        self.allow_multi_click_switch = False
+        if "clicks" in start and start["clicks"] >= 1:
+            self.allow_multi_click_switch = True
+            self.multi_click = int(start["clicks"])
 
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
@@ -244,6 +252,7 @@ class Map:
                         value = start[key]
                         self.calculated.search_img_allow_retry = False
                         self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
+                        self.allow_multi_click(start)  # 多次点击
                         if key == "check":  # 判断周几
                             if value == 1:
                                 value = [0,1,2,3,4,5,6]
@@ -281,11 +290,13 @@ class Map:
                             pyautogui.press('esc')
                             continue
                         elif key == 'map':
-                            self.calculated.back_to_main()  # 打开map运行前保证在主界面
                             self.map_init()
                         elif key == 'main':
                             self.calculated.back_to_main()  # 检测并回到主界面
                             time.sleep(2)
+                        elif key == 'b':
+                            pyautogui.press('b')
+                            time.sleep(1)
                         elif key == "picture\\max.png":
                             if self.calculated.allow_buy_item():
                                 jump_this_map = False
@@ -340,11 +351,11 @@ class Map:
                                 if self.allow_drap_map_switch or self.map_drag:
                                     self.find_transfer_point(key, threshold=0.975)
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
-                                    self.calculated.click_target_with_alt(key, 0.93)
+                                    self.calculated.click_target_with_alt(key, 0.93, clicks=self.multi_click)
                                 else:
-                                    self.calculated.click_target(key, 0.93)
+                                    self.calculated.click_target(key, 0.93, clicks=self.multi_click)
                                 self.temp_point = key
-                            teleport_click_count += 1 
+                            teleport_click_count += 1
                             log.info(f'传送点击（{teleport_click_count}）')
                             if self.calculated.search_img_allow_retry:
                                 retry = True

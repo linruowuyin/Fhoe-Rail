@@ -121,19 +121,24 @@ class Calculated:
         
         return left, top, right, bottom
 
-    def click(self, points, slot=0):
+    def click(self, points, slot=0.0, clicks=1):
         """
         说明：
             点击指定屏幕坐标
         参数：
             :param points: 坐标
+            :param slot: 坐标来源图片匹配值
+            :param clicks: 连续点击次数
         """
         x, y = int(points[0]), int(points[1])
         if not slot:
             log.info(f"点击坐标{(x, y)}")
         else:
             log.info(f"点击坐标{(x, y)}，坐标来源图片匹配度{slot:.3f}")
-        self.mouse_press(x, y)
+        if clicks > 1:
+            log.info(f"将点击 {clicks} 次")
+        for _ in range(clicks):
+            self.mouse_press(x, y)
 
     def translate_key(self, key_name: str):
         """转换key
@@ -369,25 +374,26 @@ class Calculated:
         else:
             return False
     
-    def click_target_above_threshold(self, target, threshold, offset):
+    def click_target_above_threshold(self, target, threshold, offset, clicks=1):
         """
         尝试点击匹配度大于阈值的目标图像。
         参数:
             :param target: 目标图像
             :param threshold: 匹配阈值
             :param offset: 左、上、右、下，正值为向右或向下偏移
+            :param clicks: 连续点击次数
         返回:
             :return: 是否点击成功
         """
         result = self.scan_screenshot(target, offset)
         if result["max_val"] > threshold:
             points = self.calculated(result, target.shape)
-            self.click(points, result['max_val'])
+            self.click(points, result['max_val'], clicks)
             return True, result['max_val']
         return False, result['max_val']
 
 
-    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0,0,0,0), retry_in_map: bool=True):
+    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0,0,0,0), retry_in_map: bool=True, clicks=1):
         """
         说明：
             点击指定图片
@@ -398,6 +404,7 @@ class Calculated:
             :param timeout: 最大搜索时间（秒）
             :param offset: 左、上、右、下，正值为向右或向下偏移
             :param retry_in_map: 是否允许地图中重试查找
+            :param clicks: 连续点击次数
         返回：
             :return 是否点击成功
         """
@@ -407,11 +414,11 @@ class Calculated:
         start_time = time.time()
         
         while time.time() - start_time < timeout:
-            click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset)
+            click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset, clicks)
             if click_it:
                 return True
             if time.time() - start_time > 5:  # 如果超过5秒，同时匹配原图像和颜色反转后的图像
-                click_it, img_inverted_search_val = self.click_target_above_threshold(inverted_target, threshold, offset)
+                click_it, img_inverted_search_val = self.click_target_above_threshold(inverted_target, threshold, offset, clicks)
                 if click_it:
                     log.info("阴阳变转")
                     return True
@@ -423,7 +430,7 @@ class Calculated:
             self.search_img_allow_retry = retry_in_map
             return False
             
-    def click_target_with_alt(self, target_path, threshold, flag=True):
+    def click_target_with_alt(self, target_path, threshold, flag=True, clicks=1):
         """
         说明：
             按下alt，点击指定图片，释放alt
@@ -431,9 +438,10 @@ class Calculated:
             :param target_path:图片地址
             :param threshold:匹配阈值
             :param flag:True为一定要找到图片
+            :param clicks: 连续点击次数
         """
         win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-        self.click_target(target_path, threshold, flag)
+        self.click_target(target_path, threshold, flag, clicks=clicks)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def detect_fight_status(self, timeout=5):
