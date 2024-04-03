@@ -297,6 +297,8 @@ class Map:
                         elif key == 'b':
                             pyautogui.press('b')
                             time.sleep(1)
+                        elif key == 'await':
+                            time.sleep(abs(value))
                         elif key == "picture\\max.png":
                             if self.calculated.allow_buy_item():
                                 jump_this_map = False

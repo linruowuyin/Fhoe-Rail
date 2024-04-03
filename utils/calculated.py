@@ -164,20 +164,12 @@ class Calculated:
         参数：
             :param x: 起始点相对坐标x
             :param y: 起始点相对坐标y
-            :param end_x: 目标终点相对坐标x，默认为 None
-            :param end_y: 目标终点相对坐标y，默认为 None
             :param delay: 鼠标点击与抬起之间的延迟（秒）
         """
-        # 如果没有提供目标终点的坐标，则默认终点为初始点击位置
-        if end_x is None:
-            end_x = x
-        if end_y is None:
-            end_y = y
         win32api.SetCursorPos((x, y))
         time.sleep(0.1)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         time.sleep(delay)
-        win32api.SetCursorPos((end_x, end_y))
         time.sleep(0.01)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
@@ -605,19 +597,12 @@ class Calculated:
             log.info(f'未进入战斗')
             time.sleep(0.5)
 
-
-    def fightE(self, value):
-        """
-        使用'E'攻击，补充秘技点数
-        """
-        image_A = cv.imread("./picture/eat.png")
-        pyautogui.press('e')
-        result_A = None
-        time.sleep(0.25)
+    def technique_points_dialog(self):
         if not self.on_main_interface(timeout=0.0, allow_log=True):
             time.sleep(0.5)
+            image_A = cv.imread("./picture/eat.png")
             result_A = self.scan_screenshot(image_A)
-            if result_A is not None and result_A["max_val"] > 0.9:
+            if result_A["max_val"] > 0.9:
                 allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
                 if allow_fight_e_buy_prop:
                     allow_buy = False
@@ -640,6 +625,15 @@ class Calculated:
                         time.sleep(0.25)
                 else:
                     self.back_to_main(delay=0.1)
+        
+    def fightE(self, value):
+        """
+        使用'E'攻击，补充秘技点数
+        """
+        
+        pyautogui.press('e')
+        time.sleep(0.25)
+        self.technique_points_dialog()
 
         if value == 1:
             time.sleep(1)
@@ -881,6 +875,7 @@ class Calculated:
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
         if last_key == "e":
+            self.technique_points_dialog()
             if not self.on_main_interface(timeout=0.2):
                 fight_status = self.fight_elapsed()
                 if not fight_status:
