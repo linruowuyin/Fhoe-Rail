@@ -44,6 +44,7 @@ class Map:
                 break
             else:
                 attempts += 1
+                self.calculated.back_to_main()  # 打开map运行前保证在主界面
                 log.info(f'打开地图')
             pyautogui.press(self.open_map)
             time.sleep(3)  # 3秒延迟
@@ -289,7 +290,6 @@ class Map:
                             pyautogui.press('esc')
                             continue
                         elif key == 'map':
-                            self.calculated.back_to_main()  # 打开map运行前保证在主界面
                             self.map_init()
                         elif key == 'main':
                             self.calculated.back_to_main()  # 检测并回到主界面

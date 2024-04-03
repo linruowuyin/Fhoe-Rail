@@ -182,28 +182,51 @@ def main_start_rewrite():
     cfg.ensure_config_complete()
 
 def set_config(slot: str = 'start'):
-    questions = get_questions_for_slot(slot)
-    if not questions:
-        log.info(f"错误的set_config参数: {slot}")
-        return
+    while True:  # 循环直到用户选择返回
+        questions = get_questions_for_slot(slot)
+        if not questions:
+            log.info(f"错误的set_config参数: {slot}")
+            return
 
-    config = load_config()
+        config = load_config()
 
-    for question in questions:
-        option = ask_question(question)
-        config[question["config_key"]] = question["choices"][option]
-    
-    if config["map_version"] == "HuangQuan":
-        config["allow_fight_e_buy_prop"] = True
-    
-    save_config(config)
+        # 从问题列表中生成初始设置值字典
+        settings = {question["title"]: config.get(question["config_key"], "未设置") for question in questions}
+
+        def modify_setting(setting_name, setting_key):
+            question = next(q for q in questions if q["title"] == setting_name)
+            option = ask_question(question)
+            if option is not None:
+                new_value = question["choices"][option]
+                config[setting_key] = new_value
+                settings[setting_name] = new_value
+
+        # 创建一级菜单，并显示当前设置值
+        answer = questionary.select(
+            "请选择要修改的设置:",
+            choices=[f"{question['title']}------({next(k for k, v in question['choices'].items() if v == settings[question['title']])})" for question in questions] + ["【返回】"]
+        ).ask()
+        
+        if answer == "【返回】":
+            return
+
+        # 进入子菜单进行设置值的修改
+        if answer:
+            setting_name = answer.split('------')[0]
+            setting_key = next(question["config_key"] for question in questions if question["title"] == setting_name)
+            modify_setting(setting_name, setting_key)
+        
+        if config["map_version"] == "HuangQuan":
+            config["allow_fight_e_buy_prop"] = True
+        
+        save_config(config)
 
 def get_questions_for_slot(slot: str) -> list:
     map_instance = Map()
     map_versions = map_instance.read_maps_versions()
     default_questions = [
         {
-            "title": "选择地图版本，default：正常走路/疾跑，technique：强化型秘技角色适用，参考托帕",
+            "title": "选择地图版本，default：疾跑，HuangQuan：黄泉专用",
             "choices": {version: version for version in map_versions},
             "config_key": "map_version"
         },
@@ -219,7 +242,7 @@ def get_questions_for_slot(slot: str) -> list:
         },
         {
             "title": "优先星球",
-            "choices": {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"},
+            "choices": {"空间站": "1", "雅利洛": "2", "仙舟": "3", "匹诺康尼": "4"},
             "config_key": "main_map"
         },
         {
