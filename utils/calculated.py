@@ -594,31 +594,33 @@ class Calculated:
         pyautogui.press('e')
         result_A = None
         time.sleep(0.25)
-        result_A = self.scan_screenshot(image_A)
-        if result_A is not None and result_A["max_val"] > 0.9:
-            allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
-            if allow_fight_e_buy_prop:
-                time.sleep(0.5)
-                allow_buy = False
-                round_disable = cv.imread("./picture/round_disable.png")
-                if self.on_interface(check_list=[round_disable], timeout=0.5, interface_desc='无法购买', threshold=0.95):
-                    pass
+        if not self.on_main_interface(timeout=0.0, allow_log=False):
+            time.sleep(0.2)
+            result_A = self.scan_screenshot(image_A)
+            if result_A is not None and result_A["max_val"] > 0.9:
+                allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
+                if allow_fight_e_buy_prop:
+                    time.sleep(0.5)
+                    allow_buy = False
+                    round_disable = cv.imread("./picture/round_disable.png")
+                    if self.on_interface(check_list=[round_disable], timeout=0.5, interface_desc='无法购买', threshold=0.95):
+                        pass
+                    else:
+                        food_lab = cv.imread("./picture/qiqiao_lab.png")
+                        self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
+                        if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
+                            time.sleep(0.1)
+                            self.click_target("./picture/round.png", 0.9, timeout=8)
+                            time.sleep(0.5)
+                            self.click_target("./picture/round.png", 0.9, timeout=8)
+                            allow_buy = True
+                        time.sleep(1)
+                    self.back_to_main(delay=0.1)
+                    if allow_buy:
+                        pyautogui.press('e')
+                        time.sleep(0.25)
                 else:
-                    food_lab = cv.imread("./picture/qiqiao_lab.png")
-                    self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
-                    if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
-                        time.sleep(0.1)
-                        self.click_target("./picture/round.png", 0.9, timeout=8)
-                        time.sleep(0.5)
-                        self.click_target("./picture/round.png", 0.9, timeout=8)
-                        allow_buy = True
-                    time.sleep(1)
-                self.back_to_main(delay=0.1)
-                if allow_buy:
-                    pyautogui.press('e')
-                    time.sleep(0.25)
-            else:
-                self.back_to_main(delay=0.1)
+                    self.back_to_main(delay=0.1)
 
         if value == 1:
             time.sleep(1)
@@ -1166,7 +1168,8 @@ class Calculated:
             check_list = [self.main_ui]
         
         temp_max_val = []
-        while time.time() - start_time < timeout:
+
+        while True:
             for index, img in enumerate(check_list):
                 result = self.scan_screenshot(img, offset=offset)
                 if result["max_val"] > threshold:
@@ -1177,10 +1180,11 @@ class Calculated:
                 else:
                     temp_max_val.append(result['max_val'])
                     time.sleep(0.2)
-        else:
-            if allow_log:
-                log.info(f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
-            return False
+                    
+            if time.time() - start_time >= timeout:
+                if allow_log:
+                    log.info(f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
+                return False
 
     def handle_shutdown(self):
         if self.cfg.CONFIG.get("auto_shutdown", False):
