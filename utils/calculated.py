@@ -444,11 +444,31 @@ class Calculated:
         self.click_target(target_path, threshold, flag, clicks=clicks)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def detect_fight_status(self, timeout=5):
+    def no_in_fight_status(self) -> bool:
+        """必定不在战斗的图片，以完善战斗检测
+
+        Returns:
+            bool: 是否不在战斗
+        """
+        
+        img_list = []
+        img_list.append(cv.imread("./picture/round.png"))
+        for img in img_list:
+            result = self.scan_screenshot(img)
+            log.info(f"未战斗识别，匹配度{result['max_val']:.3f}，需要0.95")
+            if result['max_val'] > 0.95:
+                log.info(f"不在战斗中")
+                return True
+        return False
+        
+        
+    def detect_fight_status(self, timeout=5.0):
         start_time = time.time()
         action_executed = False
         self.attack_once = False
         log.info("开始识别是否进入战斗")
+        if self.no_in_fight_status():
+            return False
         while time.time() - start_time < timeout:
             main_result = self.scan_screenshot(self.main_ui, offset=(0,0,-1630,-800))
             doubt_result = self.scan_temp_screenshot(self.doubt_ui)
@@ -594,13 +614,12 @@ class Calculated:
         pyautogui.press('e')
         result_A = None
         time.sleep(0.25)
-        if not self.on_main_interface(timeout=0.0, allow_log=False):
-            time.sleep(0.2)
+        if not self.on_main_interface(timeout=0.0, allow_log=True):
+            time.sleep(0.5)
             result_A = self.scan_screenshot(image_A)
             if result_A is not None and result_A["max_val"] > 0.9:
                 allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
                 if allow_fight_e_buy_prop:
-                    time.sleep(0.5)
                     allow_buy = False
                     round_disable = cv.imread("./picture/round_disable.png")
                     if self.on_interface(check_list=[round_disable], timeout=0.5, interface_desc='无法购买', threshold=0.95):
