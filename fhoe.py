@@ -221,6 +221,16 @@ def get_questions_for_slot(slot: str) -> list:
             "title": "优先星球",
             "choices": {"空间站「黑塔」": "1", "雅利洛-VI": "2", "仙舟「罗浮」": "3", "匹诺康尼": "4"},
             "config_key": "main_map"
+        },
+        {
+            "title": "购买代币与过期邮包",
+            "choices": {"不购买": False, "购买": True},
+            "config_key": "allow_map_buy"
+        },
+        {
+            "title": "购买秘技零食",
+            "choices": {"不购买": False, "购买": True},
+            "config_key": "allow_snack_buy"
         }
     ]
 
