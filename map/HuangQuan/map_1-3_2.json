@@ -1,12 +1,12 @@
 {
     "name": "支援舱段-2",
-    "author": "喵不可言,lrwy",
+    "author": "喵不可言,Starry-Wind,小明",
     "start": [
         {
             "map": 1
         },
         {
-            "picture\\map_1-3_point_3.png": 1.5
+            "picture\\map_1-3_point_4.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
@@ -14,25 +14,28 @@
     ],
     "map": [
         {
-            "s": 0.5
+            "s": 2
         },
         {
-            "a": 0.25
+            "e": 2
         },
         {
-            "fighting": 2
+            "d": 0.76
         },
         {
-            "s": 5.03
+            "w": 1.27
         },
         {
-            "fighting": 2
+            "a": 0.51
+        },
+        {			
+            "w": 7.83
         },
         {
-            "a": 0.3
+            "e": 2
         },
         {
-            "f": 1
+            "e": 2		
         }
     ]
 }
