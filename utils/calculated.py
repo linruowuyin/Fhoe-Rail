@@ -736,6 +736,7 @@ class Calculated:
         total_map_count = len(map_data['map'])
         self.first_role_check()  # 1号位为跑图角色
         dev_restart = True  # 初始化开发者重开
+        #开发群657378574，密码hoe2333
         while dev_restart:
             dev_restart = False  # 不进行重开
             last_key = ""
