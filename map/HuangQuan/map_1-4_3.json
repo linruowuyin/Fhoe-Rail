@@ -1,0 +1,29 @@
+{
+    "name": "禁闭舱段-3",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\1floor.png": 2
+        },
+        {
+            "picture\\map_1-4_point_3.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+  "map": [
+    {
+      "d": 3.1
+    },
+    {
+      "s": 0.66
+	},
+    {
+      "fighting": 2
+  }
+]
+}

@@ -1,0 +1,32 @@
+{
+    "name": "收容舱段-4",
+    "author": "Starry-Wind,小明,喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\1floor.png": 1.5
+        },
+        {
+            "picture\\map_1-2_point_4.png": 1.5
+        },
+        {
+            "picture\\map_1-2_point_5.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+          "d": 1.14
+        },
+        {
+          "w": 1.51
+        },
+        {
+          "fighting": 2
+        }
+    ]
+}
