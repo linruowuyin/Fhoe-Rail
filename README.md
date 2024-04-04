@@ -1,11 +1,6 @@
-[原项目StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)         [聚合使用March7thAssistant](https://github.com/moesnow/March7thAssistant)      [同类程序StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy) 
 
-[同类程序StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)       [模拟器运行StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)             
-
-------
-
-# 除黄泉外请使用远程角色跑图，暂时除了需要把帧数调为60帧外无特殊要求
-# 脚本原则上免配置启动，附加功能需要自行在配置中打开，黄泉跑图需要在设置里开启对应地图
+# 锄大地可免配置启动，[附加功能](https://github.com/linruowuyin/Fhoe-Rail/tree/master?tab=readme-ov-file#%E5%85%B3%E4%BA%8E%E9%85%8D%E7%BD%AE)需要自行在配置中打开，黄泉跑图需要在设置里开启对应地图
+# 运行前请阅读[运行须知](https://github.com/linruowuyin/Fhoe-Rail/tree/master?tab=readme-ov-file#%E8%BF%90%E8%A1%8C%E9%A1%BB%E7%9F%A5)
 
 ## 免责声明
 
@@ -26,16 +21,6 @@ This software is open source, free of charge and for learning and exchange purpo
 
 ------
 
-**集成版本选图**请在命令行输入：Fhoe-Rail.exe --debug
-
-程序只支持**1920*1080游戏分辨率**，部分屏幕无法识别全屏幕，请切换非全屏幕重试
-
-**程序缺陷**：程序闪退可能造成atl键或shift键持续处于按下状态，需要手动按下解除
-
-识图为截取游戏画面，所以不能有任何覆盖（小心各类弹窗）
-
-请勿在非自动战斗状态时移动鼠标或操作键盘
-
 ## 全自动锄地流程
 
 仅提供思路作为参考：
@@ -44,22 +29,31 @@ This software is open source, free of charge and for learning and exchange purpo
 
 缺点：遇到更新或者网络卡顿会卡死住（脚本未设计点击方案），所以建议再设定一个定时关闭电源（时间可参考之前跑完全图后的日志计时）
 
-## 功能区分
+## 功能简介
 
-- [x] 疾跑
-- [x] 过期邮包/艾迪恩代币
-- [x] 4点续锄(跨日)
-- [x] 使用秘技
-- [x] 自动开/关机/注销
-- [x] 地图拖拽
-- [x] 定时启动
-- [ ] GUI
+- 疾跑
+- 购买过期邮包/艾迪恩代币
+- 黄泉专用地图：加速锄地，需要消耗奇巧零食
+- 使用秘技
+- 完成后自动关机/注销
+- 地图拖拽：地图传送点与星球拖拽查找
+- 定时启动：设置定时后自动运行
+- 4点续锄(跨日)：运行一次后等待至凌晨4点继续运行
 
-## 关于跑图
+- 未来规划：GUI
 
-### 跑图须知
+## 关于锄大地运行
 
-- **1号位为跑图角色**
+### 运行须知
+
+
+- **1号位**为跑图角色，需要是**远程角色**，使用**黄泉专用地图**时必须是**黄泉**
+
+- **帧数调为60帧**
+
+- 程序只支持**1920*1080游戏分辨率**，部分屏幕无法识别全屏幕，请切换非全屏幕重试
+
+- **集成版本选图**请在命令行输入：Fhoe-Rail.exe --debug
 
 - 请事先开完全部锚点，完成地图上可以干扰图片识别传送的一切任务，因此造成的卡图现象本项目不予处理
 
@@ -69,10 +63,19 @@ This software is open source, free of charge and for learning and exchange purpo
 
 - **请不要修改默认键位，由此造成的卡图请自行解决**
 
+
+### 已知缺陷
+
+- 程序闪退可能造成atl键或shift键持续处于按下状态，需要手动按下解除
+
+- 识图为截取游戏画面，所以不能有任何覆盖（小心各类弹窗）
+
+- 请勿在非自动战斗状态时移动鼠标或操作键盘
+
+
 ### 跑图模型分类
 
 现有模型分类（可能有误，待修正）：
-
 成年模型且攻击为远程无位移跑图最佳、少女模型可能会卡
 
 | 模型 | 角色                                           |
@@ -81,6 +84,7 @@ This software is open source, free of charge and for learning and exchange purpo
 | 成女 | 阮•梅、托帕、黑天鹅、布洛妮娅、驭空、娜塔莎、 |
 | 少年 | 无                                            |
 | 成男 | 丹恒•饮月、瓦尔特                             |
+
 
 ### 地图选择
 
@@ -92,9 +96,12 @@ This software is open source, free of charge and for learning and exchange purpo
 | technique     | 加入了较多的击打紫色秘技，且在战斗中使用较多秘技 |
 | HuangQuan     | 黄泉专用地图，自行备足秘技零食 |
 
+
 ## 关于配置
 
 ### 配置说明
+
+配置文件为 config.json
 
 配置对应项目时，是均为true，否均为false
 
@@ -110,7 +117,8 @@ This software is open source, free of charge and for learning and exchange purpo
 | allow_run_again | 是否允许每次运行连续锄地2次避免漏怪 |
 | allow_run_next_day | 是否允许等待至下一个凌晨4点继续从头锄地 |
 | allow_map_buy | 是否允许购买 代币 与 过期邮包 |
-| allow_snack_buy | 是否允许购买秘技零食的制作材料 |
+| allow_snack_buy | 是否允许购买并合成秘技零食的制作材料 |
+
 
 ## 关于地图录制
 
@@ -143,17 +151,21 @@ This software is open source, free of charge and for learning and exchange purpo
 
    ~~~
    {
-       "name": "乌拉乌拉-1",       （地图json名为1-1_1.json）
-       "author": "Starry-Wind",   （作者名，第二作者不能覆盖第一作者名称）
-       "start": [           （开局传送地图识别图片，并将鼠标移动至图片中间并按下按键）
-           {"map": 1},         （按下m键打开地图）
-           {"picture\\orientation_1.jpg": 1.5},     （识别到orientation_1.jpg图片后，将鼠标移动至图片中间并按下按键）
-           {"picture\\map_1.jpg": 2},               （具体图片自己看，一般为该区域名"乌拉乌拉"的地图文字）
-           {"picture\\map_1_point_1.jpg": 1.5},       （第一个传送点的图片）
-           {"picture\\transfer.jpg": 1.5}              （"传送"字的图片）
+       "name": "乌拉乌拉-1",                                 （地图 json 名为 1-1_1.json ）
+       "author": "Starry-Wind",                             （作者名，第二作者不能覆盖第一作者名称）
+       "start": [                                           （开局传送地图识别图片，并将鼠标移动至图片中间并按下按键）
+           {"map": 1},                                      （按下 m 键打开地图）
+           {"picture\\orientation_1.jpg": 1.5},             （识别到 orientation_1.jpg 图片后，将鼠标移动至图片中间并按下按键）
+           {"picture\\map_1.jpg": 2},                       （具体图片自己看，一般为该区域名"乌拉乌拉"的地图文字）
+           {"picture\\map_1_point_1.jpg": 1.5},             （第一个传送点的图片）
+           {"picture\\transfer.jpg": 1.5},                  （"传送"字的图片）
+           {"space": 1},                                    （按下 space 键）
+           {"b": 1},                                        （按下 b 键）
+           {"await": 5}                                     （等待 5 秒）
        ]
    }
    ~~~
+
 
 ### 键位映射
 
@@ -169,3 +181,19 @@ This software is open source, free of charge and for learning and exchange purpo
 | e          | 键值为1时，使用秘技并追加普通攻击              |
 | e          | 键值为2时，仅使用秘技；适用于强化型秘技角色              |
 | esc        | 只有键值为1时有意义，等同于按下了一次Esc键               |
+
+---
+
+## 相关项目
+
+- 原项目 StarRailAssistant [https://github.com/Starry-Wind/StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)
+
+- 聚合使用 March7thAssistant [https://github.com/moesnow/March7thAssistant](https://github.com/moesnow/March7thAssistant)
+
+- 锄大地同类程序 StarRailAutoProxy [https://github.com/DoctorReid/StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy)
+
+- 锄大地同类程序 StarRail-FastRun [https://github.com/Souloco/StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)
+
+- 模拟器运行 StarRailCopilot [https://github.com/LmeSzinc/StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)
+
+

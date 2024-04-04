@@ -9,7 +9,13 @@
       "picture\\buy.png": 1.5
     },
     {
-      "await": 6
+      "await": 2
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 4
     },
     {
       "picture\\liuti.png": 1.5
