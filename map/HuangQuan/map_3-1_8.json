@@ -6,7 +6,7 @@
             "map": 1
         },
         {
-            "picture\\map_3-1_point_6.png": 1.5
+            "picture\\map_3-1_point_7.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
@@ -14,10 +14,7 @@
     ],
     "map": [
         {
-            "s": 0.9
-        },
-        {
-            "a": 0.68
+            "d": 1.45
         },
         {
             "fighting": 2
