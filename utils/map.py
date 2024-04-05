@@ -333,7 +333,11 @@ class Map:
                                     log.info(f"已在对应楼层，跳过选择楼层")
                                     pass
                             elif key in ["picture\\fanhui_1.png","picture\\fanhui_2.png"]:  # 有可能未找到该图片，冗余查找
-                                self.calculated.click_target(key, 0.97,timeout=3, offset=(1660,100,-40,-910), retry_in_map=False)
+                                img = cv.imread("./picture/kaituoli_1.png")
+                                if not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580,0,0,-910), allow_log=False):
+                                    self.calculated.click_target(key, 0.94,timeout=3, offset=(1660,100,-40,-910), retry_in_map=False)
+                                else:
+                                    log.info(f"检测到星轨航图，不进行点击'返回'")
                             elif key.startswith("picture\\check_4-1_point"):
                                 self.find_transfer_point(key, threshold=0.975)
                                 if self.calculated.click_target(key, 0.95, retry_in_map=False):

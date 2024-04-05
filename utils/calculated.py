@@ -357,10 +357,21 @@ class Calculated:
         """
         比对颜色反转
         """
-        original_target = cv.imread(target_path)
-        target,  result_inverted = self.img_trans_bitwise(target_path, offset)
-        result_original = self.scan_screenshot(original_target, offset)
-        log.info(f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
+        retry = 0
+        while retry < 5:
+            original_target = cv.imread(target_path)
+            target,  result_inverted = self.img_trans_bitwise(target_path, offset)
+            result_original = self.scan_screenshot(original_target, offset)
+            log.info(f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
+            if round(result_original['max_val'], 3) == 0.0 or round(result_inverted['max_val'], 3) == 0.0:
+                retry += 1
+                time.sleep(0.5)
+            else:
+                break
+        else:
+            log.info(f"超过重试次数，强制认为原图正确")
+            return True
+        
         if result_original["max_val"] > result_inverted["max_val"]:
             return True
         else:
