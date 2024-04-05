@@ -35,7 +35,7 @@ def choose_map_debug(map_instance: Map):
     while True:
         if is_selecting_main_map:
             title_ = "请选择起始星球："
-            options_map = {"1 空间站「黑塔」": "1", "2 雅利洛-VI": "2", "3 仙舟「罗浮」": "3", "4 匹诺康尼": "4", "5 螺丝星": "5", "优先星球": "first_map", "[设置]":"option", "[定时]": "scheduled"}
+            options_map = {"1 空间站「黑塔」": "1", "2 雅利洛-VI": "2", "3 仙舟「罗浮」": "3", "4 匹诺康尼": "4", "优先星球": "first_map", "[设置]":"option", "[定时]": "scheduled"}
             option_ = questionary.select(title_, list(options_map.keys())).ask()
             if option_ is None:
                 return None  # 用户选择了返回上一级菜单
