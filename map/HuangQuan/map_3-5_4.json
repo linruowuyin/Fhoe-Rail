@@ -1,12 +1,12 @@
 {
-  "name": "绥  园-2",
+  "name": "绥  园-4",
   "author": "喵不可言",
   "start": [       
         {
             "map": 1
         },
         {
-            "picture\\map_3-5_point_8.png": 1.5
+            "picture\\map_3-5_point_9.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
@@ -14,10 +14,10 @@
     ],
   "map": [
     {
-      "a": 2.58
+      "s": 1.38
     },
     {
-      "w": 0.15
+      "d": 1.16
     },
     {
       "fighting": 2

@@ -1,26 +1,29 @@
 {
-  "name": "边缘道路-2",
+  "name": "铆钉镇-3",
   "author": "喵不可言",
   "start": [
     {
       "map": 1
     },
     {
-      "picture\\map_2-2_point_4.png": 1.5
+      "picture\\map_2-6_point_3.png": 1.5
     },
     {
       "picture\\transfer.png": 1.5
     }
-],
+  ],
   "map": [
-    {  
-      "s": 2.22
+    {
+      "d": 1.34
     },
     {
-      "d": 1.21
+      "s": 4.06
     },
     {
-      "fighting": 2  
+      "d": 0.48
+    },
+    {
+      "fighting": 2
     }
   ]
 }
