@@ -47,6 +47,7 @@ class Calculated:
         self.finish3_ui = cv.imread("./picture/finish_fighting3.png")
         self.finish4_ui = cv.imread("./picture/finish_fighting4.png")
         self.finish5_ui = cv.imread("./picture/finish_fighting5.png")
+        self.battle_esc_check = cv.imread("./picture/battle_esc_check.png")
         
         self.attack_once = False  # 检测fighting时仅攻击一次，避免连续攻击
         self.esc_btn = KeyboardKey.esc  # esc键
@@ -1158,6 +1159,10 @@ class Calculated:
         while not self.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
             pyautogui.press('esc')
             time.sleep(delay)
+            if self.on_interface(check_list=[self.battle_esc_check], timeout=0.0, threshold=0.97, offset=(0,0,-1800,-970), allow_log=True):
+                pyautogui.press('esc')
+                time.sleep(2)
+                self.fight_elapsed()
     
     def on_main_interface(self, check_list=[], timeout=60.0, threshold=0.9, offset=(0,0,0,0), allow_log=True):
         """
