@@ -25,14 +25,15 @@ class Map:
         self.retry_cnt_max = 2
         self.map_statu_minimize = False  # 地图最小化
 
-    def map_init(self, max_attempts=60):
+    def map_init(self, max_attempts=10):
 
         target = cv.imread('./picture/contraction.png')
         attempts = 0
-        
-        pyautogui.press(self.open_map)
-        time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
+
         while attempts < max_attempts:
+            log.info(f'打开地图')
+            pyautogui.press(self.open_map)
+            time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
             result = self.calculated.scan_screenshot(target, offset=(550,960,-1050,-50))
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
@@ -45,9 +46,6 @@ class Map:
             else:
                 attempts += 1
                 self.calculated.back_to_main()  # 打开map运行前保证在主界面
-                log.info(f'打开地图')
-            pyautogui.press(self.open_map)
-            time.sleep(3)  # 3秒延迟
 
     def read_maps_versions(self):
         map_dir = './map'
