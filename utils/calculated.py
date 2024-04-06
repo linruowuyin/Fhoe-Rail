@@ -624,12 +624,12 @@ class Calculated:
                     else:
                         food_lab = cv.imread("./picture/qiqiao_lab.png")
                         self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
-                        if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
-                            time.sleep(0.1)
-                            self.click_target("./picture/round.png", 0.9, timeout=8)
-                            time.sleep(0.5)
-                            self.click_target("./picture/round.png", 0.9, timeout=8)
-                            allow_buy = True
+                        for _ in range(2):
+                            if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
+                                time.sleep(0.1)
+                                self.click_target("./picture/round.png", 0.9, timeout=8)
+                                time.sleep(0.5)
+                                allow_buy = True
                         time.sleep(1)
                     self.back_to_main(delay=0.1)
                     if allow_buy:

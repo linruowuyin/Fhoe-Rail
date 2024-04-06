@@ -178,6 +178,31 @@ class Map:
                     else:
                         return
             threshold -= 0.01
+    
+    def find_scene(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
+        """
+        说明:
+            寻找场景
+        参数：
+            :param key:图片地址
+            :param threshold:图片查找阈值
+            :param min_threshold:最低图片查找阈值
+            :param timeout:超时时间（秒）
+        """
+        start_time = time.time()
+        target = cv.imread(key)
+        direction_names = ["向下移动", "向上移动"]
+        while not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
+            # 设置向下、向上的移动数值
+            directions = [(1700, 900, 1700, 200), (1700, 200, 1700, 900)]
+            for index, direction in enumerate(directions):
+                log.info(f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}")
+                for i in range(1):
+                    if not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold):
+                        self.calculated.mouse_drag(*direction)
+                    else:
+                        return
+            threshold -= 0.02
 
     def get_map_list(self, start, start_in_mid: bool=False):
         start_index = self.map_list.index(f'map_{start}.json')
@@ -202,6 +227,12 @@ class Map:
         self.allow_drap_map_switch = 0  # 初始化禁止拖动地图
         if "drag" in start and start["drag"] >= 1:
             self.allow_drap_map_switch = True
+    
+    def allow_scene_drag(self, start):
+        self.allow_scene_drag_switch = 0  # 初始化禁止拖动
+        if "scene" in start and start["scene"] >= 1:
+            self.allow_scene_drag_switch = True
+        
     
     def allow_multi_click(self, start):
         self.multi_click = 1
@@ -250,6 +281,7 @@ class Map:
                         value = start[key]
                         self.calculated.search_img_allow_retry = False
                         self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
+                        self.allow_scene_drag(start)  # 是否强制允许拖动右侧场景初始化
                         self.allow_multi_click(start)  # 多次点击
                         if key == "check":  # 判断周几
                             if value == 1:
@@ -338,7 +370,7 @@ class Map:
                                     log.info(f"检测到星轨航图，不进行点击'返回'")
                             elif key.startswith("picture\\check_4-1_point"):
                                 self.find_transfer_point(key, threshold=0.975)
-                                if self.calculated.click_target(key, 0.95, retry_in_map=False):
+                                if self.calculated.click_target(key, 0.992, retry_in_map=False):
                                     log.info(f"筑梦机关检查通过")
                                 else:
                                     log.info(f"筑梦机关检查不通过，请将机关调整到正确的位置上")
@@ -356,6 +388,8 @@ class Map:
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:
                                     self.find_transfer_point(key, threshold=0.975)
+                                if self.allow_scene_drag_switch:
+                                    self.find_scene(key, threshold=0.990)
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
                                     self.calculated.click_target_with_alt(key, 0.93, clicks=self.multi_click)
                                 else:
