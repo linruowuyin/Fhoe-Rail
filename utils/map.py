@@ -194,7 +194,7 @@ class Map:
         direction_names = ["向下移动", "向上移动"]
         while not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
             # 设置向下、向上的移动数值
-            directions = [(1700, 900, 1700, 200), (1700, 200, 1700, 900)]
+            directions = [(1700, 900, 1700, 300), (1700, 300, 1700, 900)]
             for index, direction in enumerate(directions):
                 log.info(f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}")
                 for i in range(1):
