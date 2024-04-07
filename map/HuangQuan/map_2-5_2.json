@@ -1,15 +1,15 @@
 {
     "name": "大矿区-2",
-    "author": "喵不可言,Starry-Wind",
+    "author": "喵不可言",
     "start": [
         {
             "map": 1
         },
         {
-            "picture\\map_2-5_point_2.png": 1.5
+            "picture\\map_2-6.png": 2
         },
         {
-            "picture\\map_2-5_point_3.png": 1.5
+            "picture\\map_2-6_point_2.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
@@ -17,43 +17,7 @@
     ],
     "map": [
         {
-            "s": 2.4
-        },
-        {
-            "d": 4.95
-        },
-        {
-            "e": 2
-        },
-        {
-            "d": 1.86
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "w": 0.1
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "s": 0.1
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "fighting": 2
         }
     ]
 }
