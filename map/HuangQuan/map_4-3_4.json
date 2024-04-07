@@ -2,11 +2,14 @@
     "name": "酒店梦境-4",
     "author": "喵不可言",
     "start": [
-        {
+	    {
             "map": 1
         },
         {
-            "picture\\map_4-3_point_1.png": 1.5
+            "picture\\map_4-3_point_2.png": 1.5
+	    },
+        {
+            "picture\\map_4-3_point_3.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
@@ -14,7 +17,25 @@
     ],
     "map": [
     {
-      "w": 6.2
+      "w": 2.9835100173950195
+    },
+    {
+      "a": 5.86
+    },
+    {
+	  "s": 1.18
+    },
+    {
+	  "a": 0.58
+    },
+    {
+      "fighting": 2
+    },
+    {
+	  "w": 0.53
+    },
+    {
+	  "a": 7.0
     }
   ]
 }

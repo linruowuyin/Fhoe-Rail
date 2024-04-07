@@ -1,0 +1,58 @@
+{
+  "name": "大矿区-8",
+  "author": "喵不可言",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\map_2-1_point_3.png": 1.5,
+	  "scene": 1
+    },
+    {
+      "picture\\map_2-1_point_8.png": 1.5,
+	  "drag": 1
+    },
+    {
+      "picture\\map_2-1_point_9.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }  
+  ],
+  "map": [
+    {
+      "w": 5.22
+    },
+    {
+      "a": 1.68
+    },
+    {
+      "w": 3.68
+    },
+    {
+      "a": 2.32
+    },
+    {
+      "w": 2.88
+    },
+    {
+      "a": 5.16
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "w": 1.0
+    },
+    {
+      "a": 0.86
+    },
+    {
+      "s": 0.76
+    },
+    {
+      "fighting": 2
+    }
+  ]
+}

@@ -6,7 +6,8 @@
             "map": 1
         },
         {
-            "picture\\map_2-2_point_1.png": 1.5
+            "picture\\map_2-2_point_1.png": 1.5,
+			"drag": 1
         },
         {
             "picture\\transfer.png": 1.5
