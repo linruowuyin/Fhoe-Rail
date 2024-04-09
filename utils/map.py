@@ -29,10 +29,19 @@ class Map:
 
         target = cv.imread('./picture/contraction.png')
         attempts = 0
-
+        
+        start_time = time.time()
+        speed_open = False
+        
         while attempts < max_attempts:
             log.info(f'打开地图')
             pyautogui.press(self.open_map)
+            while self.calculated.on_main_interface(timeout=0.0,allow_log=False) and time.time() - start_time < 3 and not speed_open:
+                pyautogui.keyDown('s')
+                pyautogui.press(self.open_map)
+                time.sleep(0.05)
+            speed_open = True
+            pyautogui.keyUp('s')
             time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
             result = self.calculated.scan_screenshot(target, offset=(550,960,-1050,-50))
             if result['max_val'] > 0.95:
