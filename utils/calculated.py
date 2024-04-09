@@ -898,6 +898,7 @@ class Calculated:
         allow_run = self.cfg.CONFIG.get("auto_run_in_map", False)
         add_time = True
         run_in_road = False
+        temp_time = 0
         while time.perf_counter() - start_time < value:
             if value > 2 and time.perf_counter() - start_time > 1 and not run_in_road and allow_run and not normal_run:
                 self.keyboard.press(self.shift_btn)
@@ -913,10 +914,27 @@ class Calculated:
             elif value <= 2:
                 self._last_step_run = False
             pass
+        temp_time = time.perf_counter() - start_time
         self.keyboard.release(self.shift_btn)
         self.keyboard.release(key)
         if allow_run:
             time.sleep(0.03)
+        # 暂不启用
+        extra_fix = False
+        if extra_fix:
+            extra_time = temp_time - value
+            extra_time = extra_time if not run_in_road else round(extra_time*1.53, 4)
+            if extra_time > 0.05:
+                log.info(f"执行纠错，反方向运动{(extra_time):.4f}")
+                fix_start_time = time.perf_counter()
+                key_dict = {'w':'s','s':'w','a':'d','d':'a'}
+                if key in key_dict:
+                    self.keyboard.press(key_dict.get(key))
+                    while time.perf_counter() - fix_start_time < extra_time:
+                        pass
+                    self.keyboard.release(key_dict.get(key))
+                    self.keyboard.press(key)
+                    self.keyboard.release(key)
 
     def mouse_move(self, x):
         scaling = 1.0
