@@ -96,6 +96,20 @@ def print_version():
     except:
         pass
 
+def print_info():
+    log.info("")  # 添加一行空行
+    php_content = fetch_php_file_content()  # 获取PHP文件的内容
+    filtered_content = filter_content(php_content, "舔狗日记")  # 过滤关键词
+    log.info("\n" + filtered_content)  # 将过滤后的内容输出到日志
+    log.info("")  # 添加一行空行
+    log.info(f"============================================================")
+    log.info(f"开始运行")
+    print_version()
+    
+def print_end():
+    log.info(f"结束运行")
+    log.info(f"============================================================")
+
 def main():
     map_instance = Map()
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
@@ -123,10 +137,8 @@ def main():
         start_in_mid, start = start[1], start[0]
     
     if start:
-        php_content = fetch_php_file_content()  # 获取PHP文件的内容
-        filtered_content = filter_content(php_content, "舔狗日记")  # 过滤关键词
-        log.info("\n" + filtered_content)  # 将过滤后的内容输出到日志
-        log.info("")  # 添加一行空行
+        config_fix()
+        log.info(f"config.json:{load_config()}")
         log.info("切换至游戏窗口，请确保跑图角色普攻为远程")
         check_mult_screen()
         switch_window()
@@ -180,6 +192,14 @@ def main_start_rewrite():
     """
     set_config(slot='start_rewrite')
     cfg.ensure_config_complete()
+
+def config_fix():
+    """运行前检查并修复配置
+    """
+    config = load_config()
+    if config["map_version"] == "HuangQuan":
+        config["allow_fight_e_buy_prop"] = True
+    save_config(config)
 
 def set_config(slot: str = 'start'):
     while True:  # 循环直到用户选择返回
@@ -301,8 +321,9 @@ if __name__ == "__main__":
         if not pyuac.isUserAdmin():
             pyuac.runAsAdmin()
         else:
-            print_version()
+            print_info()
             main()
+            print_end()
     except ModuleNotFoundError as e:
         print(traceback.format_exc())
         print("请重新运行")

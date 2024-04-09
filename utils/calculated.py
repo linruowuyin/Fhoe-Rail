@@ -47,6 +47,7 @@ class Calculated:
         self.finish3_ui = cv.imread("./picture/finish_fighting3.png")
         self.finish4_ui = cv.imread("./picture/finish_fighting4.png")
         self.finish5_ui = cv.imread("./picture/finish_fighting5.png")
+        self.battle_esc_check = cv.imread("./picture/battle_esc_check.png")
         
         self.attack_once = False  # 检测fighting时仅攻击一次，避免连续攻击
         self.esc_btn = KeyboardKey.esc  # esc键
@@ -357,10 +358,21 @@ class Calculated:
         """
         比对颜色反转
         """
-        original_target = cv.imread(target_path)
-        target,  result_inverted = self.img_trans_bitwise(target_path, offset)
-        result_original = self.scan_screenshot(original_target, offset)
-        log.info(f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
+        retry = 0
+        while retry < 5:
+            original_target = cv.imread(target_path)
+            target,  result_inverted = self.img_trans_bitwise(target_path, offset)
+            result_original = self.scan_screenshot(original_target, offset)
+            log.info(f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
+            if round(result_original['max_val'], 3) == 0.0 or round(result_inverted['max_val'], 3) == 0.0:
+                retry += 1
+                time.sleep(0.5)
+            else:
+                break
+        else:
+            log.info(f"超过重试次数，强制认为原图正确")
+            return True
+        
         if result_original["max_val"] > result_inverted["max_val"]:
             return True
         else:
@@ -612,12 +624,12 @@ class Calculated:
                     else:
                         food_lab = cv.imread("./picture/qiqiao_lab.png")
                         self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
-                        if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
-                            time.sleep(0.1)
-                            self.click_target("./picture/round.png", 0.9, timeout=8)
-                            time.sleep(0.5)
-                            self.click_target("./picture/round.png", 0.9, timeout=8)
-                            allow_buy = True
+                        for _ in range(2):
+                            if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
+                                time.sleep(0.1)
+                                self.click_target("./picture/round.png", 0.9, timeout=8)
+                                time.sleep(0.5)
+                                allow_buy = True
                         time.sleep(1)
                     self.back_to_main(delay=0.1)
                     if allow_buy:
@@ -1147,6 +1159,10 @@ class Calculated:
         while not self.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
             pyautogui.press('esc')
             time.sleep(delay)
+            if self.on_interface(check_list=[self.battle_esc_check], timeout=0.0, threshold=0.97, offset=(0,0,-1800,-970), allow_log=True):
+                pyautogui.press('esc')
+                time.sleep(2)
+                self.fight_elapsed()
     
     def on_main_interface(self, check_list=[], timeout=60.0, threshold=0.9, offset=(0,0,0,0), allow_log=True):
         """
