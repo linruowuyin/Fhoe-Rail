@@ -8,7 +8,7 @@ import win32con
 import win32gui
 import random
 import atexit
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import ImageGrab
 from pynput.keyboard import Controller as KeyboardController
 from pynput.keyboard import Key as KeyboardKey
@@ -36,6 +36,7 @@ class Calculated:
         self.temp_screenshot = ()  # 初始化临时截图
         self.last_check_time = None  # 月卡检测时间
         self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
+        self.next_check_time = None
         
         # 识别图片初始化
         self.main_ui = cv.imread("./picture/finish_fighting.png")
@@ -62,6 +63,9 @@ class Calculated:
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
+
+        self.refresh_hour = self.cfg.CONFIG("refresh_hour", 4)
+        self.refresh_minute = self.cfg.CONFIG("refresh_minute", 0)
     
     def error_stop(self, signum=None, frame=None):
         for i in [self.shift_btn, self.alt_btn]:
@@ -935,34 +939,46 @@ class Calculated:
             win32api.mouse_event(1, last, 0)  # 进行视角移动
 
         time.sleep(0.5)
+    
+    def monthly_update_check_time(self):
+        current_time = datetime.now()
+        self.next_check_time = current_time.replace(hour=self.refresh_hour, minute=self.refresh_minute, second=0, microsecond=0)
+        if current_time >= self.next_check_time:
+            self.next_check_time = self.next_check_time + timedelta(days=1)
 
     def monthly_pass_check(self):
         # 获取当前时间
         current_time = datetime.now()
 
-        # 如果当前时间在3点55分到4点之间，则等待直到4点
-        if current_time.hour == 3 and 55 <= current_time.minute < 60:
-            log.info(f"正在03:55-04:00之间，等待至4点准备识别月卡")
-            while datetime.now().hour == 3:
+        # 如果当前时间接近月卡时间5分钟内，则等待直到月卡时间
+        early_hour = (self.refresh_hour - 1) % 24
+        early_minute = (self.refresh_minute - 1) % 60
+        if ((self.refresh_minute == 0) and current_time.hour == early_hour and early_minute - 4 <= current_time.minute <= early_minute) or ((refresh_minute != 0) and current_time.hour == refresh_hour and early_minute - 4 <= current_time.minute <= early_minute):
+            log.info(f"接近月卡刷新时间，等待至{self.refresh_hour}点{self.refresh_minute}分后识别月卡")
+            while (self.refresh_minute == 0 and datetime.now().hour == early_hour) or (self.refresh_minute != 0 and datetime.now().hour == self.refresh_hour and datetime.now().minute <= early_minute):
                 time.sleep(2)
             else:
                 current_time = datetime.now()  # 等待后重新赋值当前时间
 
-        # 如果是首次运行或者距离上次检查已经过了凌晨4点且日期发生了变更，则需要执行一次月卡检查
-        if self.last_check_time is None or \
-                (self.last_check_time.date() < current_time.date() and current_time.hour >= 4) or \
-                (self.last_check_time.hour < 4 and current_time.hour >= 4):
-            four_am_today = current_time.replace(hour=4, minute=0, second=0, microsecond=0)
-            if 0 <= (current_time - four_am_today).total_seconds() < 30:  # 4点之后的30秒内，触发的尝试点击月卡将延迟30秒，避免月卡弹出前尝试识别月卡
+        # 1，首次运行；2，当前时间大于等于下次检查时间
+        # 需要执行一次月卡检查
+        if self.next_check_time is None:
+            self.monthly_update_check_time()
+
+        if self.last_check_time is None or current_time >= self.next_check_time:
+            if 0 <= (current_time - self.next_check_time).total_seconds() < 30:  
                 delay = 30
                 log.info(f"等待{delay}秒后尝试识别点击月卡")
                 self.try_click_pass(delay=delay)
-            elif self.last_check_time is None or current_time > self.last_check_time:  # 如果当前时间大于上次检查时间，则执行一次月卡检查
+            elif self.last_check_time is None or current_time > self.last_check_time:
                 self.try_click_pass()
             
             # 更新上次检查时间
             self.last_check_time = current_time
             log.info(f"月卡检查时间更新至：{self.last_check_time}")
+
+            # 更新下次检查时间
+            self.monthly_update_check_time()
 
     def monthly_pass(self):
         """
