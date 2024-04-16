@@ -64,8 +64,8 @@ class Calculated:
         self.total_no_fight_cnt = 0  # 非战斗次数计数
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
 
-        self.refresh_hour = self.cfg.CONFIG("refresh_hour", 4)
-        self.refresh_minute = self.cfg.CONFIG("refresh_minute", 0)
+
+        
     
     def error_stop(self, signum=None, frame=None):
         for i in [self.shift_btn, self.alt_btn]:
@@ -949,11 +949,13 @@ class Calculated:
     def monthly_pass_check(self):
         # 获取当前时间
         current_time = datetime.now()
+        self.refresh_hour = self.cfg.CONFIG.get("refresh_hour", 4)
+        self.refresh_minute = self.cfg.CONFIG.get("refresh_minute", 0)
 
         # 如果当前时间接近月卡时间5分钟内，则等待直到月卡时间
         early_hour = (self.refresh_hour - 1) % 24
         early_minute = (self.refresh_minute - 1) % 60
-        if ((self.refresh_minute == 0) and current_time.hour == early_hour and early_minute - 4 <= current_time.minute <= early_minute) or ((refresh_minute != 0) and current_time.hour == refresh_hour and early_minute - 4 <= current_time.minute <= early_minute):
+        if ((self.refresh_minute == 0) and current_time.hour == early_hour and early_minute - 4 <= current_time.minute <= early_minute) or ((self.refresh_minute != 0) and current_time.hour == self.refresh_hour and early_minute - 4 <= current_time.minute <= early_minute):
             log.info(f"接近月卡刷新时间，等待至{self.refresh_hour}点{self.refresh_minute}分后识别月卡")
             while (self.refresh_minute == 0 and datetime.now().hour == early_hour) or (self.refresh_minute != 0 and datetime.now().hour == self.refresh_hour and datetime.now().minute <= early_minute):
                 time.sleep(2)

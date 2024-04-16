@@ -282,7 +282,7 @@ def get_questions_for_slot(slot: str) -> list:
         },
         {
             "title": "几分月卡刷新，默认0",
-            "choices": {str(refresh_minute): refresh_minute for refresh_minute in range(60)},
+            "choices": {str(refresh_minute): refresh_minute for refresh_minute in [0,15,30,45]},
             "config_key": "refresh_minute"
         }
     ]
