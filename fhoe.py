@@ -274,6 +274,16 @@ def get_questions_for_slot(slot: str) -> list:
             "title": "购买秘技零食并合成零食",
             "choices": {"不购买": False, "购买": True},
             "config_key": "allow_snack_buy"
+        },
+        {
+            "title": "几点月卡刷新，默认4",
+            "choices": {str(refresh_hour): refresh_hour for refresh_hour in range(24)},
+            "config_key": "refresh_hour"
+        },
+        {
+            "title": "几分月卡刷新，默认0",
+            "choices": {str(refresh_minute): refresh_minute for refresh_minute in [0,15,30,45]},
+            "config_key": "refresh_minute"
         }
     ]
 

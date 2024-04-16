@@ -122,7 +122,9 @@ class ConfigurationManager:
             "allow_run_again": False,
             "allow_run_next_day": False,
             "allow_map_buy": False,
-            "allow_snack_buy": False
+            "allow_snack_buy": False,
+            "refresh_hour": 4,
+            "refresh_minute": 0
         }
         
         
