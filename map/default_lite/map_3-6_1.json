@@ -1,0 +1,92 @@
+{
+    "name": "丹鼎司-1",
+    "author": "喵不可言,龙女姬",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_4.png": 1.5
+        },
+        {
+            "picture\\map_3-6.png": 2
+        },
+        {
+            "picture\\map_3-6_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "fighting": 2
+        },
+        {
+            "w": 8.5
+        },
+        {
+            "d": 5.0
+        },
+        {
+            "w": 5.22
+        },
+        {
+            "d": 2.7
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "s": 0.7
+        },
+        {
+            "a": 1.5
+        },
+        {
+            "s": 3.0
+        },
+        {
+            "d": 5.0
+        },
+        {
+            "w": 4.0
+        },
+        {
+            "d": 5.0
+        },
+        {
+            "s": 1.5
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "s": 4.0
+        },
+        {
+            "d": 0.5
+        },
+        {
+            "s": 10.5
+        },
+        {
+            "a": 4.2
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "fighting": 1
+        }
+    ]
+}

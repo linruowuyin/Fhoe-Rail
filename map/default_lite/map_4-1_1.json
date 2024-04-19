@@ -1,0 +1,101 @@
+{
+    "name": "筑梦边境-1",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+          "picture\\fanhui_1.png": 1.5
+        },
+        {
+           "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_5.png": 1.5
+        },
+        {
+            "picture\\map_4-1.png": 2
+        },
+        {
+            "picture\\map_4-1_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        },
+        {
+            "map": 1
+        },
+        {
+            "picture\\check_4-1_point_1.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\check_4-1_point_2.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\check_4-1_point_3.png": 1.5,
+            "drag": 1
+        },
+        {
+            "main": 1
+        }
+    ],
+    "map": [
+    {
+      "d": 3.699821662902832
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "a": 3.652693462371826
+    },
+    {
+      "w": 1.15
+    },
+    {
+      "d": 3.5
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "a": 0.36
+    },
+    {
+      "w": 6.6
+    },
+    {
+      "d": 2.33
+    },
+    {
+      "s": 0.8
+    },
+    {
+      "d": 2.88
+	},
+    {
+	  "fighting": 2
+    },
+    {
+      "a": 0.6
+    },
+    {
+      "w": 5.20
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "w": 6.0
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "fighting": 1
+    }
+  ]
+}

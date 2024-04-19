@@ -1,0 +1,59 @@
+{
+  "name": "影视乐园-2",
+  "author": "喵不可言",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\1floor.png": 1.5
+    },
+    {
+      "picture\\map_4-5_point_1.png": 1.5
+    },
+    {
+      "picture\\map_4-5_point_2.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }    
+  ],
+  "map": [
+    {
+      "w": 15.36
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "a": 2.98
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "a": 5.36
+    },
+    {
+      "w": 2.46
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "d": 0.855
+    },
+    {
+      "w": 8.66
+    },
+    {
+      "a": 1.44
+    },
+    {
+      "w": 0.7
+    },
+    {
+      "fighting": 1
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+    "name": "鳞渊境-4",
+    "author": "喵不可言,龙女姬",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_3-7_point_3.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "d": 2.5
+        },
+        {
+            "s": 3.1
+        },
+        {
+            "d": 6.4
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "fighting": 1
+        }
+    ]
+}

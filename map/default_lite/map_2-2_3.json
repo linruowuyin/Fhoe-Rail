@@ -1,0 +1,53 @@
+{
+  "name": "边缘道路-3",
+  "author": "喵不可言",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\map_2-2_point_2.png": 1.5
+	},
+    {
+      "picture\\map_2-2_point_3.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+],
+  "map": [
+    {
+      "fighting": 2
+	},
+    {	  
+      "s": 6.76
+    },
+    {
+      "fighting": 2
+	},
+    {
+      "fighting": 1
+    },
+    {
+      "s": 1.25
+    },
+    {
+      "a": 1.55
+    },
+    {
+      "w": 2.33
+    },
+    {
+      "d": 0.88
+    },
+    {
+      "s": 2.33
+    },
+    {
+      "d": 1.11
+	},
+    {
+      "fighting": 1
+    }
+  ]
+}

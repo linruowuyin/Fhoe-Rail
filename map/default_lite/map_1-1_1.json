@@ -1,0 +1,71 @@
+{
+    "name": "基座舱段-1",
+    "author": "Starry-Wind,小明,lrwy",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_2.png": 1.5
+        },
+        {
+            "picture\\map_1.png": 2
+        },
+        {
+            "picture\\map_1_point.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 0.5
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "s": 2.33
+		},
+        {
+            "fighting": 1
+		},
+        {
+            "s": 3.8
+		},
+        {
+            "a": 0.2
+        },
+        {
+            "fighting": 2
+		},
+        {
+		    "s": 4.14
+        },
+        {
+            "a": 0.2
+	    },
+        {
+            "fighting": 2
+        },
+        {
+            "a": 2.58
+        },
+        {
+            "s": 3.53
+        },
+        {
+            "a": 0.2
+	    },
+        {
+            "fighting": 2
+        }
+    ]
+}

@@ -1,0 +1,41 @@
+{
+    "name": "迴星港-3",
+    "author": "夜里无星,StarryWind",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_3-2_point_4.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 0.78
+        },
+        {
+            "d": 11.66
+        },
+        {
+            "s": 1.5
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "s": 1.67
+        },
+        {
+            "fighting": 1
+        },
+        {
+            "s": 0.92
+        },
+        {
+            "fighting": 1
+        }
+    ]
+}
