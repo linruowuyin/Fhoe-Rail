@@ -26,7 +26,7 @@
     ],
     "map": [
         {
-            "check": 1
+            "check": [0]
         },
         {
             "fighting": 2

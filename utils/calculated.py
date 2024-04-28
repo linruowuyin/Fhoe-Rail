@@ -780,8 +780,8 @@ class Calculated:
                     self.handle_space_or_r(value, key)
                 elif key == "f":
                     self.handle_f()
-                elif key == "check" and value == 1:
-                    self.handle_check(today_weekday_str)
+                elif key == "check":
+                    self.handle_check(value, today_weekday_str)
                 elif key == "mouse_move":
                     self.mouse_move(value)
                 elif key == "fighting":
@@ -849,12 +849,20 @@ class Calculated:
             log.info(f"检测到非正常'F'情况，不执行并跳过'F'")
                 
 
-    def handle_check(self, today_weekday_str):
+    def handle_check(self, value, today_weekday_str):
+        if value is None:
+            value = []
+        elif value == 1:
+            value = [0,1,2,3,4,5,6]
         today_weekday_num = datetime.now().weekday()
-        if today_weekday_num in [1, 4, 6]:  # 1代表周二，6代表周日
-            log.info(f"{today_weekday_str}，周二五日，尝试购买")
+        in_day = today_weekday_num in value
+
+        if in_day:
+            log.info(f"今天{today_weekday_str}，尝试购买")
         else:
-            log.info(f"{today_weekday_str}，非周二五日，跳过")
+            log.info(f"今天{today_weekday_str}，跳过")
+
+        return in_day
 
     def handle_fighting(self, value):
         if value == 1:  # 战斗
