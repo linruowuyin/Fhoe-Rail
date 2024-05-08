@@ -378,7 +378,7 @@ class Map:
                                 else:
                                     log.info(f"检测到星轨航图，不进行点击'返回'")
                             elif key.startswith("picture\\check_4-1_point"):
-                                self.find_transfer_point(key, threshold=0.975)
+                                self.find_transfer_point(key, threshold=0.992)
                                 if self.calculated.click_target(key, 0.992, retry_in_map=False):
                                     log.info(f"筑梦机关检查通过")
                                 else:
