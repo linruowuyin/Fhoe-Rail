@@ -683,7 +683,9 @@ class Calculated:
             'target': cv.imread("./picture/sw.png"),
             'dream_pop': cv.imread("./picture/F_DreamPop.png"),
             'teleport': cv.imread("./picture/F_Teleport.png"),
-            'space_anchor': cv.imread("./picture/F_SpaceAnchor.png")
+            'space_anchor': cv.imread("./picture/F_SpaceAnchor.png"),
+            'dream_module': cv.imread("./picture/F_DreamModule.png"),
+            'listen': cv.imread("./picture/F_Listen.png")
         }
         
         start_time = time.time()
@@ -727,6 +729,14 @@ class Calculated:
                 delay = 0
             elif 'space_anchor' in found_images:
                 log.info('扫描到 界域定锚')
+                use_absolute_time = False
+                delay = 0
+                allow_press_f = False
+            elif 'dream_module' in found_images:
+                log.info('扫描到 筑梦模块')
+                delay = 4
+            elif 'listen' in found_images:
+                log.info('扫描到 旁听')
                 use_absolute_time = False
                 delay = 0
                 allow_press_f = False
@@ -794,6 +804,10 @@ class Calculated:
                     self.handle_e(value)  # 用E进入战斗
                 elif key == "esc":
                     self.handle_esc(value)
+                elif key in ['1','2','3','4','5']:
+                    self.handle_num(value, key)
+                elif key == "main":
+                    self.handle_main(value)
                 else:
                     self.handle_move(value, key, normal_run, last_key)
                 
@@ -895,6 +909,16 @@ class Calculated:
             time.sleep(3)
         else:
             raise Exception(f"map数据错误, esc参数只能为1")
+
+    def handle_num(self, value, key):
+        time.sleep(value)
+        self.keyboard.press(key)
+        time.sleep(0.3)
+        self.keyboard.release(key)
+
+    def handle_main(self, value):
+        time.sleep(value)
+        self.back_to_main(delay=0.1)
 
     def handle_move(self, value, key, normal_run=False, last_key : str=""):
         if normal_run:
