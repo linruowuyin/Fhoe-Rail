@@ -425,7 +425,7 @@ class Calculated:
             click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset, clicks)
             if click_it:
                 return True
-            if time.time() - start_time > 5:  # 如果超过5秒，同时匹配原图像和颜色反转后的图像
+            if time.time() - start_time > 3:  # 如果超过3秒，同时匹配原图像和颜色反转后的图像
                 click_it, img_inverted_search_val = self.click_target_above_threshold(inverted_target, threshold, offset, clicks)
                 if click_it:
                     log.info("阴阳变转")
