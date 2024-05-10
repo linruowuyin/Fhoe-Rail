@@ -249,6 +249,11 @@ class Map:
         if "clicks" in start and start["clicks"] >= 1:
             self.allow_multi_click_switch = True
             self.multi_click = int(start["clicks"])
+    
+    def allow_retry_in_map(self, start):
+        self.allow_retry_in_map_switch = True
+        if "forbid_retry" in start and start["forbid_retry"] >= 1:
+            self.allow_retry_in_map_switch = False
 
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
@@ -292,6 +297,7 @@ class Map:
                         self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
                         self.allow_scene_drag(start)  # 是否强制允许拖动右侧场景初始化
                         self.allow_multi_click(start)  # 多次点击
+                        self.allow_retry_in_map(start)  # 是否允许重试
                         if key == "check":  # 判断周几
                             if value == 1:
                                 value = [0,1,2,3,4,5,6]
@@ -402,7 +408,7 @@ class Map:
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
                                     self.calculated.click_target_with_alt(key, 0.93, clicks=self.multi_click)
                                 else:
-                                    self.calculated.click_target(key, 0.93, clicks=self.multi_click)
+                                    self.calculated.click_target(key, 0.93, clicks=self.multi_click, retry_in_map=self.allow_retry_in_map_switch)
                                 self.temp_point = key
                             teleport_click_count += 1
                             log.info(f'传送点击（{teleport_click_count}）')
