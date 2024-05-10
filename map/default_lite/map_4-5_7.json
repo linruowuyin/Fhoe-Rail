@@ -9,8 +9,12 @@
       "picture\\map_4-5_point_4.png": 1.5
     },
     {
+      "picture\\map_4-5_point_8.png": 1.5,
+      "forbid_retry": 1
+    },
+    {
       "picture\\transfer.png": 1.5
-    }    
+    }
   ],
   "map": [
     {

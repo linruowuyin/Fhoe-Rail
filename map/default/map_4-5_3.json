@@ -10,11 +10,15 @@
     },
     {
       "picture\\map_4-5_point_3.png": 1.5,
-	  "drag": 1.5
+      "drag": 1.5
+    },
+    {
+      "picture\\map_4-5_point_7.png": 1.5,
+      "forbid_retry": 1
     },
     {
       "picture\\transfer.png": 1.5
-    }    
+    }
   ],
   "map": [
     {
