@@ -124,7 +124,8 @@ class ConfigurationManager:
             "allow_map_buy": False,
             "allow_snack_buy": False,
             "refresh_hour": 4,
-            "refresh_minute": 0
+            "refresh_minute": 0,
+            "forbid_map":[]
         }
         
         

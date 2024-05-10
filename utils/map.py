@@ -255,6 +255,27 @@ class Map:
         if "forbid_retry" in start and start["forbid_retry"] >= 1:
             self.allow_retry_in_map_switch = False
 
+    def check_and_skip_forbidden_maps(self, map_data_name):
+        """检查并跳过配置中禁止的地图。
+
+        Args:
+            map_data_name (str): 当前处理的地图的名称。
+
+        Returns:
+            bool: 如果地图在禁止列表中，则返回 True，否则返回 False。
+        """
+        self.forbid_map = self.cfg.CONFIG.get('forbid_map', [])
+        if not all(isinstance(item, str) for item in self.forbid_map):
+            log.info("配置错误：'forbid_map' 应只包含字符串。")
+            return False
+
+        map_data_first_name = map_data_name.split('-')[0]
+        if map_data_first_name in self.forbid_map:
+            log.info(f"地图 {map_data_name} 在禁止列表中，将跳过此地图。")
+            return True
+
+        return False
+
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
         teleport_click_count = 0
@@ -267,7 +288,14 @@ class Map:
             map_list = self.get_map_list(start, start_in_mid)
             max_index = max(index for index, _ in enumerate(map_list))
             next_map_drag = False  # 初始化下一张图拖动为否
-            for index, map_ in enumerate(map_list):
+            for index, map_json in enumerate(map_list):
+                map_base = map_json.split('.')[0]
+                map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_base}.json")
+                map_data_name = map_data['name']
+                map_data_author = map_data['author']
+                # 检查是否应该跳过这张地图
+                if self.check_and_skip_forbidden_maps(map_data_name):
+                    continue
                 self.map_drag = next_map_drag
                 next_map_drag = False
                 
@@ -277,15 +305,11 @@ class Map:
                     retry = False
                     # 选择地图
                     start_time = time.time() 
-                    map_ = map_.split('.')[0]
-                    map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_}.json")
-                    if index == 0:
-                        start_map_name = map_data['name']
-                    if index == max_index:
-                        end_map_name = map_data['name']
-                    webhook_and_log(f"\033[0;96;40m{map_data['name']}\033[0m")
+                    start_map_name, end_map_name = None, None
+                    start_map_name, end_map_name = (map_data_name if index == 0 else start_map_name, map_data_name if index == max_index else end_map_name)
+                    webhook_and_log(f"\033[0;96;40m{map_data_name}\033[0m")
                     self.calculated.monthly_pass_check()  # 月卡检查
-                    log.info(f"路线领航员：\033[1;95m{map_data['author']}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_}")
+                    log.info(f"路线领航员：\033[1;95m{map_data_author}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_base}")
                     jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
                     self.temp_point = ""  # 用于输出传送前的点位
                     normal_run = False  # 初始化跑步模式为默认
@@ -429,7 +453,7 @@ class Map:
                 # 记录处理开始时间
                 start_time = time.time()
 
-                self.calculated.auto_map(map_, False, normal_run, dev=dev, last_point=self.temp_point)
+                self.calculated.auto_map(map_base, False, normal_run, dev=dev, last_point=self.temp_point)
 
                 # 记录处理结束时间
                 end_time = time.time()
@@ -438,7 +462,7 @@ class Map:
                 processing_time = end_time - start_time
                 formatted_time = self.format_time(processing_time)
                 total_processing_time += processing_time
-                log.info(f"{map_}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.format_time(total_processing_time)}』\033[0m")
+                log.info(f"{map_base}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.format_time(total_processing_time)}』\033[0m")
                 
                 if index == max_index:
                     total_time = time.time() - total_start_time
