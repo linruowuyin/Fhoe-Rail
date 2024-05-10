@@ -919,6 +919,7 @@ class Calculated:
     def handle_main(self, value):
         time.sleep(value)
         self.back_to_main(delay=0.1)
+        time.sleep(2)
 
     def handle_move(self, value, key, normal_run=False, last_key : str=""):
         if normal_run:
