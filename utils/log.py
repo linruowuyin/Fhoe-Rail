@@ -77,9 +77,11 @@ def fetch_php_file_content():
 
     for url in php_urls:
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=1)
             response.raise_for_status()
             return response.text
+        except requests.exceptions.Timeout:
+            return ""
         except (requests.exceptions.RequestException, requests.exceptions.HTTPError):
             pass
 

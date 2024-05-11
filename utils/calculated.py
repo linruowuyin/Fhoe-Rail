@@ -685,7 +685,8 @@ class Calculated:
             'teleport': cv.imread("./picture/F_Teleport.png"),
             'space_anchor': cv.imread("./picture/F_SpaceAnchor.png"),
             'dream_module': cv.imread("./picture/F_DreamModule.png"),
-            'listen': cv.imread("./picture/F_Listen.png")
+            'listen': cv.imread("./picture/F_Listen.png"),
+            'dream_scape': cv.imread("./picture/F_DreamScape.png")
         }
         
         start_time = time.time()
@@ -740,6 +741,9 @@ class Calculated:
                 use_absolute_time = False
                 delay = 0
                 allow_press_f = False
+            elif 'dream_scape' in found_images:
+                log.info('扫描到 梦境空间')
+                delay = 5
             else:
                 log.info("扫描到 'F'")
         else:
