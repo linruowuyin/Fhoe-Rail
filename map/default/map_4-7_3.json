@@ -1,0 +1,57 @@
+{
+  "name": "大剧院-3",
+  "author": "smjes3",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\map_4-7_point_2.png": 1.5,
+      "drag": 1
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "w": 9
+    },
+    {
+      "d": 1
+    },
+    {
+      "w": 2
+    },
+    {
+      "d": 1
+    },
+    {
+      "w": 5
+    },
+    {
+      "d": 0.2
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "view_reset": 0.1
+    },
+    {
+      "d": 2
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "view_reset": 0.1
+    },
+    {
+      "d": 2
+    },
+    {
+      "fighting": 1
+    }
+  ]
+}
