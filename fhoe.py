@@ -296,9 +296,15 @@ def get_questions_for_slot(slot: str) -> list:
 
 def load_config() -> dict:
     try:
-        with open(cfg.CONFIG_FILE_NAME, 'r') as file:
+        with open(cfg.CONFIG_FILE_NAME, 'r', encoding='utf-8') as file:
             return json.load(file)
     except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        print("配置文件格式有误，请检查 JSON 格式是否正确。")
+        return {}
+    except Exception as e:
+        print(f"读取配置文件时出现未知错误: {e}")
         return {}
 
 def save_config(config: dict):
