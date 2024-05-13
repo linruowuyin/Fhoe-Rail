@@ -281,6 +281,9 @@ class Map:
         teleport_click_count = 0
         error_check_point = False  # 初始化筑梦机关检查为通过
         today_weekday_str = self.now.strftime('%A')
+        self.calculated.back_to_main()
+        time.sleep(1)
+        self.calculated.set_angle()
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
             self.reset_round_count()  # 重置该锄地轮次相关的计数

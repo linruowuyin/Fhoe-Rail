@@ -8,6 +8,7 @@ import win32con
 import win32gui
 import random
 import atexit
+import ctypes
 from datetime import datetime, timedelta
 from PIL import ImageGrab
 from pynput.keyboard import Controller as KeyboardController
@@ -55,6 +56,7 @@ class Calculated:
         self.shift_btn = KeyboardKey.shift_l  # shift左键
         self.alt_btn = KeyboardKey.alt_l  # alt左键
         self.space_btn = KeyboardKey.space  # space键
+        self.caps_btn = KeyboardKey.caps_lock  # capslock键
         
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<3秒的计数
@@ -63,9 +65,13 @@ class Calculated:
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
-
-
-        
+        self._last_step_run = False  # 初始化
+        try:
+            self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0
+            log.debug(f"scale:{self.scale}")
+        except:
+            log.info('DPI获取失败')
+            self.scale = 1.0
     
     def error_stop(self, signum=None, frame=None):
         for i in [self.shift_btn, self.alt_btn]:
@@ -150,7 +156,7 @@ class Calculated:
         """
         if key_name == "space":
             key_name = self.space_btn
-        
+
         return key_name
     
     def keyboard_press(self, key_name: str, delay: float=0): 
@@ -671,7 +677,7 @@ class Calculated:
             self.ASU.screen = self.take_screenshot()[0]
             ang = self.ang - self.ASU.get_now_direc()
             ang = (ang + 900) % 360 - 180
-            self.mouse_move(ang * 10.2)
+            # self.mouse_move(ang * 10.2)
     
     def check_f_img(self, timeout=5):
         """
@@ -766,6 +772,7 @@ class Calculated:
         total_map_count = len(map_data['map'])
         self.first_role_check()  # 1号位为跑图角色
         dev_restart = True  # 初始化开发者重开
+        self.handle_view_set(0.1)
         #开发群657378574，密码hoe2333
         while dev_restart:
             dev_restart = False  # 不进行重开
@@ -787,6 +794,7 @@ class Calculated:
                         map_data = self.cfg.read_json_file(f"map/{map_version}/{map}.json")  # 重新读取最新地图文件
                         break
                 log.info(f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map_value}")
+
                 key, value = next(iter(map_value.items()))
                 self.monthly_pass_check()  # 行进前识别是否接近月卡时间
                 self._last_step_run = False  # 初始化上一次为走路
@@ -812,6 +820,10 @@ class Calculated:
                     self.handle_num(value, key)
                 elif key == "main":
                     self.handle_main(value)
+                elif key == "view_set":
+                    self.handle_view_set(value)
+                elif key == "view_reset":
+                    self.handle_view_reset(value)
                 else:
                     self.handle_move(value, key, normal_run, last_key)
                 
@@ -925,6 +937,36 @@ class Calculated:
         self.back_to_main(delay=0.1)
         time.sleep(2)
 
+    def handle_view_set(self, value):
+        """设置初始视角
+        """
+        time.sleep(value)
+        self.arrow_begin = self.take_arrow()
+
+    def handle_view_reset(self, value):
+        """重置视角
+        """
+        time.sleep(value)
+        sub = 0
+        cnt = 0
+        self.handle_move(value=0.01,key="w")  # 重置箭头指向为视角方向
+        time.sleep(0.6)
+        while cnt < 4:
+            arrow_temp = self.take_arrow()
+            ang = self.cal_ang(arrow_temp, self.arrow_begin)
+            sub = 360 - ang
+            sub = (sub + 180) % 360 - 180
+            sub = sub if sub != 0 else 1e-9
+            log.info(f"开始重置视角，计算角度ang:{ang}，旋转角度sub:{sub}")
+            # self.keyboard_press("caps_lock", 0.2)
+            # time.sleep(1)
+            self.mouse_move(sub)
+            self.handle_move(value=0.01,key="w")
+            cnt += 1
+            if abs(sub) <= 1:
+                break
+            time.sleep(0.6)
+
     def handle_move(self, value, key, normal_run=False, last_key : str=""):
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
@@ -976,7 +1018,7 @@ class Calculated:
                     self.keyboard.release(key_dict.get(key))
                     self.keyboard.press(key)
                     self.keyboard.release(key)
-
+    '''
     def mouse_move(self, x):
         scaling = 1.0
         dx = int(x * scaling)
@@ -994,7 +1036,8 @@ class Calculated:
             win32api.mouse_event(1, last, 0)  # 进行视角移动
 
         time.sleep(0.5)
-    
+    '''
+
     def monthly_update_check_time(self):
         current_time = datetime.now()
         self.next_check_time = current_time.replace(hour=self.refresh_hour, minute=self.refresh_minute, second=0, microsecond=0)
@@ -1327,3 +1370,137 @@ class Calculated:
                 pyautogui.press('1')
                 log.info("设置1号位为跑图角色")
                 break
+    
+    def take_screenshot_arrow(self):
+        """截取小地图蓝色箭头
+        """
+        # 小地图中心 460-320=140,345-194=151
+        screenshot = self.take_screenshot(offset=(125,136,-1765,-914))[0]
+
+        return screenshot
+    
+    def take_arrow(self):
+        img = self.take_screenshot_arrow()
+        # 转换到HSV颜色空间
+        hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+        lower_blue = np.array([93, 120, 60])
+        upper_blue = np.array([97, 255, 255])
+        mask = cv.inRange(hsv, lower_blue, upper_blue)
+        result_img = cv.bitwise_and(img, img, mask=mask)
+
+        return result_img
+
+    # 计算旋转变换矩阵
+    def handle_rotate_val(self, x, y, rotate):
+        cos_val = np.cos(np.deg2rad(rotate))
+        sin_val = np.sin(np.deg2rad(rotate))
+        return np.float32(
+            [
+                [cos_val, sin_val, x * (1 - cos_val) - y * sin_val],
+                [-sin_val, cos_val, x * sin_val + y * (1 - cos_val)],
+            ]
+        )
+
+    # 图像旋转（以任意点为中心旋转）
+    def image_rotate(self, src, rotate=0):
+        h, w, c = src.shape
+        M = self.handle_rotate_val(w // 2, h // 2, rotate)
+        # M = cv.getRotationMatrix2D((w // 2, h // 2), rotate, 1.0)
+        img = cv.warpAffine(src, M, (w, h), flags=cv.INTER_LINEAR)
+        return img
+
+    def cal_ang(self, arrow_img, arrow_begin_img):
+        """计算与初始蓝色箭头相差的角度
+        """
+        mx_acc = 0
+        ang = 0
+        for i in range(360):
+            rt = self.image_rotate(arrow_img, i)
+            result = cv.matchTemplate(arrow_begin_img, rt, cv.TM_CCORR_NORMED)
+            min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
+            if max_val > mx_acc:
+                mx_acc = max_val
+                mx_loc = (max_loc[0] + 12, max_loc[1] + 12)
+                ang = i
+
+        return ang
+    
+    # 视角转动x度
+    def mouse_move(self, x, fine=1, align=False):
+        if x > 30 // fine:
+            y = 30 // fine
+        elif x < -30 // fine:
+            y = -30 // fine
+        else:
+            y = x
+        if align:
+            dx = int(16.5 * y * 1 * self.scale)
+            log.debug(f"dx1:{dx}")
+        else:
+            self.multi_num = self.get_multi_num()
+            dx = int(16.5 * y * self.multi_num * self.scale)
+            log.debug(f"dx2:{dx}")
+        if True:
+            win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, dx, 0)  # 进行视角移动
+        time.sleep(0.2 * fine)
+        if x != y:
+            self.mouse_move(x - y, fine, align)
+    
+    # 不同电脑鼠标移动速度、放缩比、分辨率等不同，因此需要校准
+    # 基本逻辑：每次正反转60度，然后计算实际转了几度，计算出误差比
+    def set_angle(self, ang=[1, 1, 3]):
+        log.info("开始校准")
+        move_list = [60, -60]
+        offset_list = []
+
+        for move_num in move_list:
+            self.handle_move(0.01, "w")
+            time.sleep(0.6)
+            self.handle_view_set(0.1)
+            init_ang = self.cal_ang(self.arrow_begin, self.arrow_begin)
+            log.debug(f"init_ang: {init_ang}")
+            last_ang = init_ang
+
+            for repeat in ang:
+                if last_ang != init_ang and repeat == 1:
+                    continue
+
+                ang_list = []
+                for _ in range(repeat):
+                    self.mouse_move(move_num, fine=3 // repeat, align=True)
+                    time.sleep(0.2)
+                    self.handle_move(0.01, "w")
+                    time.sleep(0.6)
+                    arrow_temp = self.take_arrow()
+                    now_ang = self.cal_ang(arrow_temp, self.arrow_begin)
+                    log.debug(f"now_ang: {now_ang}")
+                    sub = now_ang - last_ang
+                    sub = sub + 360 if (move_num >= 0 and sub < 0) else sub - 360 if (move_num < 0 and sub > 0) else sub
+                    ang_list.append(sub)
+                    last_ang = now_ang
+
+                valid_angles = [a for a in ang_list if abs(a - np.median(ang_list)) <= 5]
+                if valid_angles:
+                    ax = sum([move_num for _ in valid_angles])
+                    ay = sum(valid_angles)
+                    
+                    
+                    if ay != 0:
+                        offset_list.append(ax / ay)
+                    else:
+                        log.info(f"疑似校准错误")
+                        offset_list.append(1)
+
+        if offset_list:
+            self.multi_config = np.median(offset_list)
+            self.cfg.modify_json_file(filename=self.cfg.CONFIG_FILE_NAME, key="angle", value=str(self.multi_config))
+            log.info(f"校准完成，angle: {self.multi_config}")
+        else:
+            log.info("校准失败")
+
+        time.sleep(1)
+
+    def get_multi_num(self) -> float:
+        self.multi_num = float(self.cfg.CONFIG.get("angle", 1))
+
+        return self.multi_num
