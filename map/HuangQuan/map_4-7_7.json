@@ -9,6 +9,16 @@
       "picture\\fanhui_2.png": 1.5
     },
     {
+      "picture\\orientation_1.png": 1.5
+    },
+    {
+      "picture\\orientation_5.png": 1.5
+    },
+    {
+      "picture\\map_4-7.png": 1.5,
+      "scene": 1
+    },
+    {
       "picture\\map_4-7_point_5.png": 1.5,
       "drag": 1
     },
@@ -49,9 +59,6 @@
     },
     {
       "s": 0.3
-    },
-    {
-      "d": 0.2
     },
     {
       "f": 1
