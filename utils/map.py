@@ -175,14 +175,15 @@ class Map:
         """
         start_time = time.time()
         target = cv.imread(key)
+        target_list = [target]
         direction_names = ["向下移动", "向左移动", "向上移动", "向右移动"]
-        while not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
+        while not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
             # 设置向下、向左、向上、向右的移动数值
             directions = [(250, 900, 250, 300), (250, 900, 850, 900), (1330, 200, 1330, 800), (1330, 200, 730, 200)]
             for index, direction in enumerate(directions):
                 log.info(f"开始移动地图，{direction_names[index]}，当前所需匹配值{threshold}")
                 for i in range(3):
-                    if not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold):
+                    if not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold):
                         self.calculated.mouse_drag(*direction)
                     else:
                         return
@@ -200,14 +201,16 @@ class Map:
         """
         start_time = time.time()
         target = cv.imread(key)
+        inverted_target = cv.bitwise_not(target)
+        target_list = [target, inverted_target]
         direction_names = ["向下移动", "向上移动"]
-        while not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
+        while not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
             # 设置向下、向上的移动数值
             directions = [(1700, 900, 1700, 300), (1700, 300, 1700, 900)]
             for index, direction in enumerate(directions):
                 log.info(f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}")
                 for i in range(1):
-                    if not self.calculated.have_screenshot(target, (0, 0, 0, 0), threshold):
+                    if not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold):
                         self.calculated.mouse_drag(*direction)
                     else:
                         return

@@ -272,16 +272,25 @@ class Calculated:
 
     def have_screenshot(self, prepared, offset=(0,0,0,0), threshold=0.90):
         """
-        说明：
-            验证图片是否符合要求
+        验证屏幕截图中是否存在预设的图片之一。
+        
+        参数:
+            prepared (list): 需要匹配的图片列表。
+            offset (tuple): 在搜索时屏幕截图的偏移量，默认为 (0, 0, 0, 0)。
+            threshold (float): 确定匹配成功的最小阈值，默认为 0.90。
+
+        返回:
+            bool: 如果找到至少一张符合阈值的图片，则返回 True，否则返回 False。
         """
-        result_dict = self.scan_screenshot(prepared, offset)
-        max_val = result_dict['max_val']
-        if max_val > threshold:
-            log.info(f'找到图片，匹配值：{max_val:.3f}')
-            return True
-        else:
-            return False
+        for image in prepared:
+            result_dict = self.scan_screenshot(image, offset)
+            max_val = result_dict['max_val']
+            if max_val > threshold:
+                log.info(f'找到图片，匹配值：{max_val:.3f}')
+                return True
+            else:
+                log.debug(f'图片匹配值未达到阈值，当前值：{max_val:.3f}')
+        return False
 
     def take_screenshot(self, offset=(0,0,0,0), max_retries=50, retry_interval=2):
         """
