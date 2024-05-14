@@ -275,15 +275,22 @@ class Map:
             return True
 
         return False
+    
+    def align_angle(self):
+        """校准视角
+        """
+        if not self.cfg.CONFIG.get("angle_set", False):
+            self.calculated.back_to_main()
+            time.sleep(1)
+            self.calculated.set_angle()
+        
 
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
         teleport_click_count = 0
         error_check_point = False  # 初始化筑梦机关检查为通过
         today_weekday_str = self.now.strftime('%A')
-        self.calculated.back_to_main()
-        time.sleep(1)
-        self.calculated.set_angle()
+        self.align_angle()
         if f'map_{start}.json' in self.map_list:
             total_start_time = time.time()
             self.reset_round_count()  # 重置该锄地轮次相关的计数
