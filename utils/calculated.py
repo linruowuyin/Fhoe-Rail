@@ -1494,6 +1494,7 @@ class Calculated:
         if offset_list:
             self.multi_config = np.median(offset_list)
             self.cfg.modify_json_file(filename=self.cfg.CONFIG_FILE_NAME, key="angle", value=str(self.multi_config))
+            self.cfg.modify_json_file(filename=self.cfg.CONFIG_FILE_NAME, key="angle_set", value=True)
             log.info(f"校准完成，angle: {self.multi_config}")
         else:
             log.info("校准失败")

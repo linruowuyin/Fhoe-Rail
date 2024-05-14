@@ -125,7 +125,9 @@ class ConfigurationManager:
             "allow_snack_buy": False,
             "refresh_hour": 4,
             "refresh_minute": 0,
-            "forbid_map":[]
+            "forbid_map":[],
+            "angle": "1.0",
+            "angle_set": False
         }
         
         
