@@ -283,10 +283,10 @@ class Map:
         """校准视角
         """
         if not self.cfg.CONFIG.get("angle_set", False):
+            self.calculated.monthly_pass_check()  # 月卡检查
             self.calculated.back_to_main()
             time.sleep(1)
             self.calculated.set_angle()
-        
 
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
