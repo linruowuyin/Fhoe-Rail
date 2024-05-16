@@ -392,7 +392,7 @@ class Map:
                                 jump_this_map = True
                                 break
                         elif key in ["picture\\transfer.png"]:
-                            time.sleep(0.1)
+                            time.sleep(0.2)
                             if not self.calculated.click_target(key, 0.93):
                                 jump_this_map = True
                                 break
