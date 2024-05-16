@@ -301,6 +301,7 @@ class Map:
             map_list = self.get_map_list(start, start_in_mid)
             max_index = max(index for index, _ in enumerate(map_list))
             next_map_drag = False  # 初始化下一张图拖动为否
+            start_map_name, end_map_name = None, None
             for index, map_json in enumerate(map_list):
                 map_base = map_json.split('.')[0]
                 map_data = self.cfg.read_json_file(f"map/{self.map_version}/{map_base}.json")
@@ -318,7 +319,6 @@ class Map:
                     retry = False
                     # 选择地图
                     start_time = time.time() 
-                    start_map_name, end_map_name = None, None
                     start_map_name, end_map_name = (map_data_name if index == 0 else start_map_name, map_data_name if index == max_index else end_map_name)
                     webhook_and_log(f"\033[0;96;40m{map_data_name}\033[0m")
                     self.calculated.monthly_pass_check()  # 月卡检查
@@ -488,7 +488,8 @@ class Map:
                     log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
                     log.info(f"战斗次数{self.calculated.total_fight_cnt}")
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
-                    log.info(f"未战斗次数首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
+                    log.info(f"未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
+                    log.info(f"系统卡顿次数：{self.calculated.time_error_cnt}")
                     log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
 
         else:
