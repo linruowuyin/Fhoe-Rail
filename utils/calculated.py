@@ -64,6 +64,7 @@ class Calculated:
         self.tatol_save_time = 0  # 疾跑节约时间
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
+        self.time_error_cnt = 0  # 系统卡顿计数
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
         self._last_step_run = False  # 初始化
         try:
@@ -1011,6 +1012,16 @@ class Calculated:
         self.keyboard.release(key)
         if allow_run:
             time.sleep(0.03)
+        
+        # 系统卡顿识别
+        time_error_check = True
+        if time_error_check:
+            extra_time = temp_time - value
+            extra_time = extra_time if not run_in_road else round(extra_time*1.53, 4)
+            if extra_time > 0.05:
+                log.info(f"警告，此处出现系统卡顿，实际多移动{extra_time:.4f}秒，可能造成路线错误")
+                self.time_error_cnt += 1
+
         # 暂不启用
         extra_fix = False
         if extra_fix:
