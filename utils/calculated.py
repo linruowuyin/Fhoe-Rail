@@ -67,6 +67,7 @@ class Calculated:
         self.time_error_cnt = 0  # 系统卡顿计数
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
         self._last_step_run = False  # 初始化
+        self.img_search_val_dict = {}  # 图片匹配值
         try:
             self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0
             log.debug(f"scale:{self.scale}")
@@ -436,6 +437,7 @@ class Calculated:
         original_target = cv.imread(target_path)
         inverted_target = cv.bitwise_not(original_target)
         start_time = time.time()
+        assigned = False
         
         while time.time() - start_time < timeout:
             click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset, clicks)
@@ -446,6 +448,17 @@ class Calculated:
                 if click_it:
                     log.info("阴阳变转")
                     return True
+                
+            if not assigned:
+                if target_path in self.img_search_val_dict:
+                    if self.img_search_val_dict[target_path] > img_search_val and img_search_val < 0.99:
+                        self.img_search_val_dict[target_path] = img_search_val
+                        assigned = True
+                else:
+                    if img_search_val < 0.99:
+                        self.img_search_val_dict[target_path] = img_search_val
+                        assigned = True
+
             if not flag:  # 是否一定要找到
                 return False
             time.sleep(0.5)  # 添加短暂延迟避免性能消耗

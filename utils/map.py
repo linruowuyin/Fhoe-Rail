@@ -490,6 +490,7 @@ class Map:
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
                     log.info(f"未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
                     log.info(f"系统卡顿次数：{self.calculated.time_error_cnt}")
+                    log.debug(f"匹配值小于0.99的图片：{self.calculated.img_search_val_dict}")
                     log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
 
         else:
