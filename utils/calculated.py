@@ -777,6 +777,7 @@ class Calculated:
                 log.info("扫描到 'F'")
         else:
             log.info("扫描失败！")
+            allow_press_f = False
 
         return use_absolute_time, delay, allow_press_f
 
