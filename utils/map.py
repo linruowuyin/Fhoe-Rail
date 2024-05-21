@@ -282,7 +282,7 @@ class Map:
     def align_angle(self):
         """校准视角
         """
-        if not self.cfg.CONFIG.get("angle_set", False):
+        if not self.cfg.CONFIG.get("angle_set", False) or self.cfg.CONFIG.get("angle", "1.0") == "1.0":
             self.calculated.monthly_pass_check()  # 月卡检查
             self.calculated.back_to_main()
             time.sleep(1)
