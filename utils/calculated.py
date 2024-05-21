@@ -1135,7 +1135,7 @@ class Calculated:
             time.sleep(5)  # 延时，等待动画可能的加载
             self.try_click_pass()
 
-    def try_click_pass(self, threshold=0.92, max_click_attempts=2, delay=0):
+    def try_click_pass(self, threshold=0.91, max_click_attempts=2, delay=0):
         """
         说明：
             尝试点击月卡。
