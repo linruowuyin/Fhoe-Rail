@@ -24,6 +24,7 @@ class Map:
         self.now = datetime.datetime.now()
         self.retry_cnt_max = 2
         self.map_statu_minimize = False  # 地图最小化
+        self.planet = None  # 当前星球初始化
 
     def map_init(self, max_attempts=10):
 
@@ -279,10 +280,15 @@ class Map:
 
         return False
     
+    def check_planet(self, planet):
+        if self.planet == planet:
+            log.info(f"星球相同，跳过选择星球 {planet}")
+        return self.planet == planet  
+        
     def align_angle(self):
         """校准视角
         """
-        if not self.cfg.CONFIG.get("angle_set", False):
+        if not self.cfg.CONFIG.get("angle_set", False) or self.cfg.CONFIG.get("angle", "1.0") == "1.0":
             self.calculated.monthly_pass_check()  # 月卡检查
             self.calculated.back_to_main()
             time.sleep(1)
@@ -432,10 +438,25 @@ class Map:
                                 self.find_transfer_point(key, threshold=0.975)
                                 self.calculated.click_target(key, 0.95)
                                 self.temp_point = key
-                            elif key.startswith("picture\\map_4-3_point") or key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
+                            elif key == "picture\\orientation_1.png":
+                                keys_to_find = ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]
+                                planet_dict = {k: v for item in map_data['start'] for k, v in item.items() if k in keys_to_find}
+                                planet = list(planet_dict.keys())[0]
+                                if self.check_planet(planet):
+                                    continue
+                                else:
+                                    self.calculated.click_target(key, 0.93, retry_in_map=self.allow_retry_in_map_switch)
+                            elif key.startswith("picture\\map_4-3_point"):
                                 self.find_transfer_point(key, threshold=0.975)
                                 self.calculated.click_target(key, 0.93)
                                 self.temp_point = key
+                                time.sleep(1.7)
+                            elif key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
+                                if self.check_planet(key):
+                                    continue
+                                self.find_transfer_point(key, threshold=0.975)
+                                self.calculated.click_target(key, 0.93)
+                                self.planet = key
                                 time.sleep(1.7)
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:

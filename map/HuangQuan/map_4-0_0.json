@@ -6,7 +6,7 @@
           "need_allow_map_buy": 1
         },
         {
-            "check": [0]
+            "check": [0,1,2,3,4,5,6]
 		},
         {
             "map": 1
@@ -21,7 +21,8 @@
             "picture\\orientation_5.png": 1.5
         },
         {
-            "picture\\map_4-0.png": 2
+            "picture\\map_4-0.png": 2,
+            "scene": 1
         },
         {
             "picture\\map_4-1_point_0.png": 1.5
