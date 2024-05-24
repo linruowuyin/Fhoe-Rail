@@ -152,13 +152,15 @@ class Map:
         log.info(f"需要等待 {wait_time:.0f} 秒")  
         time.sleep(wait_time)
 
-    def has_crossed_4am(self, start, end):
+    def has_crossed_4am(self, start:datetime.datetime, end:datetime.datetime) -> bool:
         """
         检查是否从开始时间到结束时间跨越了凌晨4点
         """
+        refresh_hour = self.cfg.CONFIG.get("refresh_hour", 4)
+        refresh_minute = self.cfg.CONFIG.get("refresh_minute", 0)
         # 获取开始时间的凌晨4点
-        start_4am = start.replace(hour=4, minute=0, second=0, microsecond=0)
-        if start.hour >= 4:
+        start_4am = start.replace(hour=refresh_hour, minute=refresh_minute, second=0, microsecond=0)
+        if start.hour >= refresh_hour and start.minute >= refresh_minute:
             # 如果开始时间在4点之后，则4点时间应该是下一天的4点
             start_4am += datetime.timedelta(days=1)
         
