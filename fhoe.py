@@ -162,9 +162,12 @@ def main():
                 log.info(f"检测到换日，即将从头开锄")
                 map_instance.auto_map(start_map, start_in_mid, dev=dev)
             else:
+                map_instance.calculated.back_to_main(delay=2.0)
                 now = datetime.datetime.now()
-                next_4am = now.replace(hour=4, minute=0, second=0, microsecond=0)
-                if now.hour >= 4:
+                refresh_hour = cfg.CONFIG.get("refresh_hour", 4)
+                refresh_minute = cfg.CONFIG.get("refresh_minute", 0)
+                next_4am = now.replace(hour=refresh_hour, minute=refresh_minute, second=0, microsecond=0)
+                if now.hour >= refresh_hour and now.minute >= refresh_minute:
                     next_4am += datetime.timedelta(days=1)
                 wait_time = (next_4am - now).total_seconds()
                 wait_time += 60
