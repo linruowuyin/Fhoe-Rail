@@ -134,7 +134,7 @@ class Calculated:
         
         return left, top, right, bottom
 
-    def click(self, points, slot=0.0, clicks=1):
+    def click(self, points, slot=0.0, clicks=1, delay=0.05):
         """
         说明：
             点击指定屏幕坐标
@@ -151,7 +151,7 @@ class Calculated:
         if clicks > 1:
             log.info(f"将点击 {clicks} 次")
         for _ in range(clicks):
-            self.mouse_press(x, y)
+            self.mouse_press(x, y, delay)
 
     def translate_key(self, key_name: str):
         """转换key
@@ -399,7 +399,7 @@ class Calculated:
         else:
             return False
     
-    def click_target_above_threshold(self, target, threshold, offset, clicks=1):
+    def click_target_above_threshold(self, target, threshold, offset, clicks=1, delay=0.05):
         """
         尝试点击匹配度大于阈值的目标图像。
         参数:
@@ -413,12 +413,12 @@ class Calculated:
         result = self.scan_screenshot(target, offset)
         if result["max_val"] > threshold:
             points = self.calculated(result, target.shape)
-            self.click(points, result['max_val'], clicks)
+            self.click(points, result['max_val'], clicks, delay)
             return True, result['max_val']
         return False, result['max_val']
 
 
-    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0,0,0,0), retry_in_map: bool=True, clicks=1):
+    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0,0,0,0), retry_in_map: bool=True, clicks=1, delay=0.05):
         """
         说明：
             点击指定图片
@@ -440,11 +440,11 @@ class Calculated:
         assigned = False
         
         while time.time() - start_time < timeout:
-            click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset, clicks)
+            click_it, img_search_val = self.click_target_above_threshold(original_target, threshold, offset, clicks, delay)
             if click_it:
                 return True
             if time.time() - start_time > 3:  # 如果超过3秒，同时匹配原图像和颜色反转后的图像
-                click_it, img_inverted_search_val = self.click_target_above_threshold(inverted_target, threshold, offset, clicks)
+                click_it, img_inverted_search_val = self.click_target_above_threshold(inverted_target, threshold, offset, clicks, delay)
                 if click_it:
                     log.info("阴阳变转")
                     return True
