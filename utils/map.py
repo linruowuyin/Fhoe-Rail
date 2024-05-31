@@ -457,8 +457,8 @@ class Map:
                                 if self.check_planet(key):
                                     continue
                                 self.find_transfer_point(key, threshold=0.975)
-                                self.calculated.click_target(key, 0.93, delay=0.1)
-                                self.planet = key
+                                if self.calculated.click_target(key, 0.93, delay=0.1):
+                                    self.planet = key
                                 time.sleep(1.7)
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:
