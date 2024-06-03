@@ -1,51 +1,60 @@
 {
-    "name": "筑梦边境-1",
-    "author": "喵不可言",
-    "start": [
-        {
-            "map": 1
-        },
-        {
-            "picture\\fanhui_1.png": 1.5
-        },
-        {
-            "picture\\orientation_1.png": 1.5
-        },
-        {
-            "picture\\orientation_5.png": 1.5
-        },
-        {
-            "picture\\map_4-1.png": 2
-        },
-        {
-            "picture\\map_4-1_point_4.png": 1.5,
-			"drag": 1
-        },
-        {
-            "picture\\transfer.png": 1.5
-        },
-        {
-            "map": 1
-        },
-        {
-            "picture\\check_4-1_point_2.png": 1.5,
-            "drag": 1
-        },
-        {
-            "picture\\check_4-1_point_3.png": 1.5,
-            "drag": 1
-        },
-        {
-            "picture\\check_4-1_point_1.png": 1.5,
-            "drag": 1
-        },
-        {
-            "main": 1
-        }
-    ],
-    "map": [
+  "name": "筑梦边境-1",
+  "author": "喵不可言",
+  "start": [
     {
-      "s": 1.89
+      "map": 1
+    },
+    {
+      "picture\\fanhui_1.png": 1.5
+    },
+    {
+      "picture\\orientation_1.png": 1.5
+    },
+    {
+      "picture\\orientation_5.png": 1.5
+    },
+    {
+      "picture\\map_4-1.png": 2
+    },
+    {
+      "picture\\map_4-1_point_4.png": 1.5,
+      "drag": 1
+    },
+    {
+      "picture\\transfer.png": 1.5
+    },
+    {
+      "map": 1
+    },
+    {
+      "picture\\check_4-1_point_2.png": 1.5,
+      "drag": 1
+    },
+    {
+      "picture\\check_4-1_point_3.png": 1.5,
+      "drag": 1
+    },
+    {
+      "picture\\check_4-1_point_1.png": 1.5,
+      "drag": 1
+    },
+    {
+      "main": 1
+    }
+  ],
+  "map": [
+    {
+      "a": 0.7
+    },
+    {
+      "s": 1.99
+    },
+    {
+      "s": 0.4
+    },
+    {
+      "d": 0.4
     },
     {
       "e": 2
@@ -85,7 +94,7 @@
     },
     {
       "e": 2
-	},
+    },
     {
       "e": 2
     },
@@ -94,19 +103,19 @@
     },
     {
       "e": 2
-	},
+    },
     {
       "e": 2
     },
     {
       "e": 2
-	},
+    },
     {
       "e": 2
     },
     {
       "e": 2
-	},
+    },
     {
       "e": 2
     }
