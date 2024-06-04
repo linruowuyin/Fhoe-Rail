@@ -447,7 +447,17 @@ class Map:
                                 if self.check_planet(planet):
                                     continue
                                 else:
-                                    self.calculated.click_target(key, 0.93, retry_in_map=self.allow_retry_in_map_switch)
+                                    orientation_delay = 1
+                                    while True:
+                                        self.calculated.click_target(key, 0.93, retry_in_map=self.allow_retry_in_map_switch)
+                                        orientation_delay = min(orientation_delay, 3)
+                                        time.sleep(orientation_delay)
+                                        if self.calculated.blackscreen_check():
+                                            pyautogui.press('esc')
+                                            time.sleep(2)
+                                            orientation_delay += 0.5
+                                        else:
+                                            break
                             elif key.startswith("picture\\map_4-3_point"):
                                 self.find_transfer_point(key, threshold=0.975)
                                 self.calculated.click_target(key, 0.93)
