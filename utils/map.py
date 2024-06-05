@@ -296,6 +296,57 @@ class Map:
             time.sleep(1)
             self.calculated.set_angle()
 
+    def handle_orientation(self, key, map_data):
+        """
+        已在当前星球，跳过点击星轨航图
+        未在当前星球，点击星轨航图后进行黑屏检测，如果因为客户端黑屏，则返回重试点击星轨航图
+        """
+        keys_to_find = ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]
+        planet_dict = {k: v for item in map_data['start'] for k, v in item.items() if k in keys_to_find}
+        planet = list(planet_dict.keys())[0]
+        if self.check_planet(planet):
+            return
+        else:
+            orientation_delay = 1
+            while True:
+                self.calculated.click_target(key, 0.93, retry_in_map=self.allow_retry_in_map_switch)
+                orientation_delay = min(orientation_delay, 3)
+                time.sleep(orientation_delay)
+                if self.calculated.blackscreen_check():
+                    pyautogui.press('esc')
+                    time.sleep(2)
+                    orientation_delay += 0.5
+                else:
+                    return
+    
+    def handle_planet(self, key):
+        """点击星球
+        """
+        if self.check_planet(key):
+            return
+        else:
+            self.find_transfer_point(key, threshold=0.975)
+            if self.calculated.click_target(key, 0.93, delay=0.1):
+                self.planet = key
+            time.sleep(1.7)
+    
+    def handle_floor(self, key):
+        """点击楼层
+        """
+        if self.calculated.img_bitwise_check(target_path=key, offset=(30,740,-1820,-70)):
+            self.calculated.click_target(key, 0.93, offset=(30,740,-1820,-70))
+        else:
+            log.info(f"已在对应楼层，跳过选择楼层")
+
+    def handle_back(self, key):
+        """点击右上角返回
+        """
+        img = cv.imread("./picture/kaituoli_1.png")
+        if not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580,0,0,-910), allow_log=False):
+            self.calculated.click_target(key, 0.94,timeout=3, offset=(1660,100,-40,-910), retry_in_map=False)
+        else:
+            log.info(f"检测到星轨航图，不进行点击'返回'")
+
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
         teleport_click_count = 0
@@ -355,30 +406,21 @@ class Map:
                                 jump_this_map = True
                                 break
                         elif key == "need_allow_map_buy":
-                            if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_map_buy', False):
-                                jump_this_map = False
-                                continue
-                            else:
+                            jump_this_map = not self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_map_buy', False)
+                            if jump_this_map:
                                 log.info(f" config.json 中的 allow_map_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
-                                jump_this_map = True
                                 break
                         elif key == "need_allow_snack_buy":
-                            if self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_snack_buy', False):
-                                jump_this_map = False
-                                continue
-                            else:
+                            jump_this_map = not self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_snack_buy', False)
+                            if jump_this_map:
                                 log.info(f" config.json 中的 allow_snack_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
-                                jump_this_map = True
                                 break
                         elif key == "normal_run":
                             normal_run = True  # 此地图json将会被强制设定为禁止疾跑
-                            continue
                         elif key == "blackscreen":
                             self.calculated.run_mapload_check()  # 强制执行地图加载检测
-                            continue
                         elif key == "esc":
                             pyautogui.press('esc')
-                            continue
                         elif key == 'map':
                             self.map_init()
                         elif key == 'main':
@@ -410,24 +452,10 @@ class Map:
                         else:
                             value = min(value, 0.8)
                             time.sleep(value)
-                            if key == "picture\\map_0.png":
-                                self.calculated.click_target(key, 0.93)
-                                self.calculated.run_mapload_check()
-                            elif key == "picture\\map_4-1_point_5.png":  # 筑梦模块移动模块识别
-                                self.calculated.click_target_with_alt(key, 0.93)
-                                self.calculated.run_dreambuild_check()
-                            elif key in ["picture\\1floor.png","picture\\2floor.png","picture\\3floor.png"]:
-                                if self.calculated.img_bitwise_check(target_path=key, offset=(30,740,-1820,-70)):
-                                    self.calculated.click_target(key, 0.93, offset=(30,740,-1820,-70))
-                                else:
-                                    log.info(f"已在对应楼层，跳过选择楼层")
-                                    pass
+                            if key in ["picture\\1floor.png","picture\\2floor.png","picture\\3floor.png"]:
+                                self.handle_floor(key)
                             elif key in ["picture\\fanhui_1.png","picture\\fanhui_2.png"]:  # 有可能未找到该图片，冗余查找
-                                img = cv.imread("./picture/kaituoli_1.png")
-                                if not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580,0,0,-910), allow_log=False):
-                                    self.calculated.click_target(key, 0.94,timeout=3, offset=(1660,100,-40,-910), retry_in_map=False)
-                                else:
-                                    log.info(f"检测到星轨航图，不进行点击'返回'")
+                                self.handle_back(key)
                             elif key.startswith("picture\\check_4-1_point"):
                                 self.find_transfer_point(key, threshold=0.992)
                                 if self.calculated.click_target(key, 0.992, retry_in_map=False):
@@ -441,35 +469,14 @@ class Map:
                                 self.calculated.click_target(key, 0.95)
                                 self.temp_point = key
                             elif key == "picture\\orientation_1.png":
-                                keys_to_find = ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]
-                                planet_dict = {k: v for item in map_data['start'] for k, v in item.items() if k in keys_to_find}
-                                planet = list(planet_dict.keys())[0]
-                                if self.check_planet(planet):
-                                    continue
-                                else:
-                                    orientation_delay = 1
-                                    while True:
-                                        self.calculated.click_target(key, 0.93, retry_in_map=self.allow_retry_in_map_switch)
-                                        orientation_delay = min(orientation_delay, 3)
-                                        time.sleep(orientation_delay)
-                                        if self.calculated.blackscreen_check():
-                                            pyautogui.press('esc')
-                                            time.sleep(2)
-                                            orientation_delay += 0.5
-                                        else:
-                                            break
+                                self.handle_orientation(key, map_data)
                             elif key.startswith("picture\\map_4-3_point"):
                                 self.find_transfer_point(key, threshold=0.975)
                                 self.calculated.click_target(key, 0.93)
                                 self.temp_point = key
                                 time.sleep(1.7)
                             elif key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
-                                if self.check_planet(key):
-                                    continue
-                                self.find_transfer_point(key, threshold=0.975)
-                                if self.calculated.click_target(key, 0.93, delay=0.1):
-                                    self.planet = key
-                                time.sleep(1.7)
+                                self.handle_planet(key)
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:
                                     self.find_transfer_point(key, threshold=0.975)
