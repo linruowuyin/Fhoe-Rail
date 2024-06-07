@@ -327,7 +327,15 @@ class Map:
         else:
             self.find_transfer_point(key, threshold=0.975)
             if self.calculated.click_target(key, 0.93, delay=0.1):
-                self.planet = key
+                img = cv.imread("./picture/kaituoli_1.png")
+                delay_time = 0.5
+                while not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580,0,0,-910), allow_log=False):
+                    delay_time += 0.1
+                    delay_time = max(delay_time, 1)
+                    log.info(f"检测到未成功点击星球，尝试重试点击星球，鼠标点击间隔时间 {delay_time}")
+                    self.calculated.click_target(key, 0.93, delay=delay_time)
+                else:
+                    self.planet = key
             time.sleep(1.7)
     
     def handle_floor(self, key):
@@ -343,7 +351,7 @@ class Map:
         """
         img = cv.imread("./picture/kaituoli_1.png")
         if not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580,0,0,-910), allow_log=False):
-            self.calculated.click_target(key, 0.94,timeout=3, offset=(1660,100,-40,-910), retry_in_map=False)
+            self.calculated.click_target(key, 0.94, timeout=3, offset=(1660,100,-40,-910), retry_in_map=False)
         else:
             log.info(f"检测到星轨航图，不进行点击'返回'")
 
