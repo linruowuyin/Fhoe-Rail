@@ -307,10 +307,10 @@ class Map:
         if self.check_planet(planet):
             return
         else:
-            orientation_delay = 1
+            orientation_delay = 2
             while True:
-                self.calculated.click_target(key, 0.93, retry_in_map=self.allow_retry_in_map_switch)
-                orientation_delay = min(orientation_delay, 3)
+                self.calculated.click_target(key, 0.97, retry_in_map=self.allow_retry_in_map_switch)
+                orientation_delay = min(orientation_delay, 4)
                 time.sleep(orientation_delay)
                 if self.calculated.blackscreen_check():
                     pyautogui.press('esc')
