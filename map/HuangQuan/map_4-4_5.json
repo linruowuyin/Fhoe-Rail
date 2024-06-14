@@ -7,17 +7,17 @@
     },
     {
       "picture\\fanhui_1.png": 1.5
-	},
+    },
     {
       "picture\\2floor.png": 1.5
     },
     {
       "picture\\map_4-4_point_4.png": 1.5,
-	  "drag": 1.5
+      "drag": 1.5
     },
     {
       "picture\\transfer.png": 1.5
-    }    
+    }
   ],
   "map": [
     {
@@ -376,6 +376,12 @@
     },
     {
       "s": 0.56
+    },
+    {
+      "e": 2
+    },
+    {
+      "s": 0.06
     },
     {
       "e": 2
