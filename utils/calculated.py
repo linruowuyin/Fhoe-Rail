@@ -727,7 +727,7 @@ class Calculated:
         while time.time() - start_time < timeout:
             for count , (name, img) in enumerate(images.items(), start = 1):
                 result = self.scan_screenshot(img) if count == 1 else self.scan_temp_screenshot(img)
-                if result['max_val'] > 0.96:
+                if result['max_val'] > 0.95:
                     found_images[name] = result['max_val']
                     log.info(f"扫描'F'：{name}，匹配度：{result['max_val']:.3f}")
 
