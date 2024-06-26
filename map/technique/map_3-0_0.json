@@ -45,10 +45,19 @@
       "space": 1.5
     },
     {
-      "space": 1.5
+      "await": 1.5
     },
     {
       "space": 1.5
+    },
+    {
+      "await": 1.5
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 1.5
     },
     {
       "picture\\buy.png": 1.5
