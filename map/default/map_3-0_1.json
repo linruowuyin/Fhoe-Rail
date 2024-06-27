@@ -1,48 +1,43 @@
 {
-  "name": "零食材料-2",
+  "name": "零食合成-1",
   "author": "喵不可言",
   "start": [
     {
       "need_allow_snack_buy": 1
     },
     {
-      "picture\\buy.png": 1.5
+      "main": 1
     },
     {
-      "await": 2
+      "b": 1
     },
     {
-      "space": 1.5
+      "picture\\xiaohaoping.png": 1.5
     },
     {
-      "await": 4
+      "picture\\qiqiao.png": 1.5
     },
     {
-      "picture\\liuti.png": 1.5
+      "picture\\hechengji.png": 1.5
     },
     {
-      "picture\\max.png": 1
+      "picture\\zengjia.png": 1.5,
+      "clicks": 100
     },
     {
-      "picture\\round.png": 1.5
-    },
-    {
-      "picture\\finish_fighting4.png": 1.5	  
-    },
-    {
-      "picture\\zhongzi.png": 1.5
-    },
-    {
-      "picture\\max.png": 1
+      "picture\\hecheng.png": 1.5
     },
     {
       "picture\\round.png": 1.5
     },
     {
-      "picture\\finish_fighting4.png": 1.5	  
-    } 
-],
+      "picture\\finish_fighting4.png": 1.5
+    }
+  ],
   "map": [
+    {
+      "esc": 1
+    },
     {
       "esc": 1
     },

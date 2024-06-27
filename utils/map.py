@@ -446,6 +446,10 @@ class Map:
                             time.sleep(abs(value))
                         elif key == "space":
                             pyautogui.press('space')
+                        elif key in ["w", "a", "s", "d"]:
+                            self.calculated.handle_move(value, key)
+                        elif key == "f":
+                            self.calculated.handle_f()
                         elif key == "picture\\max.png":
                             if self.calculated.allow_buy_item():
                                 jump_this_map = False

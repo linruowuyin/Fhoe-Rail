@@ -6,13 +6,13 @@
             "need_allow_map_buy": 1
         },
         {
-            "check": [1,4,6]
+            "check": [0,1,2,3,4,5,6]
 		},
         {
             "map": 1
 		},
         {
-            "picture\\map_4-2_point_3.png": 1.5
+            "picture\\fanhui_1.png": 1.5
         },
         {
             "picture\\orientation_1.png": 1.5
@@ -28,11 +28,6 @@
         },
         {
             "picture\\transfer.png": 1.5
-        }
-    ],
-    "map": [
-        {
-            "check": 1
         },
         {
             "w": 8
@@ -42,6 +37,32 @@
         },
         {
             "f": 2
+        },
+        {
+            "space": 1.5
+        },
+        {
+            "await": 1.5
+        },
+        {
+            "picture\\buy.png": 1.5
+        },
+        {
+            "picture\\parcel.png": 1.5
+        },
+        {
+            "picture\\max.png": 1
+        },
+        {
+            "picture\\round.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "fighting": 2
+        },
+        {
+            "esc": 1
         },
         {
             "fighting": 2

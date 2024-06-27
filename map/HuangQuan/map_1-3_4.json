@@ -1,31 +1,32 @@
 {
     "name": "支援舱段-4",
-    "author": "Starry-Wind,小明,喵不可言",
-    "start": [],
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\2floor.png": 1.5
+        },
+        {
+            "picture\\map_1-3_point_1.png": 1.5
+        },
+        {
+            "picture\\map_1-3_point_2.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
     "map": [
         {
-            "w": 0.86
+            "w": 1.86
         },
         {
-            "d": 5.3
+            "d": 2.33
         },
         {
-            "e": 2
-        },
-        {
-            "a": 11.62
-        },
-        {
-            "w": 3.76
-        },
-        {
-            "e": 2
-        },
-        {
-            "d": 1.36
-        },
-        {
-            "e": 2
+            "fighting": 2
         }
     ]
 }

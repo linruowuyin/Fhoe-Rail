@@ -25,9 +25,7 @@
     },
     {
       "picture\\transfer.png": 1.5
-    } 
-],
-  "map": [
+    },
     {
       "d": 6.13
     },
@@ -44,10 +42,63 @@
       "f": 2
     },
     {
-      "fighting": 2
+      "space": 1.5
     },
     {
-      "fighting": 2
+      "await": 1.5
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 1.5
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 1.5
+    },
+    {
+      "picture\\buy.png": 1.5
+    },
+    {
+      "await": 2
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 4
+    },
+    {
+      "picture\\liuti.png": 1.5
+    },
+    {
+      "picture\\max.png": 1
+    },
+    {
+      "picture\\round.png": 1.5
+    },
+    {
+      "picture\\finish_fighting4.png": 1.5	  
+    },
+    {
+      "picture\\zhongzi.png": 1.5
+    },
+    {
+      "picture\\max.png": 1
+    },
+    {
+      "picture\\round.png": 1.5
+    },
+    {
+      "picture\\finish_fighting4.png": 1.5	  
+    } 
+],
+  "map": [
+    {
+      "esc": 1
     },
     {
       "fighting": 2
