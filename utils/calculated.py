@@ -33,7 +33,7 @@ class Calculated:
         self.hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
         self.winrect = ()  # 截图窗口范围
         self.have_monthly_pass = False  # 标志是否领取完月卡
-        self.monthly_pass_success = False  # 标志是否成功执行月卡检测
+        self.monthly_pass_success = 0  # 标志是否成功执行月卡检测，0未检测，1有月卡并领取，2无月卡，3找不到与月卡图片相符的图
         self.temp_screenshot = ()  # 初始化临时截图
         self.last_check_time = None  # 月卡检测时间
         self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
@@ -1135,52 +1135,53 @@ class Calculated:
             time.sleep(5)  # 延时，等待动画可能的加载
             self.try_click_pass()
 
-    def try_click_pass(self, threshold=0.91, max_click_attempts=2, delay=0):
+    def check_for_monthly_pass(self):
+        """无月卡检测
         """
-        说明：
-            尝试点击月卡。
-        """
-        time.sleep(abs(delay))
         log.info("判断是否存在月卡")
         target = cv.imread("./picture/finish_fighting.png")
         result = self.scan_screenshot(target)
         if result["max_val"] > 0.92:
             points = self.calculated(result, target.shape)
-            log.info(f"识别点位{points}")
-            match_details = f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
-            log.info(match_details)
-            self.monthly_pass_success = True  # 月卡检查完成，无月卡
+            log.info(f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
+            self.monthly_pass_success = 2  # 月卡检查完成，无月卡
+
+    def try_click_pass(self, threshold=0.91, delay=0):
+        """
+        说明：
+            尝试点击月卡。
+        """
+        time.sleep(abs(delay))
+
+        # 无月卡
+        self.check_for_monthly_pass()
+        if self.monthly_pass_success > 0:
             return
-
+        
+        # 有月卡
         log.info("准备点击月卡")
-        monthly_pass_pic = cv.imread("./picture/monthly_pass_pic.png")
-        result_monthly_pass = self.scan_screenshot(monthly_pass_pic)
-
-        count = 0
-        attempts_made = False
-
-        while not self.have_monthly_pass and count < max_click_attempts:  # 月卡需要点击两次，1次领取，1次完成
-            if result_monthly_pass["max_val"] > threshold:
-                log.info("点击月卡")
-                points_monthly_pass = self.calculated(result_monthly_pass, monthly_pass_pic.shape)
-                self.click(points_monthly_pass)
-                match_monthly_pass = f"识别到月卡，图片匹配度: {result_monthly_pass['max_val']:.2f} ({points_monthly_pass[0]}, {points_monthly_pass[1]})"
-                log.info(match_monthly_pass)
-                time.sleep(4)  # 等待动画修正到4秒
-                attempts_made = True
-                count += 1
-                if count == max_click_attempts:
-                    self.have_monthly_pass = True
-                    break
-            else:
-                match_no_pass = f"找不到与月卡图片相符的图，图片匹配度：{result_monthly_pass['max_val']:.2f} 需要 > {threshold}"
-                log.info(match_no_pass)
-                self.monthly_pass_success = True  # 月卡检查，找不到与月卡图片相符的图
+        monthly_pass_pics = [
+            ("./picture/monthly_pass_pic.png", "月卡下方文字部分"),
+            ("./picture/monthly_pass_pic_2.png", "月卡动画中心图片")
+        ]
+        for pic_path, pic_desc in monthly_pass_pics:
+            pic_data = cv.imread(pic_path)
+            result = self.scan_screenshot(pic_data)
+            log.info(f"开始月卡识图{pic_path}，图片特征描述：{pic_desc}")
+            if result["max_val"] > threshold:
+                points = self.calculated(result, pic_data.shape)
+                log.info(f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
+                self.click(points)
+                time.sleep(5)  # 等待动画
+                self.relative_click((50,75))
+                time.sleep(5)  # 等待动画
+                self.have_monthly_pass = True
+                self.monthly_pass_success = 1  # 月卡检查，已领取
                 break
-            time.sleep(0.1)  # 稍微等待再次尝试
-
-        if attempts_made:
-            self.monthly_pass_success = True  # 月卡检查，已领取
+            else:
+                log.info(f"找不到相符的图，图片匹配度：{result['max_val']:.2f} 需要 > {threshold}")
+        else:
+            self.monthly_pass_success = 3  # 月卡检查，找不到与月卡图片相符的图
 
     def scroll(self, clicks: float, arg1, _):
         """
