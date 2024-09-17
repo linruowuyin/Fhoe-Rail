@@ -1,0 +1,29 @@
+{
+    "name": "幽囚狱-2",
+    "author": "和月",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_3-8_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "fighting": 2
+        },
+        {
+            "a": 0.75
+        },
+        {
+            "w": 1.5
+        },
+        {
+            "f": 1
+        }
+    ]
+}
