@@ -1,0 +1,53 @@
+{
+	"name": "酒店梦境-2",
+	"author": "和月",
+	"start": [
+		{
+			"map": 1
+		},
+		{
+			"picture\\map_4-3_point_5.png": 1.5
+		},
+		{
+			"picture\\transfer.png": 1.5
+		}
+	],
+	"map": [
+		{
+			"view_set": 0.1
+		},
+		{
+			"s": 1.0
+		},
+		{
+			"a": 8.0
+		},
+		{
+			"w": 1.5
+		},
+		{
+			"a": 2.7
+		},
+		{
+			"r": 5.0
+		},
+		{
+			"fighting": 1
+		},
+		{
+			"view_reset": 0.1
+		},
+		{
+			"d": 1.0
+		},
+		{
+			"w": 3.0
+		},
+		{
+			"fighting": 1
+		},
+		{
+			"fighting": 1
+		}
+	]
+}
