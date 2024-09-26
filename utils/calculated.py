@@ -1135,7 +1135,7 @@ class Calculated:
             time.sleep(5)  # 延时，等待动画可能的加载
             self.try_click_pass()
 
-    def check_for_monthly_pass(self):
+    def check_for_monthly_pass(self) -> bool:
         """无月卡检测
         """
         log.info("判断是否存在月卡")
@@ -1145,6 +1145,9 @@ class Calculated:
             points = self.calculated(result, target.shape)
             log.info(f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
             self.monthly_pass_success = 2  # 月卡检查完成，无月卡
+            return False
+        else:
+            return True
 
     def try_click_pass(self, threshold=0.91, delay=0):
         """
@@ -1154,8 +1157,7 @@ class Calculated:
         time.sleep(abs(delay))
 
         # 无月卡
-        self.check_for_monthly_pass()
-        if self.monthly_pass_success > 0:
+        if not self.check_for_monthly_pass():
             return
         
         # 有月卡
@@ -1164,6 +1166,7 @@ class Calculated:
             ("./picture/monthly_pass_pic.png", "月卡下方文字部分"),
             ("./picture/monthly_pass_pic_2.png", "月卡动画中心图片")
         ]
+        pic_data_check = cv.imread("./picture/monthly_pass_pic_3.png")
         for pic_path, pic_desc in monthly_pass_pics:
             pic_data = cv.imread(pic_path)
             result = self.scan_screenshot(pic_data)
@@ -1173,8 +1176,19 @@ class Calculated:
                 log.info(f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
                 self.click(points)
                 time.sleep(5)  # 等待动画
-                self.relative_click((50,75))
-                time.sleep(5)  # 等待动画
+                for _ in range(5):
+                    result_check = self.scan_screenshot(pic_data_check)
+                    if result_check["max_val"] > threshold:
+                        log.info(f"找到月卡奖励图标，图片匹配度：{result_check['max_val']:.2f}")
+                        time.sleep(2)
+                        self.relative_click((50,75))
+                        time.sleep(5)  # 等待动画
+                        break
+                    else:
+                        time.sleep(2)
+                else:
+                    self.relative_click((50,75))
+                    time.sleep(5)  # 等待动画
                 self.have_monthly_pass = True
                 self.monthly_pass_success = 1  # 月卡检查，已领取
                 break
