@@ -15,10 +15,7 @@
       "picture\\map_4-3.png": 2
     },
     {
-      "picture\\1floor.png": 2
-    },
-    {
-      "picture\\map_4-3_point_1.png": 1.5
+      "picture\\map_4-3_point_4.png": 1.5
     },
     {
       "picture\\transfer.png": 1.5
@@ -26,40 +23,13 @@
   ],
   "map": [
     {
-      "w": 0.4
+      "a": 2.7
     },
     {
-      "r": 0.5
-    },
-    {
-      "d": 1.855
-    },
-    {
-      "f": 3.5
-    },
-    {
-      "main": 1
-    },
-    {
-      "w": 4.68
+      "w": 4.6
     },
     {
       "fighting": 1
-    },
-    {
-      "w": 2.25
-    },
-    {
-      "fighting": 2
-    },
-    {
-      "fighting": 1
-    },
-    {
-      "fighting": 1
-    },
-    {
-      "w": 2.25
     },
     {
       "fighting": 2
