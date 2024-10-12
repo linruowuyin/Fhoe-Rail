@@ -715,13 +715,14 @@ class Calculated:
             'space_anchor': cv.imread("./picture/F_SpaceAnchor.png"),
             'dream_module': cv.imread("./picture/F_DreamModule.png"),
             'listen': cv.imread("./picture/F_Listen.png"),
-            'dream_scape': cv.imread("./picture/F_DreamScape.png")
+            'dream_scape': cv.imread("./picture/F_DreamScape.png"),
+            'go_to': cv.imread("./picture/F_Goto.png")
         }
         
         start_time = time.time()
         log.info("扫描'F'图标")
 
-        default_delay = 10
+        default_delay = 15
         found_images = {}
 
         while time.time() - start_time < timeout:
@@ -773,6 +774,10 @@ class Calculated:
             elif 'dream_scape' in found_images:
                 log.info('扫描到 梦境空间')
                 delay = 5
+            elif 'go_to' in found_images:
+                log.info('扫描到 前往')
+                use_absolute_time = False
+                delay = 0
             else:
                 log.info("扫描到 'F'")
         else:
