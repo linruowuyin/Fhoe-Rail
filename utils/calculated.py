@@ -50,6 +50,7 @@ class Calculated:
         self.finish4_ui = cv.imread("./picture/finish_fighting4.png")
         self.finish5_ui = cv.imread("./picture/finish_fighting5.png")
         self.battle_esc_check = cv.imread("./picture/battle_esc_check.png")
+        self.switch_run = cv.imread("./picture/switch_run.png")
         
         self.attack_once = False  # 检测fighting时仅攻击一次，避免连续攻击
         self.esc_btn = KeyboardKey.esc  # esc键
@@ -806,6 +807,7 @@ class Calculated:
         while dev_restart:
             dev_restart = False  # 不进行重开
             last_key = ""
+            self._last_step_run = False  # 初始化上一次为走路
             for map_index, map_value in enumerate(map_data["map"]):
                 press_key = self.pause.check_pause(dev=dev, last_point=last_point)
                 if press_key:
@@ -826,7 +828,6 @@ class Calculated:
 
                 key, value = next(iter(map_value.items()))
                 self.monthly_pass_check()  # 行进前识别是否接近月卡时间
-                self._last_step_run = False  # 初始化上一次为走路
                 if key == "space" or key == "r": 
                     self.handle_space_or_r(value, key)
                 elif key == "f":
@@ -1005,25 +1006,33 @@ class Calculated:
                 fight_status = self.fight_elapsed()
                 if not fight_status:
                     log.info(f'未进入战斗')
+
+        self.run_fix_time = 0
         self.keyboard.press(key)
         start_time = time.perf_counter()
         allow_run = self.cfg.CONFIG.get("auto_run_in_map", False)
         add_time = True
         run_in_road = False
         temp_time = 0
+        self.run_fixed = False  # 强制断开初始化为否
         while time.perf_counter() - start_time < value:
-            if value > 2 and time.perf_counter() - start_time > 1 and not run_in_road and allow_run and not normal_run:
-                self.keyboard.press(self.shift_btn)
-                run_in_road = True
-                temp_value = value
-                value = round((value - 1) / 1.53, 4) + 1
-                self.tatol_save_time += (temp_value - value)
-                self._last_step_run = True
+            if value > 2 and not run_in_road and allow_run and not normal_run:
+                self.move_run_fix(start_time)
+                if time.perf_counter() - start_time > 1:
+                    self.keyboard.press(self.shift_btn)
+                    log.info(f"开启疾跑")
+                    run_in_road = True
+                    temp_value = value
+                    value = round((value - 1) / 1.53, 4) + 1
+                    self.tatol_save_time += (temp_value - value)
+                    self._last_step_run = True
             elif value <= 1 and allow_run and add_time and self._last_step_run:
                 value = value + 0.07
+                self.move_run_fix(start_time)
                 add_time = False
                 self._last_step_run = False
             elif value <= 2:
+                self.move_run_fix(start_time)
                 self._last_step_run = False
             pass
         temp_time = time.perf_counter() - start_time
@@ -1076,6 +1085,39 @@ class Calculated:
 
         time.sleep(0.5)
     '''
+
+    def move_run_fix(self, start_time, time_limit=0.3):
+        '''
+        用于修复2.6更新后连续移动时，疾跑意外打开的情况。
+
+        该方法用于检测当前疾跑状态，并在检测到疾跑意外激活时，模拟按下和释放 Shift 键来强制关闭疾跑。
+        为了避免多次触发关闭操作，确保每次循环内只执行一次关闭操作。
+
+        参数:
+        - start_time: 循环开始时间。
+        - time_limit: 限制检测逻辑的时间窗口，默认为 0.3 秒。
+        '''
+        if not self.run_fixed:
+            current_time = time.perf_counter()
+            elapsed_time = current_time - start_time
+
+            # 仅在前 0.3 秒内执行检测逻辑
+            if elapsed_time <= time_limit:
+                # 检查 run_fix_time 是否为 None 或时间差大于 0.1 秒
+                if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
+                    result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
+                    
+                    # 如果匹配度超过 0.995，强制断开疾跑
+                    if result_run['max_val'] > 0.995:
+                        log.info(f"疾跑匹配度: {result_run['max_val']}")
+                        log.info("强制断开疾跑")
+                        self.keyboard.press(self.shift_btn)
+                        time.sleep(0.05)
+                        self.keyboard.release(self.shift_btn)
+                        self.run_fix_time = current_time  # 更新修复时间
+                        self.run_fixed = True
+            else:
+                self.run_fixed = True
 
     def monthly_update_check_time(self):
         current_time = datetime.now()
