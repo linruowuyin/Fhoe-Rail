@@ -44,7 +44,7 @@ class Map:
             speed_open = True
             pyautogui.keyUp('s')
             time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
-            result = self.calculated.scan_screenshot(target, offset=(550,960,-1050,-50))
+            result = self.calculated.scan_screenshot(target, offset=(530,960,-1050,-50))
             if result['max_val'] > 0.95:
                 points = self.calculated.calculated(result, target.shape)
                 log.info(f"识别点位{points}")
