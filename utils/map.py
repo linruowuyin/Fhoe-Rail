@@ -45,9 +45,9 @@ class Map:
             pyautogui.keyUp('s')
             time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
             result = self.calculated.scan_screenshot(target, offset=(530,960,-1050,-50))
-            if result['max_val'] > 0.95:
+            if result['max_val'] > 0.97:
                 points = self.calculated.calculated(result, target.shape)
-                log.info(f"识别点位{points}")
+                log.info(f"识别点位{points}，匹配度{result['max_val']:.3f}")
                 if not self.map_statu_minimize:
                     log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
                     pyautogui.click(points, clicks=10, interval=0.1)
