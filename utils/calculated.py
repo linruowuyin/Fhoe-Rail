@@ -657,13 +657,24 @@ class Calculated:
                         pass
                     else:
                         food_lab = cv.imread("./picture/qiqiao_lab.png")
-                        self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
-                        for _ in range(2):
-                            if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
-                                time.sleep(0.1)
-                                self.click_target("./picture/round.png", 0.9, timeout=8)
+                        food_icon = cv.imread("./picture/qiqiao.png")
+                        find = False
+                        drag = 0
+                        while not find and drag < 4:
+                            if self.on_interface(check_list=[food_icon], timeout=2, interface_desc='奇巧零食图片', threshold=0.95, offset=(900,300,-400,-300)):
+                                find = True
+                                for _ in range(2):
+                                    self.click_target("./picture/qiqiao.png", 0.95, True, 2, (900,300,-400,-300), False)
+                                    if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
+                                        time.sleep(0.1)
+                                        self.click_target("./picture/round.png", 0.9, timeout=8)
+                                        time.sleep(0.5)
+                                        allow_buy = True
+                            else:
+                                log.info(f"下滑查找零食")
+                                self.mouse_drag(1460, 450, 1460, 330)
                                 time.sleep(0.5)
-                                allow_buy = True
+                                drag += 1
                         time.sleep(1)
                     self.back_to_main(delay=0.1)
                     if allow_buy:
