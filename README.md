@@ -1,9 +1,8 @@
-## 注意事项
+# Fhoe-Rail 星铁锄大地
 
 - 锄大地可免配置启动
-- [附加功能](https://github.com/linruowuyin/Fhoe-Rail/tree/master?tab=readme-ov-file#%E5%85%B3%E4%BA%8E%E9%85%8D%E7%BD%AE)需要自行在配置中打开，黄泉锄大地需要在设置里开启对应地图
-- 运行前请阅读[运行须知](https://github.com/linruowuyin/Fhoe-Rail/tree/master?tab=readme-ov-file#%E8%BF%90%E8%A1%8C%E9%A1%BB%E7%9F%A5)，[免责声明](https://github.com/linruowuyin/Fhoe-Rail/tree/master?tab=readme-ov-file#%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E)
-
+- [附加功能](#进阶内容与配置)需要自行在配置中打开，黄泉锄大地需要在设置里开启对应地图
+- 运行前请阅读[运行须知](#运行须知)，[免责声明](#免责声明)
 
 ## 功能简介
 
@@ -24,7 +23,7 @@
 
 
 - **1号位**为跑图角色，需要是**远程角色**，使用**黄泉专用地图**时必须是**黄泉**
-- 远程角色跑图时选择成年模型且攻击无位移最佳，少女模型可能会卡图，查看[跑图模型分类](https://github.com/linruowuyin/Fhoe-Rail/tree/master?tab=readme-ov-file#%E8%B7%91%E5%9B%BE%E6%A8%A1%E5%9E%8B%E5%88%86%E7%B1%BB)
+- 远程角色跑图时选择成年模型且攻击无位移最佳，少女模型可能会卡图，查看[跑图模型分类](#跑图模型分类)
 - **帧数：60帧**
 - 游戏分辨率：**1920*1080**，部分屏幕无法识别全屏幕，请切换非全屏幕重试
 - **集成版本选图**请在命令行输入：Fhoe-Rail.exe --debug
@@ -45,7 +44,7 @@
 - 请勿在非自动战斗状态时移动鼠标或操作键盘
 
 ## 进阶内容与配置
-<details>
+<details id="advanced-features">
 <summary>查看进阶内容</summary>
 
 
@@ -192,8 +191,8 @@ This software is open source, free of charge and for learning and exchange purpo
 
 请注意，根据MiHoYo的 [崩坏:星穹铁道的公平游戏宣言](https://sr.mihoyo.com/news/111246?nav=news&type=notice):
 
-```
-"严禁使用外挂、加速器、脚本或其他破坏游戏公平性的第三方工具。"
-"一经发现，米哈游（下亦称“我们”）将视违规严重程度及违规次数，采取扣除违规收益、冻结游戏账号、永久封禁游戏账号等措施。"
-```
+>"严禁使用外挂、加速器、脚本或其他破坏游戏公平性的第三方工具。"
+>
+>"一经发现，米哈游（下亦称“我们”）将视违规严重程度及违规次数，采取扣除违规收益、冻结游戏账号、永久封禁游戏账号等措施。"
+
 
