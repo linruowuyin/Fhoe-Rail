@@ -1117,11 +1117,11 @@ class Calculated:
                 # 检查 run_fix_time 是否为 None 或时间差大于 0.1 秒
                 if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
                     result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
-                    
+                    # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
                     # 如果匹配度超过 0.995，强制断开疾跑
                     if result_run['max_val'] > 0.995:
                         log.info(f"疾跑匹配度: {result_run['max_val']}")
-                        log.info("强制断开疾跑")
+                        log.info(f"强制断开疾跑")
                         self.keyboard.press(self.shift_btn)
                         time.sleep(0.05)
                         self.keyboard.release(self.shift_btn)
