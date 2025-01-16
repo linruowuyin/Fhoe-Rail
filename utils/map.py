@@ -25,6 +25,7 @@ class Map:
         self.retry_cnt_max = 2
         self.map_statu_minimize = False  # 地图最小化
         self.planet = None  # 当前星球初始化
+        self.planet_png_lst = ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png", "picture\\orientation_6.png"]
 
     def map_init(self, max_attempts=10):
 
@@ -301,7 +302,7 @@ class Map:
         已在当前星球，跳过点击星轨航图
         未在当前星球，点击星轨航图后进行黑屏检测，如果因为客户端黑屏，则返回重试点击星轨航图
         """
-        keys_to_find = ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]
+        keys_to_find = self.planet_png_lst
         planet_dict = {k: v for item in map_data['start'] for k, v in item.items() if k in keys_to_find}
         planet = list(planet_dict.keys())[0]
         if self.check_planet(planet):
@@ -492,7 +493,7 @@ class Map:
                                 self.calculated.click_target(key, 0.93)
                                 self.temp_point = key
                                 time.sleep(1.7)
-                            elif key in ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png"]:
+                            elif key in self.planet_png_lst:
                                 self.handle_planet(key)
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:

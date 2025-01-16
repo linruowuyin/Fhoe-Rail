@@ -69,6 +69,7 @@ class Calculated:
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
         self._last_step_run = False  # 初始化
         self.img_search_val_dict = {}  # 图片匹配值
+        self.arrow_0 = cv.imread("./picture/screenshot_arrow.png")
         try:
             self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0
             log.debug(f"scale:{self.scale}")
@@ -159,7 +160,9 @@ class Calculated:
         """
         if key_name == "space":
             key_name = self.space_btn
-
+        if key_name == "caps":
+            key_name = self.caps_btn
+    
         return key_name
     
     def keyboard_press(self, key_name: str, delay: float=0): 
@@ -839,8 +842,12 @@ class Calculated:
 
                 key, value = next(iter(map_value.items()))
                 self.monthly_pass_check()  # 行进前识别是否接近月卡时间
-                if key == "space" or key == "r": 
-                    self.handle_space_or_r(value, key)
+                if key == "space":
+                    self.handle_space(value, key)
+                elif key == "caps":
+                    self.handle_caps(value)
+                elif key == "r":
+                    self.handle_r(value, key)
                 elif key == "f":
                     self.handle_f()
                 elif key == "check":
@@ -865,6 +872,8 @@ class Calculated:
                     self.handle_view_set(value)
                 elif key == "view_reset":
                     self.handle_view_reset(value)
+                elif key == "view_rotate":
+                    self.handle_view_rotate(value)
                 else:
                     self.handle_move(value, key, normal_run, last_key)
                 
@@ -892,7 +901,17 @@ class Calculated:
                         log.info(f'未进入战斗')
 
 
-    def handle_space_or_r(self, value, key):
+    def handle_space(self, value, key):
+        """按下space键，延迟value秒后抬起
+        """
+        self.keyboard_press(key, value)
+
+    def handle_caps(self, value):
+        """按下space键，延迟value秒后抬起
+        """
+        self.keyboard_press(self.caps_btn, value)
+
+    def handle_r(self, value, key):
         random_interval = random.uniform(0.3, 0.7)
         num_repeats = int(value / random_interval)
         for _ in range(num_repeats):
@@ -1007,6 +1026,32 @@ class Calculated:
             if abs(sub) <= 1:
                 break
             time.sleep(0.6)
+
+    def handle_view_rotate(self, value):
+            """旋转视角至value度，顺时针
+            """
+            time.sleep(1)
+            sub = 0
+            cnt = 0
+            self.handle_move(value=0.01,key="w")  # 重置箭头指向为视角方向
+            time.sleep(0.6)
+            arrow_temp = self.arrow_0
+            final_arrow = self.image_rotate(arrow_temp, -value)
+            while cnt < 4:
+                arrow_temp = self.take_arrow()
+                ang = self.cal_ang(arrow_temp, final_arrow)
+                sub = 360 - ang
+                sub = (sub + 180) % 360 - 180
+                sub = sub if sub != 0 else 1e-9
+                log.info(f"开始旋转视角，计算角度ang:{ang}，旋转角度sub:{sub}")
+                # self.keyboard_press("caps_lock", 0.2)
+                # time.sleep(1)
+                self.mouse_move(sub)
+                self.handle_move(value=0.01,key="w")
+                cnt += 1
+                if abs(sub) <= 1:
+                    break
+                time.sleep(0.6)
 
     def handle_move(self, value, key, normal_run=False, last_key : str=""):
         if normal_run:
