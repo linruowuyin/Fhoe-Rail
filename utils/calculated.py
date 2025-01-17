@@ -874,6 +874,8 @@ class Calculated:
                     self.handle_view_reset(value)
                 elif key == "view_rotate":
                     self.handle_view_rotate(value)
+                elif key == "await":
+                    time.sleep(value)
                 else:
                     self.handle_move(value, key, normal_run, last_key)
                 
