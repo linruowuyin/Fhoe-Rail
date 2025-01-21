@@ -12,10 +12,12 @@ from utils.log import log, webhook_and_log, fetch_php_file_content
 from get_width import get_width, check_mult_screen
 from utils.config import ConfigurationManager
 from utils.map import Map
+from utils.time_utils import TimeUtils
 from utils.switch_window import switch_window
 from utils.exceptions import Exception
 
 cfg = ConfigurationManager()
+time_mgr = TimeUtils()
 
 def choose_map(map_instance: Map):
     map_version = cfg.CONFIG.get("map_version", "default")
@@ -51,7 +53,7 @@ def choose_map_debug(map_instance: Map):
                 log.info(f"设置完成")
                 return choose_map_debug(map_instance)
             elif option_ == "[定时]":
-                map_instance.wait_and_run()
+                time_mgr.wait_and_run()
                 return f"1-1_0"
             main_map = options_map.get(option_)
             is_selecting_main_map = False
@@ -158,7 +160,7 @@ def main():
         shutdown_computer(shutdown_type)
         if cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('allow_run_next_day', False):
             log.info(f"开始执行跨日连锄")
-            if map_instance.has_crossed_4am(start=start_time, end=end_time):
+            if time_mgr.has_crossed_4am(start=start_time, end=end_time):
                 log.info(f"检测到换日，即将从头开锄")
                 map_instance.auto_map(start_map, start_in_mid, dev=dev)
             else:
