@@ -68,6 +68,7 @@ class Calculated:
         self.time_error_cnt = 0  # 系统卡顿计数
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
         self._last_step_run = False  # 初始化
+        self.need_rotate = False
         self.img_search_val_dict = {}  # 图片匹配值
         self.arrow_0 = cv.imread("./picture/screenshot_arrow.png")
         try:
@@ -1077,8 +1078,7 @@ class Calculated:
             if value > 2 and not run_in_road and allow_run and not normal_run:
                 self.move_run_fix(start_time)
                 if time.perf_counter() - start_time > 1:
-                    self.keyboard.press(self.shift_btn)
-                    log.info(f"开启疾跑")
+                    self.enable_run()
                     run_in_road = True
                     temp_value = value
                     value = round((value - 1) / 1.53, 4) + 1
@@ -1144,6 +1144,20 @@ class Calculated:
         time.sleep(0.5)
     '''
 
+    def enable_run(self):
+        """强制开启疾跑，检查2次"""
+        is_running = lambda: self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))['max_val'] > 0.996
+        if not is_running():
+            self.keyboard.press(self.shift_btn)
+            log.info("开启疾跑")
+            time.sleep(0.08)
+            if not is_running():
+                log.warning("疾跑未能成功开启，再尝试一次")
+                self.keyboard.press(self.shift_btn)
+                log.info("开启疾跑")
+            else:
+                log.info("疾跑已成功开启")
+
     def move_run_fix(self, start_time, time_limit=0.3):
         '''
         用于修复2.6更新后连续移动时，疾跑意外打开的情况。
@@ -1163,17 +1177,19 @@ class Calculated:
             if elapsed_time <= time_limit:
                 # 检查 run_fix_time 是否为 None 或时间差大于 0.1 秒
                 if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
-                    result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
-                    # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
-                    # 如果匹配度超过 0.995，强制断开疾跑
-                    if result_run['max_val'] > 0.995:
-                        log.info(f"疾跑匹配度: {result_run['max_val']}")
-                        log.info(f"强制断开疾跑")
-                        self.keyboard.press(self.shift_btn)
-                        time.sleep(0.05)
-                        self.keyboard.release(self.shift_btn)
-                        self.run_fix_time = current_time  # 更新修复时间
-                        self.run_fixed = True
+                    for _ in range(4):  # 强制断开检查最多4次，避免误判
+                        result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
+                        # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
+                        # 如果匹配度超过 0.996，强制断开疾跑
+                        if result_run['max_val'] > 0.996:
+                            log.info(f"疾跑匹配度: {result_run['max_val']}")
+                            log.info(f"强制断开疾跑")
+                            self.keyboard.press(self.shift_btn)
+                            time.sleep(0.05)
+                            self.keyboard.release(self.shift_btn)
+                            self.run_fix_time = current_time  # 更新修复时间
+                            self.run_fixed = True
+                            time.sleep(0.1)
             else:
                 self.run_fixed = True
 
