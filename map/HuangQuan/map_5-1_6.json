@@ -1,0 +1,44 @@
+{
+  "name": "纷争荒墟-6",
+  "author": "smjes3",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\map_5-1.png": 1.5,
+      "scene": 1
+    },
+    {
+      "picture\\map_5-1_point_4.png": 1.5,
+      "drag": 1,
+      "drag_exact": [7,2,2]
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "view_rotate": -90
+    },
+    {
+      "a": 10
+    },
+    {
+      "d": 0.8
+    },
+    {
+      "w": 14
+    },
+    {
+      "d": 0.1
+    },
+    {
+      "e": 2
+    },
+    {
+      "e": 2
+    }
+  ]
+}
