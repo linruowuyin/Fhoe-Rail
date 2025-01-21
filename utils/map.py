@@ -10,13 +10,15 @@ import random
 from .calculated import Calculated
 from .config import ConfigurationManager
 from .log import log, webhook_and_log
+from .time_utils import TimeUtils
 import datetime
 
 class Map:
     def __init__(self):
         self.calculated = Calculated()
         self.cfg = ConfigurationManager()
-        self.open_map = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME).get("open_map", "m")
+        self.time_mgr = TimeUtils()
+        self.open_map_btn = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME).get("open_map", "m")
         self.map_list = []
         self.map_list_map = {}
         self.map_versions = self.read_maps_versions()
@@ -27,36 +29,30 @@ class Map:
         self.planet = None  # 当前星球初始化
         self.planet_png_lst = ["picture\\orientation_2.png", "picture\\orientation_3.png", "picture\\orientation_4.png", "picture\\orientation_5.png", "picture\\orientation_6.png"]
 
-    def map_init(self, max_attempts=10):
-
+    def open_map(self):
+        """
+        尝试打开地图并识别地图标志性的目标图片
+        """
         target = cv.imread('./picture/contraction.png')
-        attempts = 0
-        
+        target_back = cv.imread('./picture/map_back.png')
         start_time = time.time()
+        attempts = 0
         speed_open = False
-        
+        max_attempts=10
+
+        # 主逻辑
         while attempts < max_attempts:
-            log.info(f'打开地图')
-            pyautogui.press(self.open_map)
-            while self.calculated.on_main_interface(timeout=0.0,allow_log=False) and time.time() - start_time < 3 and not speed_open:
-                pyautogui.keyDown('s')
-                pyautogui.press(self.open_map)
-                time.sleep(0.05)
+            log.info(f'尝试打开地图 (尝试次数: {attempts + 1}/{max_attempts})')
+            pyautogui.press(self.open_map_btn)
+            
+            self._wait_for_main_interface(speed_open, start_time)
             speed_open = True
-            pyautogui.keyUp('s')
-            time.sleep(3)  # 增加3秒识别延迟，避免偶现的识别错误
-            result = self.calculated.scan_screenshot(target, offset=(530,960,-1050,-50))
-            if result['max_val'] > 0.97:
-                points = self.calculated.calculated(result, target.shape)
-                log.info(f"识别点位{points}，匹配度{result['max_val']:.3f}")
-                if not self.map_statu_minimize:
-                    log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
-                    pyautogui.click(points, clicks=10, interval=0.1)
-                    self.map_statu_minimize = True
+            if self._handle_target_recognition(target):
+                self._handle_back_button(target_back)
                 break
             else:
                 attempts += 1
-                self.calculated.back_to_main()  # 打开map运行前保证在主界面
+                self.calculated.back_to_main()  # 确保返回主界面以重试
 
     def read_maps_versions(self):
         map_dir = './map'
@@ -93,106 +89,73 @@ class Map:
         # log.info(f"self.map_list:{self.map_list}")
         # log.info(f"self.map_list_map:{self.map_list_map}")
 
-
-    def format_time(self, seconds):
-        # 格式化时间
-        minutes, seconds = divmod(seconds, 60)
-        hours, minutes = divmod(minutes, 60)
-
-        if hours > 0:
-            return f"{hours:.0f}小时{minutes:.0f}分{seconds:.1f}秒"
-        elif minutes > 0:
-            return f"{minutes:.0f}分{seconds:.1f}秒"
-        else:
-            return f"{seconds:.1f}秒"
-
-    def day_init(self, days: list=None):
-        if days is None:  
-            days = []
-        today_weekday_num = self.now.weekday()
-        in_day = today_weekday_num in days
-        
-        return in_day
-
-    def get_target_datetime(self, hour, minute, second):
-        now = datetime.datetime.now()
-        target_date = now.date()
-        target_time = datetime.datetime.combine(target_date, datetime.time(hour, minute, second))  # 设置目标时间    
-
-        return target_time  
-    
-    def get_valid_hour(self):
-        default_hour = 4
-
-        while True:
-            try:
-                hour_input = input(f"请输入需要几点运行，默认为{default_hour}点 (0-23): ")
-                if not hour_input:
-                    log.debug(f"未输入小时数，使用默认值 {default_hour}。")
-                    return default_hour
-                hour = int(hour_input)  # 尝试将输入转换为整数  
-                if 0 <= hour <= 23:  # 检查小时数是否在合法范围内  
-                    return hour  
-                else:
-                    log.debug(f"输入的小时数不合法，请输入0-23之间的数字。")
-            except ValueError:
-                log.debug(f"未输入一个有效的数字。使用默认值 {default_hour}")
-                return default_hour
-
-    def wait_and_run(self, minute=1, second=0):  
-        
-        hour = self.get_valid_hour()  
-
-        target_time = self.get_target_datetime(hour, minute, second)  # 计算目标时间  
-        time_diff = target_time - datetime.datetime.now()  # 计算目标时间与当前时间的时间差  
-        if time_diff.total_seconds() < 0:  # 如果目标时间已经过去，则设置为明天的这个时间  
-            target_time += datetime.timedelta(days=1)  
-            time_diff = target_time - datetime.datetime.now()
-        wait_time = time_diff.total_seconds()  # 等待到目标时间    
-        log.info(f"将在 {target_time.strftime('%Y-%m-%d %H:%M:%S')}")  
-        log.info(f"需要等待 {wait_time:.0f} 秒")  
-        time.sleep(wait_time)
-
-    def has_crossed_4am(self, start:datetime.datetime, end:datetime.datetime) -> bool:
-        """
-        检查是否从开始时间到结束时间跨越了凌晨4点
-        """
-        refresh_hour = self.cfg.CONFIG.get("refresh_hour", 4)
-        refresh_minute = self.cfg.CONFIG.get("refresh_minute", 0)
-        # 获取开始时间的凌晨4点
-        start_4am = start.replace(hour=refresh_hour, minute=refresh_minute, second=0, microsecond=0)
-        if start.hour >= refresh_hour and start.minute >= refresh_minute:
-            # 如果开始时间在4点之后，则4点时间应该是下一天的4点
-            start_4am += datetime.timedelta(days=1)
-        
-        return start < start_4am <= end
-
-    def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
+    def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60, offset=None):
         """
         说明:
             寻找传送点
         参数：
-            :param key:图片地址
-            :param threshold:图片查找阈值
-            :param min_threshold:最低图片查找阈值
-            :param timeout:超时时间（秒）
+            :param key: 图片地址
+            :param threshold: 图片查找阈值
+            :param min_threshold: 最低图片查找阈值
+            :param timeout: 超时时间（秒）
+            :param offset: 查找偏移，None 时使用默认移动逻辑
         """
         start_time = time.time()
         target = cv.imread(key)
-        target_list = [target]
-        direction_names = ["向下移动", "向左移动", "向上移动", "向右移动"]
-        while not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
-            # 设置向下、向左、向上、向右的移动数值
-            directions = [(250, 900, 250, 300), (250, 900, 850, 900), (1330, 200, 1330, 800), (1330, 200, 730, 200)]
-            for index, direction in enumerate(directions):
-                log.info(f"开始移动地图，{direction_names[index]}，当前所需匹配值{threshold}")
-                for i in range(3):
-                    if not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold):
-                        self.calculated.mouse_drag(*direction)
-                    else:
-                        return
-            threshold -= 0.01
-    
+
+        while time.time() - start_time < timeout:
+            if self._is_target_found(target, threshold):
+                log.info(f"传送点已找到，匹配度：{threshold:.2f}")
+                return
+
+            if offset is None:
+                self._move_default(target, threshold)
+            else:
+                self._move_with_offset(offset)
+
+            threshold = max(min_threshold, threshold - 0.01)
+
+        log.error("传送点查找失败：超时或未达到最低阈值")
+
+    def _directions(self):
+        directions = {
+                "down": (250, 900, 250, 300),
+                "left": (250, 900, 850, 900),
+                "up": (1330, 200, 1330, 800),
+                "right": (1330, 200, 730, 200),
+            }
+        return directions
+
+    def _is_target_found(self, target, threshold):
+        """
+        判断目标是否找到。
+        """
+        return self.calculated.have_screenshot([target], (0, 0, 0, 0), threshold)
+
+    def _move_default(self, target, threshold):
+        """
+        按默认逻辑移动地图。
+        """
+        for direction_name, direction_coords in self._directions().items():
+            log.info(f"尝试 {direction_name} ，当前阈值：{threshold:.2f}")
+            for _ in range(3):
+                if not self._is_target_found(target, threshold):
+                    self.calculated.mouse_drag(*direction_coords)
+                else:
+                    return
+
+    def _move_with_offset(self, offset):
+        """
+        按偏移量移动地图。
+        """
+        for _ in range(offset[0]):  # 向左+向上
+            self.calculated.mouse_drag(*self._directions()["left"])
+            self.calculated.mouse_drag(*self._directions()["up"])
+        for _ in range(offset[1]):  # 向右
+            self.calculated.mouse_drag(*self._directions()["right"])
+        for _ in range(offset[2]):  # 向下
+            self.calculated.mouse_drag(*self._directions()["down"])
+
     def find_scene(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
         """
         说明:
@@ -240,27 +203,23 @@ class Map:
         self.calculated.auto_final_fight_e_cnt = 0
     
     def allow_map_drag(self, start):
-        self.allow_drap_map_switch = 0  # 初始化禁止拖动地图
-        if "drag" in start and start["drag"] >= 1:
-            self.allow_drap_map_switch = True
-    
+        self.allow_drap_map_switch = bool(start.get("drag", False))  # 默认禁止拖动地图
+        self.drag_exact = None
+
+        if self.allow_drap_map_switch and "drag_exact" in start:
+            self.drag_exact = start["drag_exact"]
+
     def allow_scene_drag(self, start):
-        self.allow_scene_drag_switch = 0  # 初始化禁止拖动
-        if "scene" in start and start["scene"] >= 1:
-            self.allow_scene_drag_switch = True
-        
-    
+        self.allow_scene_drag_switch = bool(start.get("scene", False))  # 默认禁止拖动右侧场景
+
     def allow_multi_click(self, start):
         self.multi_click = 1
-        self.allow_multi_click_switch = False
-        if "clicks" in start and start["clicks"] >= 1:
-            self.allow_multi_click_switch = True
+        self.allow_multi_click_switch = bool(start.get("clicks", False))  # 默认禁止多次点击
+        if self.allow_multi_click_switch:
             self.multi_click = int(start["clicks"])
     
     def allow_retry_in_map(self, start):
-        self.allow_retry_in_map_switch = True
-        if "forbid_retry" in start and start["forbid_retry"] >= 1:
-            self.allow_retry_in_map_switch = False
+        self.allow_retry_in_map_switch = not bool(start.get("forbid_retry", False))  # 默认允许自动重试查找地图点位
 
     def check_and_skip_forbidden_maps(self, map_data_name):
         """检查并跳过配置中禁止的地图。
@@ -361,6 +320,49 @@ class Map:
         else:
             log.info(f"检测到星轨航图，不进行点击'返回'")
 
+    def _handle_back_button(self, target_back):
+        """
+        处理返回按钮的识别和点击逻辑，用于偶现的卡二级地图，此时使用m键无法关闭地图
+        """
+        for _ in range(5):
+            result_back = self.calculated.scan_screenshot(target_back, offset=(1830, 0, 0, -975))
+            if result_back['max_val'] > 0.99:
+                log.info(f"找到返回键")
+                points_back = self.calculated.calculated(result_back, target_back.shape)
+                pyautogui.click(points_back, clicks=1, interval=0.1)
+            else:
+                break
+
+    def _wait_for_main_interface(self, speed_open, start_time):
+        """
+        黄泉e的状态下快速打开地图，采用按下s打断技能并且按下地图键的方式
+        """
+        while self.calculated.on_main_interface(timeout=0.0, allow_log=False):
+            if time.time() - start_time > 3:
+                return
+            if not speed_open:
+                pyautogui.keyDown('s')
+                pyautogui.press(self.open_map_btn)
+                time.sleep(0.05)
+        pyautogui.keyUp('s')
+        return
+
+    def _handle_target_recognition(self, target):
+        """
+        处理目标图片的识别逻辑
+        """
+        time.sleep(3)  # 增加识别延迟，避免偶现的识别错误
+        result = self.calculated.scan_screenshot(target, offset=(530, 960, -1050, -50))
+        if result['max_val'] > 0.97:
+            points = self.calculated.calculated(result, target.shape)
+            log.info(f"识别点位{points}，匹配度{result['max_val']:.3f}")
+            if not self.map_statu_minimize:
+                log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
+                pyautogui.click(points, clicks=10, interval=0.1)
+                self.map_statu_minimize = True
+            return True
+        return False
+
     def auto_map(self, start, start_in_mid: bool=False, dev: bool = False):
         total_processing_time = 0
         teleport_click_count = 0
@@ -411,7 +413,7 @@ class Map:
                         if key == "check":  # 判断周几
                             if value == 1:
                                 value = [0,1,2,3,4,5,6]
-                            if self.day_init(value):  # 1代表周二，4代表周五，6代表周日
+                            if self.time_mgr.day_init(value):  # 1代表周二，4代表周五，6代表周日
                                 log.info(f"今天{today_weekday_str}，尝试购买")
                                 jump_this_map = False
                                 continue
@@ -436,7 +438,7 @@ class Map:
                         elif key == "esc":
                             pyautogui.press('esc')
                         elif key == 'map':
-                            self.map_init()
+                            self.open_map()
                         elif key == 'main':
                             self.calculated.back_to_main()  # 检测并回到主界面
                             time.sleep(2)
@@ -497,7 +499,7 @@ class Map:
                                 self.handle_planet(key)
                             else:
                                 if self.allow_drap_map_switch or self.map_drag:
-                                    self.find_transfer_point(key, threshold=0.975)
+                                    self.find_transfer_point(key, threshold=0.975, offset=self.drag_exact)
                                 if self.allow_scene_drag_switch:
                                     self.find_scene(key, threshold=0.990)
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
@@ -531,19 +533,19 @@ class Map:
 
                 # 计算处理时间并输出
                 processing_time = end_time - start_time
-                formatted_time = self.format_time(processing_time)
+                formatted_time = self.time_mgr.format_time(processing_time)
                 total_processing_time += processing_time
-                log.info(f"{map_base}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.format_time(total_processing_time)}』\033[0m")
+                log.info(f"{map_base}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.time_mgr.format_time(total_processing_time)}』\033[0m")
                 
                 if index == max_index:
                     total_time = time.time() - total_start_time
                     total_fight_time = self.calculated.total_fight_time
-                    log.info(f"结束该阶段的锄地，总计用时 {self.format_time(total_time)}，总计战斗用时 {self.format_time(total_fight_time)}")
+                    log.info(f"结束该阶段的锄地，总计用时 {self.time_mgr.format_time(total_time)}，总计战斗用时 {self.time_mgr.format_time(total_fight_time)}")
                     error_fight_cnt = self.calculated.error_fight_cnt
                     log.info(f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
                     if error_check_point:
                         log.info(f"筑梦机关检查不通过，请将机关调整到正确的位置上")
-                    log.info(f"疾跑节约的时间为 {self.format_time(self.calculated.tatol_save_time)}")
+                    log.info(f"疾跑节约的时间为 {self.time_mgr.format_time(self.calculated.tatol_save_time)}")
                     log.info(f"战斗次数{self.calculated.total_fight_cnt}")
                     log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
                     log.info(f"未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")

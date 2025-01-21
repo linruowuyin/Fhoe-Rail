@@ -1,5 +1,5 @@
 {
-    "name": "晖长石号-1",
+    "name": "黑塔办公室-1",
     "author": "lrwy",
     "start": [
         {
@@ -9,10 +9,13 @@
             "picture\\guide.png": 1.5
         },
         {
-            "picture\\index.png": 1.5
+            "picture\\index_2.png": 1.5
         },
         {
-            "picture\\map_0.png": 2
+            "picture\\index_3.png": 1.5
+        },
+        {
+            "picture\\index_4.png": 1.5
         },
         {
             "await": 2
