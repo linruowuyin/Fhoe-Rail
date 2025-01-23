@@ -1101,9 +1101,8 @@ class Calculated:
         
         # 系统卡顿识别
         time_error_check = True
-        if time_error_check:
+        if time_error_check and value >= 0.2:
             extra_time = temp_time - value
-            extra_time = extra_time if not run_in_road else round(extra_time*1.53, 4)
             if extra_time > 0.05:
                 log.info(f"警告，此处出现系统卡顿，实际多移动{extra_time:.4f}秒，可能造成路线错误")
                 self.time_error_cnt += 1
@@ -1177,19 +1176,18 @@ class Calculated:
             if elapsed_time <= time_limit:
                 # 检查 run_fix_time 是否为 None 或时间差大于 0.1 秒
                 if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
-                    for _ in range(4):  # 强制断开检查最多4次，避免误判
-                        result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
-                        # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
-                        # 如果匹配度超过 0.996，强制断开疾跑
-                        if result_run['max_val'] > 0.996:
-                            log.info(f"疾跑匹配度: {result_run['max_val']}")
-                            log.info(f"强制断开疾跑")
-                            self.keyboard.press(self.shift_btn)
-                            time.sleep(0.05)
-                            self.keyboard.release(self.shift_btn)
-                            self.run_fix_time = current_time  # 更新修复时间
-                            self.run_fixed = True
-                            time.sleep(0.1)
+                    # for _ in range(4):  # 强制断开检查最多4次，避免误判
+                    result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
+                    # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
+                    # 如果匹配度超过 0.996，强制断开疾跑
+                    if result_run['max_val'] > 0.996:
+                        log.info(f"疾跑匹配度: {result_run['max_val']}")
+                        log.info(f"强制断开疾跑")
+                        self.keyboard.press(self.shift_btn)
+                        time.sleep(0.05)
+                        self.keyboard.release(self.shift_btn)
+                        self.run_fix_time = current_time  # 更新修复时间
+                        self.run_fixed = True
             else:
                 self.run_fixed = True
 

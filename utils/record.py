@@ -53,7 +53,7 @@ cen_mouse_pos = mouseController().position
 print("中心点坐标", cen_mouse_pos)
 mouse_watch = True
 
-key_list = ['w', 's', 'a', 'd', 'f', 'x', 'r']  # 匹配锄大地
+key_list = ['w', 's', 'a', 'd', 'f', 'x', 'r', 'e']  # 匹配锄大地
 # 输出列表
 event_list = []
 # 不同操作间延迟记录
@@ -199,6 +199,8 @@ def save_json():
                 normal_save_dict["map"].append({"fighting": 2})
             elif element_save['key'] == "x":
                 normal_save_dict["map"].append({"fighting": 1})  # 进战斗
+            elif element_save['key'] == "e":
+                normal_save_dict["map"].append({"e": 2})  # 黄泉E
             else:
                 key_duration = element_save.get('duration', 1)  # 获取按键持续时间，默认为1秒
                 normal_save_dict["map"].append(
