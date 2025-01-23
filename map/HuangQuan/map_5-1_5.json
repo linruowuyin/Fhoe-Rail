@@ -6,13 +6,16 @@
       "map": 1
     },
     {
-      "picture\\map_5-1.png": 1.5,
+      "picture\\map_5-3.png": 1.5,
       "scene": 1
     },
     {
-      "picture\\map_5-1_point_4.png": 1.5,
+      "picture\\map_5-3_point_5.png": 1.5,
       "drag": 1,
-      "drag_exact": [7,2,2]
+      "drag_exact": [4,0,4]
+    },
+    {
+      "picture\\map_5-3_point_6.png": 1.5
     },
     {
       "picture\\transfer.png": 1.5
@@ -20,46 +23,34 @@
   ],
   "map": [
     {
-      "view_rotate": -90
+      "s": 2
+    },
+    {
+      "f": 2
     },
     {
       "a": 0.5
     },
     {
-      "w": 3.3
+      "w": 12
     },
     {
-      "e": 2
+      "d": 7.7
     },
     {
-      "a": 1.8
+      "s": 1.16
     },
     {
-      "s": 1
+      "a": 5.25
     },
     {
-      "d": 4
+      "w": 2.1
     },
     {
-      "a": 0.3
+      "d": 4.58
     },
     {
-      "s": 0.5
-    },
-    {
-      "d": 2
-    },
-    {
-      "await": 2
-    },
-    {
-      "d": 2.3
-    },
-    {
-      "s": 4
-    },
-    {
-      "e": 2
+      "w": 2.05
     }
   ]
 }
