@@ -31,100 +31,111 @@ def choose_map(map_instance: Map):
 
 
 def choose_map_debug(map_instance: Map):
-    is_selecting_main_map = True
-    main_map = None
-    side_map = None
     map_version = cfg.CONFIG.get("map_version", "default")
     map_instance.read_maps(map_version=map_version)
+    main_map = None
+
     while True:
-        if is_selecting_main_map:
-            title_ = "请选择起始星球："
-            options_map = {
-                "1 空间站「黑塔」": "1",
-                "2 雅利洛-VI": "2",
-                "3 仙舟「罗浮」": "3",
-                "4 匹诺康尼": "4",
-                "5 翁法罗斯": "5",
-                "优先星球": "first_map",
-                "[设置]": "option",
-                "[定时]": "scheduled",
-            }
-            option_ = questionary.select(title_, list(options_map.keys())).ask()
-            if option_ is None:
-                return None  # 用户选择了返回上一级菜单
-            if option_ == "优先星球":
-                options_map_first = {
-                    "1 空间站「黑塔」": "1",
-                    "2 雅利洛-VI": "2",
-                    "3 仙舟「罗浮」": "3",
-                    "4 匹诺康尼": "4",
-                    "5 翁法罗斯": "5",
-                    "【返回】": "【返回】",
-                }
-                option_ = questionary.select(
-                    title_, list(options_map_first.keys())
-                ).ask()
-                if option_ == "【返回】":
-                    is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
-                    continue
-                main_map = options_map_first.get(option_)
-                side_map = list(map_instance.map_list_map.get(main_map).keys())[0]
-                cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
-                return (f"{main_map}-{side_map}", True)
-            elif option_ == "[设置]":
-                main_start_rewrite()
-                log.info(f"设置完成")
-                return choose_map_debug(map_instance)
-            elif option_ == "[定时]":
-                time_mgr.wait_and_run()
-                return f"1-1_0"
-            main_map = options_map.get(option_)
-            is_selecting_main_map = False
-        else:
-            title_ = "请选择起始地图："
-            options_map = map_instance.map_list_map.get(main_map)
-            if not options_map:
-                return None
-            keys = list(options_map.keys())
-            index_values = list(options_map.values())
-            second_values = list(
-                dict.fromkeys(
-                    [
-                        value[1]
-                        for value in options_map.values()
-                        if isinstance(value, list) and len(value) >= 2
-                    ]
-                    + ["【返回】"]
-                )
-            )
-            second_option_ = questionary.select(title_, second_values).ask()
-            if second_option_ == "【返回】":
-                is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
+        if not main_map:
+            result = _h_main_map(map_instance)
+            if result == "back":
                 continue
-            values = [
-                value[0]
-                for value in options_map.values()
-                if isinstance(value, list)
-                and len(value) >= 2
-                and value[1] == second_option_
-            ] + ["【返回】"]
-            # values = list(options_map.values()) + ["【返回】"]
-            option_ = questionary.select(title_, values).ask()
-            if option_ == "【返回】":
-                is_selecting_main_map = True  # 返回上一级菜单，重新选择起始星球
+            if isinstance(result, tuple):
+                return result
+            main_map = result
+        else:
+            result = _h_side_map(map_instance, main_map)
+            if result == "back":
+                main_map = None
             else:
-                index = next(
-                    (
-                        i
-                        for i, sublist in enumerate(index_values)
-                        if sublist[0] == option_
-                    ),
-                    0,
-                )
-                side_map = keys[index]
-                log.info(f"{side_map}")
-                log.info(f"{main_map}-{side_map}")
-                return (f"{main_map}-{side_map}", False)
+                return result
+
+
+def _h_main_map(map_instance: Map):
+    title = "请选择起始星球："
+    opts = {
+        "1 空间站「黑塔」": "1",
+        "2 雅利洛-VI": "2",
+        "3 仙舟「罗浮」": "3",
+        "4 匹诺康尼": "4",
+        "5 翁法罗斯": "5",
+        "优先星球": "first_map",
+        "[设置]": "option",
+        "[定时]": "scheduled",
+    }
+
+    choice = questionary.select(title, list(opts.keys())).ask()
+    if not choice:
+        return None
+
+    if choice == "优先星球":
+        return _h_priority(map_instance)
+    elif choice == "[设置]":
+        main_start_rewrite()
+        log.info("设置完成")
+        return "back"
+    elif choice == "[定时]":
+        time_mgr.wait_and_run()
+        return ("1-1_0", False)
+    return opts[choice]
+
+
+def _h_priority(map_instance: Map):
+    title = "优先星球选择"
+    opts = {
+        "1 空间站「黑塔」": "1",
+        "2 雅利洛-VI": "2",
+        "3 仙舟「罗浮」": "3",
+        "4 匹诺康尼": "4",
+        "5 翁法罗斯": "5",
+        "【返回】": "back",
+    }
+    choice = questionary.select(title, list(opts.keys())).ask()
+
+    if choice == "【返回】" or not choice:
+        return "back"
+
+    main = opts[choice]
+    side = list(map_instance.map_list_map.get(main).keys())[0]
+    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main)
+    return (f"{main}-{side}", True)
+
+
+def _h_side_map(map_instance: Map, main):
+    title = "请选择起始地图："
+    opts = map_instance.map_list_map.get(main)
+    if not opts:
+        return None
+
+    keys = list(opts.keys())
+    values = list(opts.values())
+
+    # 二级选项
+    sec_opts = list(
+        dict.fromkeys(
+            [v[1] for v in values if isinstance(v, list) and len(v) >= 2] + ["【返回】"]
+        )
+    )
+    sec_choice = questionary.select(title, sec_opts).ask()
+
+    if sec_choice == "【返回】":
+        return "back"
+
+    # 三级选项
+    tri_opts = [
+        v[0]
+        for v in values
+        if isinstance(v, list) and len(v) >= 2 and v[1] == sec_choice
+    ] + ["【返回】"]
+    tri_choice = questionary.select(title, tri_opts).ask()
+
+    if tri_choice == "【返回】":
+        return "back"
+
+    idx = next(i for i, v in enumerate(values) if v[0] == tri_choice)
+    side = keys[idx]
+    log.info(f"{main}-{side}")
+    return (f"{main}-{side}", False)
 
 
 def filter_content(content, keyword):
