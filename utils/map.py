@@ -503,6 +503,7 @@ class Map:
                                 if self.allow_scene_drag_switch:
                                     self.find_scene(key, threshold=0.990)
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
+                                    log.info(f"执行alt")
                                     self.calculated.click_target_with_alt(key, 0.93, clicks=self.multi_click)
                                 else:
                                     self.calculated.click_target(key, 0.93, clicks=self.multi_click, retry_in_map=self.allow_retry_in_map_switch)
