@@ -327,7 +327,6 @@ def set_config(slot: str = "start"):
             config = load_config()
         else:
             handle_normal_config(selected_question, config)
-            log.info(f"4{config}")
         save_config(config)
 
 def handle_normal_config(question, config):
@@ -479,14 +478,12 @@ def add_forbidden_map_flow(map_instance: Map):
     """添加跳过地图的两级菜单流程"""
     # 第一级：选择星球
     planet_choice = _h_select_planet()
-    log.info(f"planet_choice{planet_choice}")
     if planet_choice in (None, "back"):
         return
     # 第二级：选择地图名称
     map_choice = _h_select_clean_map(map_instance, planet_choice)
     if map_choice in (None, "back"):
         return
-    log.info(f"map_choice{map_choice}")
     # 执行添加操作
     _add_to_forbidden(map_instance, planet_choice, map_choice)
 
@@ -502,7 +499,6 @@ def _h_select_planet():
         "返回": "back"
     }
     choice = questionary.select(title, choices=list(opts.keys())).ask()
-    log.info(f"choice{opts.get(choice)}")
     return opts.get(choice) if choice else None
 
 def _h_select_clean_map(map_instance: Map, main: str):
@@ -511,7 +507,7 @@ def _h_select_clean_map(map_instance: Map, main: str):
     map_version = cfg.CONFIG.get("map_version", "default")
     map_instance.read_maps(map_version=map_version)
     raw_maps = map_instance.map_list_map.get(main, {})
-    log.info(f"{map_instance.map_list_map}")
+
     if not raw_maps:
         log.warning(f"未找到 {main} 号星球的地图数据")
         return "back"
@@ -519,7 +515,6 @@ def _h_select_clean_map(map_instance: Map, main: str):
     # 生成选项
     unique_maps = {}
     for map_id, map_names in raw_maps.items():
-        log.info(map_names[-1])
         clean_name = get_pure_map_name(map_names[-1])
         unique_maps[clean_name] = unique_maps.get(clean_name, []) + [map_id]
 
