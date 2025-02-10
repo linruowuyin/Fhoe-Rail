@@ -170,15 +170,17 @@
 
 ## 相关项目
 
-- 原项目 StarRailAssistant [https://github.com/Starry-Wind/StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)
+- 原项目 : StarRailAssistant [https://github.com/Starry-Wind/StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)
 
-- 聚合使用 March7thAssistant [https://github.com/moesnow/March7thAssistant](https://github.com/moesnow/March7thAssistant)
+- 聚合使用 三月七小助手 : March7thAssistant [https://github.com/moesnow/March7thAssistant](https://github.com/moesnow/March7thAssistant)
 
-- 锄大地同类程序 StarRailAutoProxy [https://github.com/DoctorReid/StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy)
+- 锄大地项目 一条龙 : StarRailAutoProxy [https://github.com/DoctorReid/StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy)
 
-- 锄大地同类程序 StarRail-FastRun [https://github.com/Souloco/StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)
+- 锄大地项目 FastRun : StarRail-FastRun [https://github.com/Souloco/StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)
 
-- 模拟器运行 StarRailCopilot [https://github.com/LmeSzinc/StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)
+- 模拟器项目 星铁速溶茶 : StarRailCopilot [https://github.com/LmeSzinc/StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)
+
+- 模拟宇宙项目 : Auto_Simulated_Universe [https://github.com/CHNZYX/Auto_Simulated_Universe](https://github.com/CHNZYX/Auto_Simulated_Universe)
 
 ## 免责声明
 
