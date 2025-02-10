@@ -431,6 +431,11 @@ class Map:
                             if jump_this_map:
                                 log.info(f" config.json 中的 allow_snack_buy 为 False ，跳过该图{map_data['name']}，如果需要开启购买请改为 True 并且【自行确保】能够正常购买对应物品")
                                 break
+                        elif key == "need_allow_memory_token":
+                            jump_this_map = not self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False).get('allow_memory_token', False)
+                            if jump_this_map:
+                                log.info(f" config.json 中的 allow_memory_token 为 False ，跳过该图{map_data['name']}，如果需要开启请改为 True 并且【自行确保】能够正常获得对应物品")
+                                break
                         elif key == "normal_run":
                             normal_run = True  # 此地图json将会被强制设定为禁止疾跑
                         elif key == "blackscreen":
