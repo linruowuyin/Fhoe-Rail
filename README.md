@@ -90,6 +90,7 @@
 | allow_run_next_day | 是否允许等待至下一个凌晨4点继续从头锄地 |
 | allow_map_buy | 是否允许购买 代币 与 过期邮包 |
 | allow_snack_buy | 是否允许购买并合成秘技零食的制作材料 |
+| allow_memory_token | 是否允许获得翁法罗斯记忆代币 |
 
 
 ### 地图录制方式

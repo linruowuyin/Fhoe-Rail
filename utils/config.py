@@ -123,6 +123,7 @@ class ConfigurationManager:
             "allow_run_next_day": False,
             "allow_map_buy": False,
             "allow_snack_buy": False,
+            "allow_memory_token": False,
             "refresh_hour": 4,
             "refresh_minute": 0,
             "forbid_map":[],

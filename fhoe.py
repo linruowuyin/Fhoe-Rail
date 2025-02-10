@@ -421,6 +421,11 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "allow_snack_buy",
         },
         {
+            "title": "获得翁法罗斯记忆代币",
+            "choices": {"不获得": False, "获得": True},
+            "config_key": "allow_memory_token",
+        },
+        {
             "title": "几点月卡刷新，默认4",
             "choices": {str(refresh_hour): refresh_hour for refresh_hour in range(24)},
             "config_key": "refresh_hour",
