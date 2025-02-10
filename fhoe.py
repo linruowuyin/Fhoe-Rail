@@ -8,6 +8,7 @@ import pyuac
 import json
 import datetime
 import subprocess
+import re
 from utils.log import log, webhook_and_log, fetch_php_file_content
 from get_width import get_width, check_mult_screen
 from utils.config import ConfigurationManager
@@ -202,7 +203,7 @@ def main():
     if start:
         config_fix()
         log.info(f"config.json:{load_config()}")
-        log.info("切换至游戏窗口，请确保跑图角色普攻为远程")
+        log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
         check_mult_screen()
         switch_window()
         time.sleep(0.5)
@@ -277,60 +278,111 @@ def config_fix():
 
 
 def set_config(slot: str = "start"):
-    while True:  # 循环直到用户选择返回
+    while True:
         questions = get_questions_for_slot(slot)
         if not questions:
             log.info(f"错误的set_config参数: {slot}")
             return
 
         config = load_config()
+        map_instance = Map()
 
-        # 从问题列表中生成初始设置值字典
-        settings = {
-            question["title"]: config.get(question["config_key"], "未设置")
-            for question in questions
-        }
+        choices = []
+        for question in questions:
+            # 处理动态标题
+            title = question.get('dynamic_title', lambda _: question['title'])(config)
+            
+            # 处理动态选项
+            choices_dict = question['choices'](config, map_instance) if callable(question['choices']) else question['choices']
+            
+            # 获取当前值
+            current_value = config.get(question['config_key'])
+            
+            # 特殊处理
+            if question['config_key'] == 'forbid_map':
+                display_value = ', '.join(current_value) if current_value else '无'
+            else:
+                # 正常配置
+                inverted_choices = {v: k for k, v in choices_dict.items()}
+                display_value = inverted_choices.get(current_value, "未设置" if current_value is None else "未知值")
 
-        def modify_setting(setting_name, setting_key):
-            question = next(q for q in questions if q["title"] == setting_name)
-            option = ask_question(question)
-            if option is not None:
-                new_value = question["choices"][option]
-                config[setting_key] = new_value
-                settings[setting_name] = new_value
+            choices.append(f"{title}------({display_value})")
 
-        # 创建一级菜单，并显示当前设置值
+        choices.append("【返回】")
+
         answer = questionary.select(
             "请选择要修改的设置:",
-            choices=[
-                f"{question['title']}------({next(k for k, v in question['choices'].items() if v == settings[question['title']])})"
-                for question in questions
-            ]
-            + ["【返回】"],
+            choices=choices
         ).ask()
 
         if answer == "【返回】":
             return
 
-        # 进入子菜单进行设置值的修改
-        if answer:
-            setting_name = answer.split("------")[0]
-            setting_key = next(
-                question["config_key"]
-                for question in questions
-                if question["title"] == setting_name
-            )
-            modify_setting(setting_name, setting_key)
+        selected_title = answer.split("------")[0]
+        selected_question = next(q for q in questions if 
+            q.get('dynamic_title', lambda _: q['title'])(config) == selected_title)
 
-        if config["map_version"] == "HuangQuan":
-            config["allow_fight_e_buy_prop"] = True
-
+        if selected_question.get('config_key') == 'forbid_map':
+            handle_special_config(selected_question, config, map_instance)
+            config = load_config()
+        else:
+            handle_normal_config(selected_question, config)
+            log.info(f"4{config}")
         save_config(config)
 
+def handle_normal_config(question, config):
+    choices_dict = question['choices'](config, Map()) if callable(question['choices']) else question['choices']
+    
+    answer = questionary.select(
+        question['title'],
+        choices=list(choices_dict.keys())
+    ).ask()
+    
+    if answer:
+        config[question['config_key']] = choices_dict[answer]
+
+def handle_special_config(question, config, map_instance):
+    while True:
+        current_choices = question['choices'](config, map_instance)
+        answer = questionary.select(
+            question['dynamic_title'](config),
+            choices=list(current_choices.keys())
+        ).ask()
+
+        if answer in ["【返回】", "back"]:
+            break
+            
+        action = current_choices[answer]
+
+        if action == "add":
+            add_forbidden_map_flow(map_instance)
+            config = load_config()
+        elif action == "remove":
+            handler = question['handler']['remove']
+            target_choices = handler['choices'](config, map_instance)
+            selected = questionary.select(
+                handler['title'],
+                choices=list(target_choices.keys())+["【返回】"]
+            ).ask()
+            
+            if selected and selected != "【返回】":
+                config["forbid_map"].remove(selected)
+                cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "forbid_map", config["forbid_map"])
+        
+
+def get_pure_map_name(raw_name: str) -> str:
+    """提取地图名"""
+    cleaned = re.sub(r'^[\d-]+\s*', '', raw_name)
+    match = re.match(r'^([^\s\-—–]+.*?)(?=\s*[-—–]|$)', cleaned)
+    return match.group(1).strip() if match else cleaned.strip()
 
 def get_questions_for_slot(slot: str) -> list:
     map_instance = Map()
     map_versions = map_instance.read_maps_versions()
+    try:
+        map_instance.read_maps_versions()
+    except Exception as e:
+        log.error(f"地图数据加载失败: {e}")
     default_questions = [
         {
             "title": "选择地图版本，default：疾跑，HuangQuan：黄泉专用",
@@ -382,6 +434,32 @@ def get_questions_for_slot(slot: str) -> list:
             "config_key": "refresh_minute",
         },
         {
+            "title": "跳过对应地图（当前已跳过：{}）",
+            "choices": lambda config, map_instance: {
+                **{map: map for map in config.get("forbid_map", [])},
+                "【新增】": "add",
+                "【删除】": "remove",
+                "【返回】": "back"
+            },
+            "dynamic_title": lambda config: f"跳过对应地图（当前已跳过：{len(config.get('forbid_map', []))}个）",
+            "config_key": "forbid_map",
+            "handler": {
+                "add": {
+                    "title": "新增跳过地图",
+                    "choices": add_forbidden_map_flow
+                },
+                "remove": {
+                    "title": "移除已跳过的地图",
+                    "choices": lambda config, _: {
+                        map: map for map in config.get("forbid_map", [])
+                    }
+                },
+                "back":{
+                    "choices": set_config
+                }
+            }
+        },
+        {
             "title": "[仅该次运行有效]运行前重新校准视角",
             "choices": {"否": True, "是": False},
             "config_key": "angle_set",
@@ -392,6 +470,83 @@ def get_questions_for_slot(slot: str) -> list:
 
     return slot_questions.get(slot, [])
 
+def add_forbidden_map_flow(map_instance: Map):
+    """添加跳过地图的两级菜单流程"""
+    # 第一级：选择星球
+    planet_choice = _h_select_planet()
+    log.info(f"planet_choice{planet_choice}")
+    if planet_choice in (None, "back"):
+        return
+    # 第二级：选择地图名称
+    map_choice = _h_select_clean_map(map_instance, planet_choice)
+    if map_choice in (None, "back"):
+        return
+    log.info(f"map_choice{map_choice}")
+    # 执行添加操作
+    _add_to_forbidden(map_instance, planet_choice, map_choice)
+
+def _h_select_planet():
+    """星球选择菜单 (第一级)"""
+    title = "选择要跳过的星球区域："
+    opts = {
+        "1 空间站「黑塔」": "1",
+        "2 雅利洛-VI": "2", 
+        "3 仙舟「罗浮」": "3",
+        "4 匹诺康尼": "4",
+        "5 翁法罗斯": "5",
+        "返回": "back"
+    }
+    choice = questionary.select(title, choices=list(opts.keys())).ask()
+    log.info(f"choice{opts.get(choice)}")
+    return opts.get(choice) if choice else None
+
+def _h_select_clean_map(map_instance: Map, main: str):
+    """地图选择菜单 (第二级)"""
+    # 获取当前星球的所有地图项
+    map_version = cfg.CONFIG.get("map_version", "default")
+    map_instance.read_maps(map_version=map_version)
+    raw_maps = map_instance.map_list_map.get(main, {})
+    log.info(f"{map_instance.map_list_map}")
+    if not raw_maps:
+        log.warning(f"未找到 {main} 号星球的地图数据")
+        return "back"
+
+    # 生成选项
+    unique_maps = {}
+    for map_id, map_names in raw_maps.items():
+        log.info(map_names[-1])
+        clean_name = get_pure_map_name(map_names[-1])
+        unique_maps[clean_name] = unique_maps.get(clean_name, []) + [map_id]
+
+    choices = [
+        f"{name} ({len(ids)}个子地图)" 
+        for name, ids in unique_maps.items()
+    ] + ["返回上级"]
+
+    # 显示选择菜单
+    selected = questionary.select(
+        "请选择要跳过的区域：",
+        choices=choices
+    ).ask()
+
+    # 处理返回/退出
+    if not selected or "返回" in selected:
+        return "back"
+    
+    # 提取原始地图名称
+    return selected.split(' ')[0] if ' ' in selected else selected
+
+def _add_to_forbidden(map_instance: Map, main: str, map_name: str):
+    """将选择的地图添加到跳过列表"""
+    target = [map_name]
+
+    # 更新配置文件
+    current_forbid = load_config().get("forbid_map", [])
+    updated_forbid = list(set(current_forbid + target))
+
+    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "forbid_map", updated_forbid)
+
+    log.info(f"已添加子地图 {map_name} 到跳过列表")
 
 def load_config() -> dict:
     try:
