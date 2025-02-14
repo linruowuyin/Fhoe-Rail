@@ -20,21 +20,24 @@ from .log import log
 from .mini_asu import ASU
 from .switch_window import switch_window
 from .pause import Pause
+from .window import Window
+from .img import Img
 
 class Calculated:
     def __init__(self):
         self.cfg = ConfigurationManager()
+        self.window = Window()
+        self.img = Img()
         atexit.register(self.error_stop)
         win32api.SetConsoleCtrlHandler(self.error_stop, True)
         self._config = None
         self._last_updated = None
         self.keyboard = KeyboardController()
         self.ASU = ASU()
-        self.hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
-        self.winrect = ()  # 截图窗口范围
+        self.hwnd = self.window.hwnd
+
         self.have_monthly_pass = False  # 标志是否领取完月卡
         self.monthly_pass_success = 0  # 标志是否成功执行月卡检测，0未检测，1有月卡并领取，2无月卡，3找不到与月卡图片相符的图
-        self.temp_screenshot = ()  # 初始化临时截图
         self.last_check_time = None  # 月卡检测时间
         self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
         self.next_check_time = None
@@ -81,61 +84,6 @@ class Calculated:
     def error_stop(self, signum=None, frame=None):
         for i in [self.shift_btn, self.alt_btn]:
             self.keyboard.release(i)
-
-    def _check_window_visibility(self, depth=0):
-        """
-        检查窗口是否可见
-        """
-        if not self.hwnd:
-            self.get_hwnd()
-        if self.hwnd and win32gui.IsWindowVisible(self.hwnd):
-            return True
-        else:
-            if depth >= 3:
-                log.info("尝试次数过多，程序退出。")
-                return False
-            cnt = 1
-            while cnt < 3:
-                time.sleep(1)
-                log.info(f'窗口不可见或窗口句柄无效，窗口句柄为：{self.hwnd}，尝试重新查找窗口 {cnt} 次')
-                self.get_hwnd()
-                if self.hwnd:
-                    switch_window()
-                    return True
-                else:
-                    cnt += 1
-            else:
-                # 等待用户输入回车键继续
-                input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
-                time.sleep(1)
-                return self._check_window_visibility(depth + 1)
-
-    def get_hwnd(self, hwnd_max_retries=10):
-        for _ in range(hwnd_max_retries):
-            try:
-                self.hwnd = win32gui.FindWindow("UnityWndClass", "崩坏：星穹铁道")
-                if self.hwnd:
-                    return
-                time.sleep(2)
-            except Exception as e:
-                log.info(f'查找窗口失败，{e}')
-                time.sleep(2)
-
-        raise Exception("无法找到窗口，已达到最大重试次数")
-
-    def get_rect(self, hwnd=None):
-        """
-        获取窗口截图的范围
-        """
-        if hwnd is None:
-            if self.hwnd is None:
-                self.get_hwnd()
-            hwnd = self.hwnd
-        if hwnd:
-            left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-            self.winrect = (left, top, right, bottom)
-        
-        return left, top, right, bottom
 
     def click(self, points, slot=0.0, clicks=1, delay=0.05):
         """
@@ -196,7 +144,7 @@ class Calculated:
         说明：
             鼠标按下后拖动
         """
-        left, top, right, bottom =self.get_rect()
+        left, top, right, bottom =self.window.get_rect()
         pyautogui.moveTo(left + x, top + y)
         pyautogui.mouseDown()
         pyautogui.moveTo(left + end_x, top + end_y, duration=0.2)
@@ -222,8 +170,8 @@ class Calculated:
         参数：
             :param points: 百分比坐标，100为100%
         """
-        if self._check_window_visibility():
-            left, top, right, bottom = self.get_rect()
+        if self.window._check_window_visibility():
+            left, top, right, bottom = self.window.get_rect()
             # real_width = self.cfg.CONFIG["real_width"]  # 暂时没用
             # real_height = self.cfg.CONFIG["real_height"]  # 暂时没用
             x, y = int(left + (right - left) / 100 * points[0]), int(top + (bottom - top) / 100 * points[1])
@@ -234,175 +182,11 @@ class Calculated:
         """
         点击游戏窗口中心位置
         """
-        if self._check_window_visibility():
-            left, top, right, bottom = self.get_rect()
+        if self.window._check_window_visibility():
+            left, top, right, bottom = self.window.get_rect()
             x, y = int((left + right) / 2), int((top + bottom) / 2)
             self.mouse_press(x, y)
 
-    def cal_screenshot(self):
-        """
-        计算窗口截图范围
-        """
-        left, top, right, bottom = self.get_rect()
-        # 计算初始边框
-        width = right - left
-        height = bottom - top
-        other_border = (width - 1920) // 2
-        up_border = height - 1080 - other_border
-        # 计算窗口截图范围
-        screenshot_left = left + other_border
-        screenshot_top = top + up_border
-        screenshot_right = right - other_border
-        screenshot_bottom = bottom - other_border
-        
-        return screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
-
-    def match_screenshot(self, screenshot, prepared, left, top):
-        """
-        说明：
-            比对screenshot与prepared，返回匹配值与位置
-        参数：
-            :param screenshot:屏幕截图图片
-            :param prepared:比对图片
-            :param left:截图左侧坐标，用于计算真实位置
-            :param top:截图上方坐标，用于计算真实位置
-        """
-        result = cv.matchTemplate(screenshot, prepared, cv.TM_CCORR_NORMED)
-        min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
-        return {
-            "screenshot": screenshot,
-            "min_val": min_val,
-            "max_val": max_val,
-            "min_loc": (min_loc[0] + left, min_loc[1] + top),
-            "max_loc": (max_loc[0] + left, max_loc[1] + top),
-        }
-
-    def have_screenshot(self, prepared, offset=(0,0,0,0), threshold=0.90):
-        """
-        验证屏幕截图中是否存在预设的图片之一。
-        
-        参数:
-            prepared (list): 需要匹配的图片列表。
-            offset (tuple): 在搜索时屏幕截图的偏移量，默认为 (0, 0, 0, 0)。
-            threshold (float): 确定匹配成功的最小阈值，默认为 0.90。
-
-        返回:
-            bool: 如果找到至少一张符合阈值的图片，则返回 True，否则返回 False。
-        """
-        for image in prepared:
-            result_dict = self.scan_screenshot(image, offset)
-            max_val = result_dict['max_val']
-            if max_val > threshold:
-                log.info(f'找到图片，匹配值：{max_val:.3f}')
-                return True
-            else:
-                log.debug(f'图片匹配值未达到阈值，当前值：{max_val:.3f}')
-        return False
-
-    def take_screenshot(self, offset=(0,0,0,0), max_retries=50, retry_interval=2):
-        """
-        说明：
-            获取游戏窗口的屏幕截图
-        参数：
-            :param offset: 左、上、右、下，正值为向右或向下偏移
-            :param max_retries: 最大重试次数
-            :param retry_interval: 重试间隔（秒）
-        """
-        if self._check_window_visibility():
-            screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = self.cal_screenshot()
-            
-            # 计算偏移截图范围
-            new_left = screenshot_left + offset[0]
-            new_top = screenshot_top + offset[1]
-            new_right = screenshot_right + offset[2]
-            new_bottom = screenshot_bottom + offset[3]
-            # 偏移有效则使用偏移值
-            if all([new_left < new_right, new_top < new_bottom]):
-                screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = new_left, new_top, new_right, new_bottom
-            else:
-                log.info(f'截图区域无效，偏移值错误({offset[0]},{offset[1]},{offset[2]},{offset[3]})，将使用窗口截图')
-            
-            retries = 0
-            while retries <= max_retries:
-                try:
-                    picture = ImageGrab.grab((screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
-                    screenshot = np.array(picture)
-                    screenshot = cv.cvtColor(screenshot, cv.COLOR_BGR2RGB)
-                    self.temp_screenshot = screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
-                    return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
-                except Exception as e:
-                    log.info(f"截图失败，原因: {str(e)}，等待 {retry_interval} 秒后重试")
-                    retries += 1
-                    time.sleep(retry_interval)
-            raise RuntimeError(f"截图尝试失败，已达到最大重试次数 {max_retries} 次）")
-
-    def scan_screenshot(self, prepared, offset=(0,0,0,0)) -> dict:
-        """
-        说明：
-            比对图片
-        参数：
-            :param prepared: 比对图片地址
-            :param offset: 左、上、右、下，正值为向右或向下偏移
-        """
-        screenshot, left, top, right, bottom = self.take_screenshot(offset=offset)
-        
-        return self.match_screenshot(screenshot, prepared, left, top)
-
-    def scan_temp_screenshot(self, prepared):
-        """
-        说明：
-            使用临时截图数据进行扫描匹配
-        参数：
-            :param prepared: 比对图片地址
-        """
-        if not self.temp_screenshot:
-            self.take_screenshot()
-        
-        screenshot, left, top, right, bottom = self.temp_screenshot
-        
-        return self.match_screenshot(screenshot, prepared, left, top)
-
-    def calculated(self, result, shape):
-        mat_top, mat_left = result["max_loc"]
-        prepared_height, prepared_width, prepared_channels = shape
-
-        x = int((mat_top + mat_top + prepared_width) / 2)
-        y = int((mat_left + mat_left + prepared_height) / 2)
-
-        return x, y
-
-    def img_trans_bitwise(self, target_path, offset=(0,0,0,0)):
-        """
-        颜色反转
-        """
-        original_target = cv.imread(target_path)
-        inverted_target = cv.bitwise_not(original_target)
-        result = self.scan_screenshot(inverted_target, offset)
-        return inverted_target, result
-        
-    def img_bitwise_check(self, target_path: str, offset: tuple=(0,0,0,0)):
-        """
-        比对颜色反转
-        """
-        retry = 0
-        while retry < 5:
-            original_target = cv.imread(target_path)
-            target,  result_inverted = self.img_trans_bitwise(target_path, offset)
-            result_original = self.scan_screenshot(original_target, offset)
-            log.info(f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
-            if round(result_original['max_val'], 3) == 0.0 or round(result_inverted['max_val'], 3) == 0.0:
-                retry += 1
-                time.sleep(0.5)
-            else:
-                break
-        else:
-            log.info(f"超过重试次数，强制认为原图正确")
-            return True
-        
-        if result_original["max_val"] > result_inverted["max_val"]:
-            return True
-        else:
-            return False
     
     def click_target_above_threshold(self, target, threshold, offset, clicks=1, delay=0.05):
         """
@@ -415,9 +199,9 @@ class Calculated:
         返回:
             :return: 是否点击成功
         """
-        result = self.scan_screenshot(target, offset)
+        result = self.img.scan_screenshot(target, offset)
         if result["max_val"] > threshold:
-            points = self.calculated(result, target.shape)
+            points = self.img.img_center_point(result, target.shape)
             self.click(points, result['max_val'], clicks, delay)
             return True, result['max_val']
         return False, result['max_val']
@@ -482,9 +266,17 @@ class Calculated:
             :param flag:True为一定要找到图片
             :param clicks: 连续点击次数
         """
+        '''
         win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+        time.sleep(1)
         self.click_target(target_path, threshold, flag, clicks=clicks)
         win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+        
+        '''
+        pyautogui.keyUp('alt')
+        time.sleep(1)
+        self.click_target(target_path, threshold, flag, clicks=clicks)
+        pyautogui.keyDown('alt')
 
     def no_in_fight_status(self) -> bool:
         """必定不在战斗的图片，以完善战斗检测
@@ -496,7 +288,7 @@ class Calculated:
         img_list = []
         img_list.append(cv.imread("./picture/round.png"))
         for img in img_list:
-            result = self.scan_screenshot(img)
+            result = self.img.scan_screenshot(img)
             log.info(f"未战斗识别，匹配度{result['max_val']:.3f}，需要0.95")
             if result['max_val'] > 0.95:
                 log.info(f"不在战斗中")
@@ -512,9 +304,9 @@ class Calculated:
         if self.no_in_fight_status():
             return False
         while time.time() - start_time < timeout:
-            main_result = self.scan_screenshot(self.main_ui, offset=(0,0,-1630,-800))
-            doubt_result = self.scan_temp_screenshot(self.doubt_ui)
-            warn_result = self.scan_temp_screenshot(self.warn_ui)
+            main_result = self.img.scan_screenshot(self.main_ui, offset=(0,0,-1630,-800))
+            doubt_result = self.img.scan_temp_screenshot(self.doubt_ui)
+            warn_result = self.img.scan_temp_screenshot(self.warn_ui)
             if main_result['max_val'] < 0.9:
                 return True
             elif doubt_result["max_val"] > 0.92:
@@ -539,7 +331,7 @@ class Calculated:
             self.attack_once = True
         start_time = time.time()
         while time.time() - start_time < timeout:
-            main_result = self.scan_screenshot(self.main_ui)
+            main_result = self.img.scan_screenshot(self.main_ui)
             if main_result['max_val'] < 0.9:
                 return True
             time.sleep(0.5)
@@ -572,10 +364,10 @@ class Calculated:
         auto_check_cnt = 0
         screenshot_auto_check = None
         while True:
-            result = self.scan_screenshot(self.main_ui)
+            result = self.img.scan_screenshot(self.main_ui)
             elapsed_time = time.time() - start_time
             if result["max_val"] > 0.92:
-                points = self.calculated(result, self.main_ui.shape)
+                points = self.img.img_center_point(result, self.main_ui.shape)
                 log.info(f"识别点位{points}")
                 self.total_fight_time += elapsed_time
                 self.fight_error_cnt(elapsed_time)
@@ -595,7 +387,7 @@ class Calculated:
                 return True
 
             if not auto_switch and elapsed_time > 5:
-                not_auto_result = self.scan_screenshot(not_auto)
+                not_auto_result = self.img.scan_screenshot(not_auto)
                 if not_auto_result["max_val"] > 0.95:
                     pyautogui.press('v')
                     log.info("开启自动战斗")
@@ -606,7 +398,7 @@ class Calculated:
             
             if elapsed_time > 10 and auto_check_cnt < 2:
                 if screenshot_auto_check is None:
-                    screenshot_auto_check, *_ = self.take_screenshot(offset=(40,20,-1725,-800))
+                    screenshot_auto_check, *_ = self.img.take_screenshot(offset=(40,20,-1725,-800))
                 if elapsed_time > 15:
                     if auto_check_cnt == 0:
                         first_auto_check = self.on_interface(check_list=[screenshot_auto_check],timeout=1,threshold=0.97,offset=(40,20,-1725,-800),allow_log=False)
@@ -620,12 +412,12 @@ class Calculated:
                             auto_switch_clicked = True
 
             if auto_switch_clicked and auto_switch and elapsed_time > 10:
-                not_auto_result_c = self.scan_screenshot(not_auto_c)
+                not_auto_result_c = self.img.scan_screenshot(not_auto_c)
                 while not_auto_result_c["max_val"] > 0.95:
                     log.info(f"开启自动战斗，识别'C'，匹配值：{not_auto_result_c['max_val']}")
                     pyautogui.press('v')
                     time.sleep(2)
-                    not_auto_result_c = self.scan_screenshot(not_auto_c)
+                    not_auto_result_c = self.img.scan_screenshot(not_auto_c)
 
             if elapsed_time > 90:
                 # self.click_target("./picture/auto.png", 0.98, False)
@@ -651,7 +443,7 @@ class Calculated:
         if not self.on_main_interface(timeout=0.0, allow_log=True):
             time.sleep(0.5)
             image_A = cv.imread("./picture/eat.png")
-            result_A = self.scan_screenshot(image_A)
+            result_A = self.img.scan_screenshot(image_A)
             if result_A["max_val"] > 0.9:
                 allow_fight_e_buy_prop = self.cfg.CONFIG.get("allow_fight_e_buy_prop",False)
                 if allow_fight_e_buy_prop:
@@ -713,7 +505,7 @@ class Calculated:
         if self.need_rotate:
             self.keyboard_press('w')
             time.sleep(0.7)
-            self.ASU.screen = self.take_screenshot()[0]
+            self.ASU.screen = self.img.take_screenshot()[0]
             ang = self.ang - self.ASU.get_now_direc()
             ang = (ang + 900) % 360 - 180
             # self.mouse_move(ang * 10.2)
@@ -743,7 +535,7 @@ class Calculated:
 
         while time.time() - start_time < timeout:
             for count , (name, img) in enumerate(images.items(), start = 1):
-                result = self.scan_screenshot(img) if count == 1 else self.scan_temp_screenshot(img)
+                result = self.img.scan_screenshot(img) if count == 1 else self.img.scan_temp_screenshot(img)
                 if result['max_val'] > 0.95:
                     found_images[name] = result['max_val']
                     log.info(f"扫描'F'：{name}，匹配度：{result['max_val']:.3f}")
@@ -805,7 +597,7 @@ class Calculated:
     def auto_map(self, map, old=True, normal_run=False, rotate=False, dev=False, last_point=''):
         self.pause = Pause(dev=dev)
         map_version = self.cfg.CONFIG.get("map_version", "default")
-        self.ASU.screen = self.take_screenshot()[0]
+        self.ASU.screen = self.img.take_screenshot()[0]
         self.ang = self.ASU.get_now_direc()
         self.need_rotate = rotate
         now = datetime.now()
@@ -884,7 +676,7 @@ class Calculated:
                     last_key = key
             
             if map_version == "HuangQuan":
-                doubt_result = self.scan_screenshot(self.doubt_ui, offset=(0,0,-1630,-800))
+                doubt_result = self.img.scan_screenshot(self.doubt_ui, offset=(0,0,-1630,-800))
                 if doubt_result["max_val"] > 0.92:
                     log.info(f"检测到警告，有可能漏怪，进入黄泉乱砍模式")
                     start_time = time.time()
@@ -895,7 +687,7 @@ class Calculated:
                             for i in range(3):
                                 self.handle_move(0.1, direction, False, "")
                                 self.fightE(value=2)
-                            doubt_result = self.scan_screenshot(self.doubt_ui, offset=(0,0,-1630,-800))
+                            doubt_result = self.img.scan_screenshot(self.doubt_ui, offset=(0,0,-1630,-800))
             
             if map_version == "HuangQuan" and last_key == "e":
                 if not self.on_main_interface(timeout=0.2):
@@ -1145,7 +937,7 @@ class Calculated:
 
     def enable_run(self):
         """强制开启疾跑，检查2次"""
-        is_running = lambda: self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))['max_val'] > 0.996
+        is_running = lambda: self.img.scan_screenshot(self.switch_run, (1720, 930, 0, 0))['max_val'] > 0.996
         if not is_running():
             self.keyboard.press(self.shift_btn)
             log.info("开启疾跑")
@@ -1177,7 +969,7 @@ class Calculated:
                 # 检查 run_fix_time 是否为 None 或时间差大于 0.1 秒
                 if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
                     # for _ in range(4):  # 强制断开检查最多4次，避免误判
-                    result_run = self.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
+                    result_run = self.img.scan_screenshot(self.switch_run, (1720, 930, 0, 0))
                     # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
                     # 如果匹配度超过 0.996，强制断开疾跑
                     if result_run['max_val'] > 0.996:
@@ -1259,9 +1051,9 @@ class Calculated:
         """
         log.info("判断是否存在月卡")
         target = cv.imread("./picture/finish_fighting.png")
-        result = self.scan_screenshot(target)
+        result = self.img.scan_screenshot(target)
         if result["max_val"] > 0.92:
-            points = self.calculated(result, target.shape)
+            points = self.img.img_center_point(result, target.shape)
             log.info(f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
             self.monthly_pass_success = 2  # 月卡检查完成，无月卡
             return False
@@ -1288,15 +1080,15 @@ class Calculated:
         pic_data_check = cv.imread("./picture/monthly_pass_pic_3.png")
         for pic_path, pic_desc in monthly_pass_pics:
             pic_data = cv.imread(pic_path)
-            result = self.scan_screenshot(pic_data)
+            result = self.img.scan_screenshot(pic_data)
             log.info(f"开始月卡识图{pic_path}，图片特征描述：{pic_desc}")
             if result["max_val"] > threshold:
-                points = self.calculated(result, pic_data.shape)
+                points = self.img.img_center_point(result, pic_data.shape)
                 log.info(f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
                 self.click(points)
                 time.sleep(5)  # 等待动画
                 for _ in range(5):
-                    result_check = self.scan_screenshot(pic_data_check)
+                    result_check = self.img.scan_screenshot(pic_data_check)
                     if result_check["max_val"] > threshold:
                         log.info(f"找到月卡奖励图标，图片匹配度：{result_check['max_val']:.2f}")
                         time.sleep(2)
@@ -1331,7 +1123,7 @@ class Calculated:
         说明：
             检测是否黑屏
         """
-        screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
+        screenshot = cv.cvtColor(self.img.take_screenshot()[0], cv.COLOR_BGR2GRAY)
         current_param = cv.mean(screenshot)[0]
         if current_param < threshold:
             log.info(f'当前黑屏，值为{current_param:.3f} < {threshold}')
@@ -1340,7 +1132,7 @@ class Calculated:
         return False
 
     def is_blackscreen(self, threshold=10):
-        screenshot = cv.cvtColor(self.take_screenshot()[0], cv.COLOR_BGR2GRAY)
+        screenshot = cv.cvtColor(self.img.take_screenshot()[0], cv.COLOR_BGR2GRAY)
 
         if cv.mean(screenshot)[0] < threshold:  # 如果平均像素值小于阈值
             return True
@@ -1352,7 +1144,7 @@ class Calculated:
             while attempts < max_attempts_ff1:
                 for image_name in finish_fighting_images:
                     target = cv.imread(os.path.join(image_folder, image_name))
-                    result = self.scan_screenshot(target)
+                    result = self.img.scan_screenshot(target)
                     if result and result["max_val"] > 0.9:
                         log.info(f"匹配到{image_name}，匹配度{result['max_val']:.3f}")
                         return False  # 如果匹配度大于0.9，表示不是黑屏，返回False
@@ -1383,7 +1175,7 @@ class Calculated:
         target = cv.imread('./picture/map_load.png')
         time.sleep(1)  # 短暂延迟后开始判定是否为地图加载or黑屏跳转
         while error_count < max_error_count:
-            result = self.scan_screenshot(target)
+            result = self.img.scan_screenshot(target)
             if result and result['max_val'] > 0.95:
                 log.info(f"检测到地图加载map_load，匹配度{result['max_val']}")
                 if self.on_main_interface(check_list=[self.main_ui, self.finish2_ui, self.finish2_1_ui, self.finish2_2_ui, self.finish3_ui], timeout=10, threshold=threshold):
@@ -1422,7 +1214,7 @@ class Calculated:
         target = cv.imread('./picture/finish_fighting.png')
         time.sleep(3)  # 短暂延迟后开始判定
         while error_count < max_error_count:
-            result = self.scan_screenshot(target)
+            result = self.img.scan_screenshot(target)
             if result["max_val"] > 0.9:
                 break
             else:
@@ -1485,7 +1277,7 @@ class Calculated:
 
         while True:
             for index, img in enumerate(check_list):
-                result = self.scan_screenshot(img, offset=offset)
+                result = self.img.scan_screenshot(img, offset=offset)
                 if result["max_val"] > threshold:
                     if allow_log:
                         log.info(f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
@@ -1522,7 +1314,7 @@ class Calculated:
         按下'1'，确认队伍中的1号位属于跑图角色
         """
         log.info("开始判断1号位")
-        image, *_ = self.take_screenshot(offset=(1670,339,-160,-739))
+        image, *_ = self.img.take_screenshot(offset=(1670,339,-160,-739))
         image_hsv = cv.cvtColor(image, cv.COLOR_RGB2HSV)
 
         # 定义HSV颜色范围
@@ -1543,7 +1335,7 @@ class Calculated:
         """截取小地图蓝色箭头
         """
         # 小地图中心 460-320=140,345-194=151
-        screenshot = self.take_screenshot(offset=(125,136,-1765,-914))[0]
+        screenshot = self.img.take_screenshot(offset=(125,136,-1765,-914))[0]
 
         return screenshot
     

@@ -1,28 +1,25 @@
 import time
 import cv2 as cv
 import pyautogui
-import os
-import win32api
-import win32con
-import win32gui
-import random
 
 from .calculated import Calculated
 from .config import ConfigurationManager
 from .log import log, webhook_and_log
 from .time_utils import TimeUtils
 import datetime
+from .map_info import MapInfo
+from .img import Img
 
 class Map:
     def __init__(self):
         self.calculated = Calculated()
         self.cfg = ConfigurationManager()
         self.time_mgr = TimeUtils()
-        self.open_map_btn = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME).get("open_map", "m")
-        self.map_list = []
-        self.map_list_map = {}
-        self.map_versions = self.read_maps_versions()
-        self.map_version = ""
+        self.img = Img()
+        self.open_map_btn = "m"
+        self.map_list = MapInfo.read_maps(self.cfg.CONFIG.get("map_version", "default"))[0]
+        self.map_list_map = MapInfo.read_maps(self.cfg.CONFIG.get("map_version", "default"))[1]
+        self.map_version = MapInfo.read_maps(self.cfg.CONFIG.get("map_version", "default"))[2]
         self.now = datetime.datetime.now()
         self.retry_cnt_max = 2
         self.map_statu_minimize = False  # 地图最小化
@@ -44,7 +41,7 @@ class Map:
         while attempts < max_attempts:
             log.info(f'尝试打开地图 (尝试次数: {attempts + 1}/{max_attempts})')
             pyautogui.press(self.open_map_btn)
-            
+            time.sleep(0.05)
             self._wait_for_main_interface(speed_open, start_time)
             speed_open = True
             if self._handle_target_recognition(target):
@@ -53,41 +50,6 @@ class Map:
             else:
                 attempts += 1
                 self.calculated.back_to_main()  # 确保返回主界面以重试
-
-    def read_maps_versions(self):
-        map_dir = './map'
-        map_versions = [f for f in os.listdir(map_dir) if os.path.isdir(os.path.join(map_dir, f))]
-        
-        return map_versions
-    
-    def read_maps(self, map_version):
-        # 从'./map'目录获取地图文件列表（排除'old'）
-        map_dir = os.path.join('./map', map_version)
-        json_files = [f for f in os.listdir(map_dir) if f.endswith('.json') and not f.startswith('old')]
-        json_files = sorted(json_files, key=lambda x: [int(y) for y in x.replace('-','_').replace('.','_').split('_')[1:-1]])
-    
-        self.map_list = json_files
-        self.map_list_map.clear()
-        self.map_version = map_version
-    
-        for map_ in json_files:
-            map_data = self.cfg.read_json_file(f"map/{map_version}/{map_}")
-            key1 = map_[map_.index('_') + 1:map_.index('-')]
-            key2 = map_[map_.index('-') + 1:map_.index('.')]
-            key2_front = key2[:key2.index('_')]
-            value = self.map_list_map.get(key1)
-        
-            if value is None:
-                value = {}
-
-            map_data_first_name = map_data["name"].replace(' ','')
-            map_data_first_name = map_data_first_name[:map_data_first_name.index('-')]
-            format_map_data_first_name = key1 + '-' + key2_front + ' ' + map_data_first_name
-            value[key2] = [map_data["name"], format_map_data_first_name]
-            self.map_list_map[key1] = value
-            
-        # log.info(f"self.map_list:{self.map_list}")
-        # log.info(f"self.map_list_map:{self.map_list_map}")
 
     def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60, offset=None):
         """
@@ -130,7 +92,7 @@ class Map:
         """
         判断目标是否找到。
         """
-        return self.calculated.have_screenshot([target], (0, 0, 0, 0), threshold)
+        return self.img.have_screenshot([target], (0, 0, 0, 0), threshold)
 
     def _move_default(self, target, threshold):
         """
@@ -171,19 +133,22 @@ class Map:
         inverted_target = cv.bitwise_not(target)
         target_list = [target, inverted_target]
         direction_names = ["向下移动", "向上移动"]
-        while not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
+        while not self.img.have_screenshot(target_list, (0, 0, 0, 0), threshold) and time.time() - start_time < timeout and threshold >= min_threshold:
             # 设置向下、向上的移动数值
             directions = [(1700, 900, 1700, 300), (1700, 300, 1700, 900)]
             for index, direction in enumerate(directions):
                 log.info(f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}")
                 for i in range(1):
-                    if not self.calculated.have_screenshot(target_list, (0, 0, 0, 0), threshold):
+                    if not self.img.have_screenshot(target_list, (0, 0, 0, 0), threshold):
                         self.calculated.mouse_drag(*direction)
                     else:
                         return
             threshold -= 0.02
 
-    def get_map_list(self, start, start_in_mid: bool=False):
+    def get_map_list(self, start, start_in_mid: bool=False) -> list:
+        """
+        获取地图列表
+        """
         start_index = self.map_list.index(f'map_{start}.json')
         if start_in_mid:
             mid_slice = self.map_list[start_index:]
@@ -306,7 +271,7 @@ class Map:
     def handle_floor(self, key):
         """点击楼层
         """
-        if self.calculated.img_bitwise_check(target_path=key, offset=(30,740,-1820,-70)):
+        if self.img.img_bitwise_check(target_path=key, offset=(30,740,-1820,-70)):
             self.calculated.click_target(key, 0.93, offset=(30,740,-1820,-70))
         else:
             log.info(f"已在对应楼层，跳过选择楼层")
@@ -325,10 +290,10 @@ class Map:
         处理返回按钮的识别和点击逻辑，用于偶现的卡二级地图，此时使用m键无法关闭地图
         """
         for _ in range(5):
-            result_back = self.calculated.scan_screenshot(target_back, offset=(1830, 0, 0, -975))
+            result_back = self.img.scan_screenshot(target_back, offset=(1830, 0, 0, -975))
             if result_back['max_val'] > 0.99:
                 log.info(f"找到返回键")
-                points_back = self.calculated.calculated(result_back, target_back.shape)
+                points_back = self.img.img_center_point(result_back, target_back.shape)
                 pyautogui.click(points_back, clicks=1, interval=0.1)
             else:
                 break
@@ -341,6 +306,7 @@ class Map:
             if time.time() - start_time > 3:
                 return
             if not speed_open:
+                log.info(f"按下s打断技能")
                 pyautogui.keyDown('s')
                 pyautogui.press(self.open_map_btn)
                 time.sleep(0.05)
@@ -352,9 +318,9 @@ class Map:
         处理目标图片的识别逻辑
         """
         time.sleep(3)  # 增加识别延迟，避免偶现的识别错误
-        result = self.calculated.scan_screenshot(target, offset=(530, 960, -1050, -50))
+        result = self.img.scan_screenshot(target, offset=(530, 960, -1050, -50))
         if result['max_val'] > 0.97:
-            points = self.calculated.calculated(result, target.shape)
+            points = self.img.img_center_point(result, target.shape)
             log.info(f"识别点位{points}，匹配度{result['max_val']:.3f}")
             if not self.map_statu_minimize:
                 log.info(f"地图最小化，识别图片匹配度{result['max_val']:.3f}")
@@ -456,6 +422,8 @@ class Map:
                             pyautogui.press('space')
                         elif key in ["w", "a", "s", "d"]:
                             self.calculated.handle_move(value, key)
+                        elif key in ["F4"]:
+                            pyautogui.press(key)
                         elif key == "f":
                             self.calculated.handle_f()
                         elif key == "picture\\max.png":

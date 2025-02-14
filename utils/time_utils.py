@@ -9,7 +9,8 @@ class TimeUtils:
         self.now = datetime.datetime.now()
         self.cfg = ConfigurationManager()
 
-    def format_time(self, seconds):
+    @staticmethod
+    def format_time(seconds):
         # 格式化时间
         minutes, seconds = divmod(seconds, 60)
         hours, minutes = divmod(minutes, 60)
@@ -21,22 +22,31 @@ class TimeUtils:
         else:
             return f"{seconds:.1f}秒"
 
-    def day_init(self, days: list=None):
+    @staticmethod
+    def day_init(days: list=None):
+        """
+        判断是否在指定天数内
+        """
         if days is None:  
             days = []
-        today_weekday_num = self.now.weekday()
+        today_weekday_num = datetime.datetime.now().weekday()
         in_day = today_weekday_num in days
         
         return in_day
 
-    def get_target_datetime(self, hour, minute, second):
+    @staticmethod
+    def get_target_datetime(hour, minute, second):
         now = datetime.datetime.now()
         target_date = now.date()
         target_time = datetime.datetime.combine(target_date, datetime.time(hour, minute, second))  # 设置目标时间    
 
-        return target_time  
-    
-    def get_valid_hour(self):
+        return target_time
+
+    @staticmethod
+    def get_valid_hour():
+        """
+        获取有效的小时数
+        """
         default_hour = 4
 
         while True:
@@ -54,11 +64,13 @@ class TimeUtils:
                 log.debug(f"未输入一个有效的数字。使用默认值 {default_hour}")
                 return default_hour
 
-    def wait_and_run(self, minute=1, second=0):  
-        
-        hour = self.get_valid_hour()  
-
-        target_time = self.get_target_datetime(hour, minute, second)  # 计算目标时间  
+    @staticmethod
+    def wait_and_run( minute=1, second=0):  
+        """
+        等待并运行
+        """
+        hour = TimeUtils.get_valid_hour()  
+        target_time = TimeUtils.get_target_datetime(hour, minute, second)  # 计算目标时间  
         time_diff = target_time - datetime.datetime.now()  # 计算目标时间与当前时间的时间差  
         if time_diff.total_seconds() < 0:  # 如果目标时间已经过去，则设置为明天的这个时间  
             target_time += datetime.timedelta(days=1)  
