@@ -347,7 +347,7 @@ class Calculated:
             ang = (ang + 900) % 360 - 180
             # self.mouse_move(ang * 10.2)
 
-    def check_f_img(self, timeout=5):
+    def check_f_img(self, value=15, timeout=5):
         """
         检查F的交互类型。
 
@@ -367,7 +367,7 @@ class Calculated:
         start_time = time.time()
         log.info("扫描'F'图标")
 
-        default_delay = 15
+        default_delay = value
         found_images = {}
 
         while time.time() - start_time < timeout:
@@ -486,7 +486,7 @@ class Calculated:
                 elif key == "r":
                     self.handle_r(value, key)
                 elif key == "f":
-                    self.handle_f()
+                    self.handle_f(value)
                 elif key == "check":
                     self.handle_check(value, today_weekday_str)
                 elif key == "mouse_move":
@@ -564,11 +564,11 @@ class Calculated:
         if remaining_time > 0:
             time.sleep(remaining_time)
 
-    def handle_f(self):
+    def handle_f(self, value):
         """
         按下f键，等待delay秒后抬起
         """
-        use_time, delay, allow_f = self.check_f_img()
+        use_time, delay, allow_f = self.check_f_img(value)
         if allow_f:
             if use_time:
                 self.keyboard_press('f', delay=0.1)

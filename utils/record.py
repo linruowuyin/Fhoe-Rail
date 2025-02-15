@@ -201,6 +201,8 @@ def save_json():
                 normal_save_dict["map"].append({"fighting": 1})  # 进战斗
             elif element_save['key'] == "e":
                 normal_save_dict["map"].append({"e": 2})  # 黄泉E
+            elif element_save['key'] == "f":
+                normal_save_dict["map"].append({"f": 15})  # F交互，默认15秒
             else:
                 key_duration = element_save.get('duration', 1)  # 获取按键持续时间，默认为1秒
                 normal_save_dict["map"].append(
