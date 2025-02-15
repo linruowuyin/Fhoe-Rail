@@ -9,6 +9,7 @@ from utils.log import log, webhook_and_log
 from utils.time_utils import TimeUtils
 from utils.map_info import MapInfo
 from utils.img import Img
+from utils.monthly_pass import MonthlyPass
 
 
 class Map:
@@ -17,6 +18,7 @@ class Map:
         self.cfg = ConfigurationManager()
         self.time_mgr = TimeUtils()
         self.img = Img()
+        self.monthly_pass = MonthlyPass()
         self.open_map_btn = "m"
         self.map_list = MapInfo.read_maps(
             self.cfg.config_file.get("map_version", "default"))[0]
@@ -107,7 +109,7 @@ class Map:
             log.info(f"尝试 {direction_name} ，当前阈值：{threshold:.2f}")
             for _ in range(3):
                 if not self._is_target_found(target, threshold):
-                    self.calculated.mouse_drag(*direction_coords)
+                    self.mouse_event.mouse_drag(*direction_coords)
                 else:
                     return
 
@@ -116,12 +118,12 @@ class Map:
         按偏移量移动地图。
         """
         for _ in range(offset[0]):  # 向左+向上
-            self.calculated.mouse_drag(*self._directions()["left"])
-            self.calculated.mouse_drag(*self._directions()["up"])
+            self.mouse_event.mouse_drag(*self._directions()["left"])
+            self.mouse_event.mouse_drag(*self._directions()["up"])
         for _ in range(offset[1]):  # 向右
-            self.calculated.mouse_drag(*self._directions()["right"])
+            self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(offset[2]):  # 向下
-            self.calculated.mouse_drag(*self._directions()["down"])
+            self.mouse_event.mouse_drag(*self._directions()["down"])
 
     def find_scene(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
         """
@@ -146,7 +148,7 @@ class Map:
                     f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}")
                 for i in range(1):
                     if not self.img.have_screenshot(target_list, (0, 0, 0, 0), threshold):
-                        self.calculated.mouse_drag(*direction)
+                        self.mouse_event.mouse_drag(*direction)
                     else:
                         return
             threshold -= 0.02
@@ -225,7 +227,7 @@ class Map:
         """校准视角
         """
         if not self.cfg.config_file.get("angle_set", False) or self.cfg.config_file.get("angle", "1.0") == "1.0":
-            self.calculated.monthly_pass_check()  # 月卡检查
+            self.monthly_pass.monthly_pass_check()  # 月卡检查
             self.calculated.back_to_main()
             time.sleep(1)
             self.calculated.set_angle()
@@ -244,7 +246,7 @@ class Map:
         else:
             orientation_delay = 2
             while True:
-                self.calculated.click_target(
+                self.mouse_event.click_target(
                     key, 0.97, retry_in_map=self.allow_retry_in_map_switch)
                 orientation_delay = min(orientation_delay, 4)
                 time.sleep(orientation_delay)
@@ -262,7 +264,7 @@ class Map:
             return
         else:
             self.find_transfer_point(key, threshold=0.975)
-            if self.calculated.click_target(key, 0.93, delay=0.1):
+            if self.mouse_event.click_target(key, 0.93, delay=0.1):
                 time.sleep(5)
                 img = cv.imread("./picture/kaituoli_1.png")
                 delay_time = 0.5
@@ -273,7 +275,7 @@ class Map:
                     delay_time += 0.1
                     delay_time = max(delay_time, 1)
                     log.info(f"检测到未成功点击星球，尝试重试点击星球，鼠标点击间隔时间 {delay_time}")
-                    self.calculated.click_target(key, 0.93, delay=delay_time)
+                    self.mouse_event.click_target(key, 0.93, delay=delay_time)
                     time.sleep(5)
                 else:
                     self.planet = key
@@ -283,7 +285,7 @@ class Map:
         """点击楼层
         """
         if self.img.img_bitwise_check(target_path=key, offset=(30, 740, -1820, -70)):
-            self.calculated.click_target(
+            self.mouse_event.click_target(
                 key, 0.93, offset=(30, 740, -1820, -70))
         else:
             log.info("已在对应楼层，跳过选择楼层")
@@ -293,7 +295,7 @@ class Map:
         """
         img = cv.imread("./picture/kaituoli_1.png")
         if not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580, 0, 0, -910), allow_log=False):
-            self.calculated.click_target(key, 0.94, timeout=3, offset=(
+            self.mouse_event.click_target(key, 0.94, timeout=3, offset=(
                 1660, 100, -40, -910), retry_in_map=False)
         else:
             log.info("检测到星轨航图，不进行点击'返回'")
@@ -380,7 +382,7 @@ class Map:
                     start_map_name, end_map_name = (
                         map_data_name if index == 0 else start_map_name, map_data_name if index == max_index else end_map_name)
                     webhook_and_log(f"\033[0;96;40m{map_data_name}\033[0m")
-                    self.calculated.monthly_pass_check()  # 月卡检查
+                    self.monthly_pass.monthly_pass_check()  # 月卡检查
                     log.info(
                         f"路线领航员：\033[1;95m{map_data_author}\033[0m 感谢她(们)的无私奉献，准备开始路线：{map_base}")
                     jump_this_map = False  # 跳过这张地图，一般用于过期邮包购买
@@ -390,7 +392,7 @@ class Map:
                         key = list(start.keys())[0]
                         log.info(key)
                         value = start[key]
-                        self.calculated.search_img_allow_retry = False
+                        self.img.search_img_allow_retry = False
                         self.allow_map_drag(start)  # 是否强制允许拖动地图初始化
                         self.allow_scene_drag(start)  # 是否强制允许拖动右侧场景初始化
                         self.allow_multi_click(start)  # 多次点击
@@ -455,14 +457,14 @@ class Map:
                         elif key == "picture\\max.png":
                             if self.calculated.allow_buy_item():
                                 jump_this_map = False
-                                self.calculated.click_target(key, 0.93)
+                                self.mouse_event.click_target(key, 0.93)
                                 continue
                             else:
                                 jump_this_map = True
                                 break
                         elif key in ["picture\\transfer.png"]:
                             time.sleep(0.2)
-                            if not self.calculated.click_target(key, 0.93):
+                            if not self.mouse_event.click_target(key, 0.93):
                                 jump_this_map = True
                                 break
                             self.calculated.run_mapload_check()
@@ -478,7 +480,7 @@ class Map:
                                 self.handle_back(key)
                             elif key.startswith("picture\\check_4-1_point"):
                                 self.find_transfer_point(key, threshold=0.992)
-                                if self.calculated.click_target(key, 0.992, retry_in_map=False):
+                                if self.mouse_event.click_target(key, 0.992, retry_in_map=False):
                                     log.info("筑梦机关检查通过")
                                 else:
                                     log.info("筑梦机关检查不通过，请将机关调整到正确的位置上")
@@ -486,13 +488,13 @@ class Map:
                                 time.sleep(1)
                             elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
                                 self.find_transfer_point(key, threshold=0.975)
-                                self.calculated.click_target(key, 0.95)
+                                self.mouse_event.click_target(key, 0.95)
                                 self.temp_point = key
                             elif key == "picture\\orientation_1.png":
                                 self.handle_orientation(key, map_data)
                             elif key.startswith("picture\\map_4-3_point"):
                                 self.find_transfer_point(key, threshold=0.975)
-                                self.calculated.click_target(key, 0.93)
+                                self.mouse_event.click_target(key, 0.93)
                                 self.temp_point = key
                                 time.sleep(1.7)
                             elif key in self.planet_png_lst:
@@ -505,15 +507,15 @@ class Map:
                                     self.find_scene(key, threshold=0.990)
                                 if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
                                     log.info("执行alt")
-                                    self.calculated.click_target_with_alt(
+                                    self.mouse_event.click_target_with_alt(
                                         key, 0.93, clicks=self.multi_click)
                                 else:
-                                    self.calculated.click_target(
+                                    self.mouse_event.click_target(
                                         key, 0.93, clicks=self.multi_click, retry_in_map=self.allow_retry_in_map_switch)
                                 self.temp_point = key
                             teleport_click_count += 1
                             log.info(f'传送点击（{teleport_click_count}）')
-                            if self.calculated.search_img_allow_retry:
+                            if self.img.search_img_allow_retry:
                                 retry = True
                                 retry_cnt += 1
                                 if retry_cnt == self.retry_cnt_max:

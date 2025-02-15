@@ -21,6 +21,8 @@ from utils.switch_window import switch_window
 from utils.pause import Pause
 from utils.window import Window
 from utils.img import Img
+from utils.monthly_pass import MonthlyPass
+from utils.mouse_event import MouseEvent
 
 
 class Calculated:
@@ -28,6 +30,8 @@ class Calculated:
         self.cfg = ConfigurationManager()
         self.window = Window()
         self.img = Img()
+        self.monthly_pass = MonthlyPass()
+        self.mouse_event = MouseEvent()
         self._config = None
         self._last_updated = None
         self.keyboard = KeyboardController()
@@ -80,25 +84,6 @@ class Calculated:
             log.info('DPI获取失败')
             self.scale = 1.0
 
-    def click(self, points, slot=0.0, clicks=1, delay=0.05):
-        """
-        说明：
-            点击指定屏幕坐标
-        参数：
-            :param points: 坐标
-            :param slot: 坐标来源图片匹配值
-            :param clicks: 连续点击次数
-        """
-        x, y = int(points[0]), int(points[1])
-        if not slot:
-            log.info(f"点击坐标{(x, y)}")
-        else:
-            log.info(f"点击坐标{(x, y)}，坐标来源图片匹配度{slot:.3f}")
-        if clicks > 1:
-            log.info(f"将点击 {clicks} 次")
-        for _ in range(clicks):
-            self.mouse_press(x, y, delay)
-
     def translate_key(self, key_name: str):
         """转换key
         """
@@ -117,177 +102,6 @@ class Calculated:
         self.keyboard.press(key_name)
         time.sleep(delay)
         self.keyboard.release(key_name)
-
-    def mouse_press(self, x, y, delay: float = 0.05):
-        """
-        说明：
-            鼠标点击
-        参数：
-            :param x: 起始点相对坐标x
-            :param y: 起始点相对坐标y
-            :param delay: 鼠标点击与抬起之间的延迟（秒）
-        """
-        win32api.SetCursorPos((x, y))
-        time.sleep(0.1)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        time.sleep(delay)
-        time.sleep(0.01)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-
-    def mouse_drag(self, x, y, end_x, end_y):
-        """
-        说明：
-            鼠标按下后拖动
-        """
-        left, top, right, bottom = self.window.get_rect()
-        pyautogui.moveTo(left + x, top + y)
-        pyautogui.mouseDown()
-        pyautogui.moveTo(left + end_x, top + end_y, duration=0.2)
-        pyautogui.mouseUp()
-        time.sleep(1)
-
-    def mouse_press_alt(self, x, y, delay: float = 0.4):
-        """
-        说明：
-            按下alt同时鼠标点击指定坐标
-        参数：
-            :param x:相对坐标x
-            :param y:相对坐标y
-        """
-        win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-        self.mouse_press(x, y, delay)
-        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-
-    def relative_click(self, points):
-        """
-        说明：
-            点击相对坐标
-        参数：
-            :param points: 百分比坐标，100为100%
-        """
-        if self.window.check_window_visibility():
-            left, top, right, bottom = self.window.get_rect()
-            # real_width = self.cfg.config_file["real_width"]  # 暂时没用
-            # real_height = self.cfg.config_file["real_height"]  # 暂时没用
-            x, y = int(left + (right - left) / 100 *
-                       points[0]), int(top + (bottom - top) / 100 * points[1])
-            log.info((x, y))
-            self.mouse_press_alt(x, y)
-
-    def click_center(self):
-        """
-        点击游戏窗口中心位置
-        """
-        if self.window.check_window_visibility():
-            left, top, right, bottom = self.window.get_rect()
-            x, y = int((left + right) / 2), int((top + bottom) / 2)
-            self.mouse_press(x, y)
-
-    def click_target_above_threshold(self, target, threshold, offset, clicks=1, delay=0.05):
-        """
-        尝试点击匹配度大于阈值的目标图像。
-        参数:
-            :param target: 目标图像
-            :param threshold: 匹配阈值
-            :param offset: 左、上、右、下，正值为向右或向下偏移
-            :param clicks: 连续点击次数
-        返回:
-            :return: 是否点击成功
-        """
-        result = self.img.scan_screenshot(target, offset)
-        if result["max_val"] > threshold:
-            points = self.img.img_center_point(result, target.shape)
-            self.click(points, result['max_val'], clicks, delay)
-            return True, result['max_val']
-        return False, result['max_val']
-
-    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0, 0, 0, 0), retry_in_map: bool = True, clicks=1, delay=0.05):
-        """
-        说明：
-            点击指定图片
-        参数：
-            :param target_path:图片地址
-            :param threshold:匹配阈值
-            :param flag:True为一定要找到图片
-            :param timeout: 最大搜索时间（秒）
-            :param offset: 左、上、右、下，正值为向右或向下偏移
-            :param retry_in_map: 是否允许地图中重试查找
-            :param clicks: 连续点击次数
-        返回：
-            :return 是否点击成功
-        """
-        # 定义目标图像与颜色反转后的图像
-        original_target = cv2.imread(target_path)
-        inverted_target = cv2.bitwise_not(original_target)
-        start_time = time.time()
-        assigned = False
-
-        while time.time() - start_time < timeout:
-            click_it, img_search_val = self.click_target_above_threshold(
-                original_target, threshold, offset, clicks, delay)
-            if click_it:
-                return True
-            if time.time() - start_time > 1:  # 如果超过1秒，同时匹配原图像和颜色反转后的图像
-                click_it, _ = self.click_target_above_threshold(
-                    inverted_target, threshold, offset, clicks, delay)
-                if click_it:
-                    log.info("阴阳变转")
-                    return True
-
-            if not assigned:
-                if target_path in self.img_search_val_dict:
-                    if self.img_search_val_dict[target_path] > img_search_val and img_search_val < 0.99:
-                        self.img_search_val_dict[target_path] = img_search_val
-                        assigned = True
-                else:
-                    if img_search_val < 0.99:
-                        self.img_search_val_dict[target_path] = img_search_val
-                        assigned = True
-
-            if not flag:  # 是否一定要找到
-                return False
-            time.sleep(0.5)  # 添加短暂延迟避免性能消耗
-
-        log.info(
-            f"查找图片超时 {target_path} ，最相似图片匹配值 {img_search_val}，所需匹配值 {threshold}")
-        self.search_img_allow_retry = retry_in_map
-        return False
-
-    def click_target_with_alt(self, target_path, threshold, flag=True, clicks=1):
-        """
-        说明：
-            按下alt，点击指定图片，释放alt
-        参数：
-            :param target_path: 图片地址
-            :param threshold: 匹配阈值
-            :param flag: True为必须找到图片
-            :param clicks: 连续点击次数
-        改进：
-            1. 使用成对的按下/释放标志
-            2. 增加异常处理确保ALT释放
-            3. 优化延时逻辑
-            4. 添加键盘状态恢复机制
-        """
-        initial_state = win32api.GetKeyState(win32con.VK_MENU)
-        log.debug(f"ALT初始状态: {initial_state}")
-
-        try:
-            win32api.keybd_event(win32con.VK_MENU, 0,
-                                 win32con.KEYEVENTF_EXTENDEDKEY, 0)
-            time.sleep(0.15)
-
-            self.click_target(target_path, threshold, flag, clicks=clicks)
-
-        except Exception as e:
-            if flag:
-                raise RuntimeError(f"操作执行失败: {str(e)}") from e
-        finally:
-            current_state = win32api.GetKeyState(win32con.VK_MENU)
-            log.debug(f"释放前状态: {current_state}, 正在执行强制释放")
-            if win32api.GetKeyState(win32con.VK_MENU) != initial_state:
-                win32api.keybd_event(
-                    win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP | win32con.KEYEVENTF_EXTENDEDKEY, 0)
-            time.sleep(0.1)
 
     def no_in_fight_status(self) -> bool:
         """必定不在战斗的图片，以完善战斗检测
@@ -338,7 +152,7 @@ class Calculated:
 
         time.sleep(2)
         if not self.attack_once:
-            self.click_center()
+            self.mouse_event.click_center()
             self.attack_once = True
         start_time = time.time()
         while time.time() - start_time < timeout:
@@ -439,19 +253,20 @@ class Calculated:
                     not_auto_result_c = self.img.scan_screenshot(not_auto_c)
 
             if elapsed_time > 90:
-                # self.click_target("./picture/auto.png", 0.98, False)
-                self.click_target(
+                # self.mouse_event.click_target("./picture/auto.png", 0.98, False)
+                self.mouse_event.click_target(
                     "./picture/continue_fighting.png", 0.98, False)
-                self.click_target("./picture/defeat.png", 0.98, False)
-                # self.click_target("./picture/map_4-2_point_3.png", 0.98, False)
-                # self.click_target("./picture/orientation_close.png", 0.98, False)
+                self.mouse_event.click_target(
+                    "./picture/defeat.png", 0.98, False)
+                # self.mouse_event.click_target("./picture/map_4-2_point_3.png", 0.98, False)
+                # self.mouse_event.click_target("./picture/orientation_close.png", 0.98, False)
                 if elapsed_time > 600:
                     log.info("战斗超时")
                     return True
             time.sleep(0.5)
 
     def fighting(self):
-        self.click_center()
+        self.mouse_event.click_center()
         fight_status = self.fight_elapsed()
 
         if not fight_status:
@@ -481,17 +296,18 @@ class Calculated:
                             if self.on_interface(check_list=[food_icon], timeout=2, interface_desc='奇巧零食图片', threshold=0.95, offset=(900, 300, -400, -300)):
                                 find = True
                                 for _ in range(2):
-                                    self.click_target(
+                                    self.mouse_event.click_target(
                                         "./picture/qiqiao.png", 0.95, True, 2, (900, 300, -400, -300), False)
                                     if self.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
                                         time.sleep(0.1)
-                                        self.click_target(
+                                        self.mouse_event.click_target(
                                             "./picture/round.png", 0.9, timeout=8)
                                         time.sleep(0.5)
                                         allow_buy = True
                             else:
                                 log.info("下滑查找零食")
-                                self.mouse_drag(1460, 450, 1460, 330)
+                                self.mouse_event.mouse_drag(
+                                    1460, 450, 1460, 330)
                                 time.sleep(0.5)
                                 drag += 1
                         time.sleep(1)
@@ -513,7 +329,7 @@ class Calculated:
 
         if value == 1:
             time.sleep(1)
-            self.click_center()
+            self.mouse_event.click_center()
             fight_status = self.fight_elapsed()
             if not fight_status:
                 log.info('未进入战斗')
@@ -650,7 +466,8 @@ class Calculated:
                         switch_window()
                         time.sleep(1)
                         if press_key == 'F9':
-                            self.click_target("picture\\transfer.png", 0.93)
+                            self.mouse_event.click_target(
+                                "picture\\transfer.png", 0.93)
                             self.run_mapload_check()
                         if press_key == 'F10':
                             pass
@@ -661,7 +478,7 @@ class Calculated:
                     f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map_value}")
 
                 key, value = next(iter(map_value.items()))
-                self.monthly_pass_check()  # 行进前识别是否接近月卡时间
+                self.monthly_pass.monthly_pass_check()  # 行进前识别是否接近月卡时间
                 if key == "space":
                     self.handle_space(value, key)
                 elif key == "caps":
@@ -799,7 +616,7 @@ class Calculated:
             else:
                 self.fighting()
         elif value == 2:  # 打障碍物
-            self.click(win32api.GetCursorPos())
+            self.mouse_event.click(win32api.GetCursorPos())
             time.sleep(1)
         else:
             raise CustomException("map数据错误, fighting参数异常")
@@ -1020,137 +837,6 @@ class Calculated:
                         self.run_fixed = True
             else:
                 self.run_fixed = True
-
-    def monthly_update_check_time(self):
-        current_time = datetime.now()
-        self.next_check_time = current_time.replace(
-            hour=self.refresh_hour, minute=self.refresh_minute, second=0, microsecond=0)
-        if current_time >= self.next_check_time:
-            self.next_check_time = self.next_check_time + timedelta(days=1)
-
-    def monthly_pass_check(self):
-        # 获取当前时间
-        current_time = datetime.now()
-        self.refresh_hour = self.cfg.config_file.get("refresh_hour", 4)
-        self.refresh_minute = self.cfg.config_file.get("refresh_minute", 0)
-
-        # 如果当前时间接近月卡时间5分钟内，则等待直到月卡时间
-        early_hour = (self.refresh_hour - 1) % 24
-        early_minute = (self.refresh_minute - 1) % 60
-        if ((self.refresh_minute == 0) and current_time.hour == early_hour and early_minute - 4 <= current_time.minute <= early_minute) or ((self.refresh_minute != 0) and current_time.hour == self.refresh_hour and early_minute - 4 <= current_time.minute <= early_minute):
-            log.info(
-                f"接近月卡刷新时间，等待至{self.refresh_hour}点{self.refresh_minute}分后识别月卡")
-            while (self.refresh_minute == 0 and datetime.now().hour == early_hour) or (self.refresh_minute != 0 and datetime.now().hour == self.refresh_hour and datetime.now().minute <= early_minute):
-                time.sleep(2)
-            current_time = datetime.now()  # 等待后重新赋值当前时间
-
-        # 1，首次运行；2，当前时间大于等于下次检查时间
-        # 需要执行一次月卡检查
-        if self.next_check_time is None:
-            self.monthly_update_check_time()
-
-        if self.last_check_time is None or current_time >= self.next_check_time:
-            if 0 <= (current_time - self.next_check_time).total_seconds() < 30:
-                delay = 30
-                log.info(f"等待{delay}秒后尝试识别点击月卡")
-                self.try_click_pass(delay=delay)
-            elif self.last_check_time is None or current_time > self.last_check_time:
-                self.try_click_pass()
-
-            # 更新上次检查时间
-            self.last_check_time = current_time
-            log.info(f"月卡检查时间更新至：{self.last_check_time}")
-
-            # 更新下次检查时间
-            self.monthly_update_check_time()
-
-    def monthly_pass(self):
-        """
-        说明：
-            点击月卡。首先检查当前时间是否接近目标时间（凌晨4点前后），然后执行月卡点击操作。
-            仅在while循环至少成功运行一次后，不再重复执行。
-        """
-        if self.monthly_pass_success:  # 月卡检查已完成，不再重复执行
-            return
-
-        start_time = time.time()
-        target_time_str = datetime.now().strftime('%Y-%m-%d') + " 04:00:00"
-        target_time_stamp = int(time.mktime(
-            time.strptime(target_time_str, "%Y-%m-%d %H:%M:%S")))
-        current_time_stamp = int(start_time)
-        time_period = current_time_stamp - target_time_stamp
-
-        if -300 < time_period <= 300:  # 接近4点5分钟时开始等待点击月卡，超过4点5分钟内会点击月卡
-            if -300 < time_period < 0:
-                time.sleep(abs(time_period))  # 等待4点
-            time.sleep(5)  # 延时，等待动画可能的加载
-            self.try_click_pass()
-
-    def check_for_monthly_pass(self) -> bool:
-        """无月卡检测
-        """
-        log.info("判断是否存在月卡")
-        target = cv2.imread("./picture/finish_fighting.png")
-        result = self.img.scan_screenshot(target)
-        if result["max_val"] > 0.92:
-            points = self.img.img_center_point(result, target.shape)
-            log.info(
-                f"识别到此刻正在主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
-            self.monthly_pass_success = 2  # 月卡检查完成，无月卡
-            return False
-        else:
-            return True
-
-    def try_click_pass(self, threshold=0.91, delay=0):
-        """
-        说明：
-            尝试点击月卡。
-        """
-        time.sleep(abs(delay))
-
-        # 无月卡
-        if not self.check_for_monthly_pass():
-            return
-
-        # 有月卡
-        log.info("准备点击月卡")
-        monthly_pass_pics = [
-            ("./picture/monthly_pass_pic.png", "月卡下方文字部分"),
-            ("./picture/monthly_pass_pic_2.png", "月卡动画中心图片")
-        ]
-        pic_data_check = cv2.imread("./picture/monthly_pass_pic_3.png")
-        for pic_path, pic_desc in monthly_pass_pics:
-            pic_data = cv2.imread(pic_path)
-            result = self.img.scan_screenshot(pic_data)
-            log.info(f"开始月卡识图{pic_path}，图片特征描述：{pic_desc}")
-            if result["max_val"] > threshold:
-                points = self.img.img_center_point(result, pic_data.shape)
-                log.info(
-                    f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
-                self.click(points)
-                time.sleep(5)  # 等待动画
-                for _ in range(5):
-                    result_check = self.img.scan_screenshot(pic_data_check)
-                    if result_check["max_val"] > threshold:
-                        log.info(
-                            f"找到月卡奖励图标，图片匹配度：{result_check['max_val']:.2f}")
-                        time.sleep(2)
-                        self.relative_click((50, 75))
-                        time.sleep(5)  # 等待动画
-                        break
-                    else:
-                        time.sleep(2)
-                else:
-                    self.relative_click((50, 75))
-                    time.sleep(5)  # 等待动画
-                self.have_monthly_pass = True
-                self.monthly_pass_success = 1  # 月卡检查，已领取
-                break
-            else:
-                log.info(
-                    f"找不到相符的图，图片匹配度：{result['max_val']:.2f} 需要 > {threshold}")
-        else:
-            self.monthly_pass_success = 3  # 月卡检查，找不到与月卡图片相符的图
 
     def scroll(self, clicks: float):
         """

@@ -10,9 +10,9 @@ def main():
         log.info("脚本将于5秒后运行,请确保你的游戏置顶")
         time.sleep(5)
         get_width()
-        from tools.calculated import Calculated
-        calculat = Calculated()
-        calculat.relative_click((96, 9))
+        from utils.mouse_event import MouseEvent
+        mouse_event = MouseEvent()
+        mouse_event.relative_click((96, 9))
         webhook_and_log("脚本已经完成运行")
     else:
         log.info("请以管理员权限运行")

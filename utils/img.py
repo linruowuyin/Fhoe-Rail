@@ -12,6 +12,7 @@ class Img:
     def __init__(self):
         self.window = Window()
         self.temp_screenshot = (0, 0, 0, 0, 0)  # 初始化临时截图
+        self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
 
     @staticmethod
     def get_img(img_path):
