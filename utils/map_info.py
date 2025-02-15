@@ -1,15 +1,17 @@
 import os
-from .config import ConfigurationManager
-from .log import log
+from utils.config import ConfigurationManager
 
 
 class MapInfo:
     def __init__(self):
         self.map_versions = self.read_maps_versions()
         self.cfg = ConfigurationManager()
-        self.map_list = MapInfo.read_maps(self.cfg.CONFIG.get("map_version","default"))[0]
-        self.map_list_map = MapInfo.read_maps(self.cfg.CONFIG.get("map_version","default"))[1]
-        self.map_version = MapInfo.read_maps(self.cfg.CONFIG.get("map_version","default"))[2]
+        self.map_list = MapInfo.read_maps(
+            self.cfg.config_file.get("map_version", "default"))[0]
+        self.map_list_map = MapInfo.read_maps(
+            self.cfg.config_file.get("map_version", "default"))[1]
+        self.map_version = MapInfo.read_maps(
+            self.cfg.config_file.get("map_version", "default"))[2]
 
     @staticmethod
     def read_maps_versions(map_dir: str = "./map") -> list:
@@ -64,7 +66,7 @@ class MapInfo:
             value[key2] = [map_data["name"], format_map_data_first_name]
             map_list_map[key1] = value
         return map_list_map
-    
+
     @staticmethod
     def read_map_data(map_version: str, map_file: str, map_dir: str) -> dict:
         """

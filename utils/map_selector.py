@@ -1,15 +1,16 @@
 import questionary
-from .config import ConfigurationManager
-from .log import log
-from .time_utils import TimeUtils
-from .map_info import MapInfo
+from utils.config import ConfigurationManager
+from utils.log import log
+from utils.time_utils import TimeUtils
+from utils.map_info import MapInfo
 
 cfg = ConfigurationManager()
 
+
 def choose_map(map_info: MapInfo):
-    map_version = cfg.CONFIG.get("map_version", "default")
+    map_version = cfg.config_file.get("map_version", "default")
     MapInfo.read_maps(map_version=map_version)
-    main_map = cfg.CONFIG.get("main_map", None)
+    main_map = cfg.config_file.get("main_map", None)
     if main_map is None:
         main_map = min(list(map_info.map_list_map.keys()))
     side_map = list(map_info.map_list_map.get(main_map).keys())[0]
@@ -17,7 +18,7 @@ def choose_map(map_info: MapInfo):
 
 
 def choose_map_debug(map_info: MapInfo):
-    map_version = cfg.CONFIG.get("map_version", "default")
+    map_version = cfg.config_file.get("map_version", "default")
     MapInfo.read_maps(map_version=map_version)
     main_map = None
 
@@ -35,6 +36,7 @@ def choose_map_debug(map_info: MapInfo):
                 main_map = None
             else:
                 return result
+
 
 def _h_main_map(map_info: MapInfo):
     title = "请选择起始星球："
@@ -64,13 +66,15 @@ def _h_main_map(map_info: MapInfo):
         return ("1-1_0", False)
     return opts[choice]
 
+
 def _h_side_map(map_info: MapInfo, main_map):
     choices = list(map_info.map_list_map.get(main_map).keys())
-    choices.append("back") 
+    choices.append("back")
     result = questionary.select("选择子地图:", choices=choices).ask()
     if result == "back":
         return result
     return (f"{main_map}-{result}", True)
+
 
 def _h_priority(map_info: MapInfo):
     title = "优先星球选择"
@@ -89,7 +93,8 @@ def _h_priority(map_info: MapInfo):
 
     main = opts[choice]
     side = list(map_info.map_list_map.get(main).keys())[0]
-    ConfigurationManager.modify_json_file(ConfigurationManager.CONFIG_FILE_NAME, "main_map", main)
+    ConfigurationManager.modify_json_file(
+        ConfigurationManager.CONFIG_FILE_NAME, "main_map", main)
     return (f"{main}-{side}", True)
 
 
@@ -105,7 +110,8 @@ def _h_side_map(map_info: MapInfo, main):
     # 二级选项
     sec_opts = list(
         dict.fromkeys(
-            [v[1] for v in values if isinstance(v, list) and len(v) >= 2] + ["【返回】"]
+            [v[1] for v in values if isinstance(
+                v, list) and len(v) >= 2] + ["【返回】"]
         )
     )
     sec_choice = questionary.select(title, sec_opts).ask()

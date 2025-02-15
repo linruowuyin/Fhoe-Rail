@@ -12,7 +12,7 @@ from utils.config import ConfigurationManager
 from utils.map import Map
 from utils.time_utils import TimeUtils
 from utils.switch_window import switch_window
-from utils.exceptions import Exception
+from utils.exceptions import CustomException
 from utils.map_selector import choose_map, choose_map_debug
 from utils.setting import Setting
 
@@ -33,7 +33,7 @@ def print_version():
         ConfigurationManager.modify_json_file(ConfigurationManager.CONFIG_FILE_NAME, "version", version)
         from utils.calculated import Calculated
 
-        Calculated.CONFIG.get("version", "")
+        Calculated.config_file.get("version", "")
     except:
         pass
 
@@ -114,8 +114,8 @@ def main():
             else:
                 map_instance.calculated.back_to_main(delay=2.0)
                 now = datetime.datetime.now()
-                refresh_hour = cfg.CONFIG.get("refresh_hour", 4)
-                refresh_minute = cfg.CONFIG.get("refresh_minute", 0)
+                refresh_hour = cfg.config_file.get("refresh_hour", 4)
+                refresh_minute = cfg.config_file.get("refresh_minute", 0)
                 next_4am = now.replace(
                     hour=refresh_hour, minute=refresh_minute, second=0, microsecond=0
                 )

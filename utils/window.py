@@ -93,7 +93,7 @@ class Window:
         """
         return "客户端" if "崩坏：星穹铁道" in title else "云游戏"
 
-    def _check_window_visibility(self, depth=0):
+    def check_window_visibility(self, depth=0):
         """
         检查窗口是否可见
         """
@@ -119,7 +119,7 @@ class Window:
                 # 等待用户输入回车键继续
                 input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
                 time.sleep(1)
-                return self._check_window_visibility(depth + 1)
+                return self.check_window_visibility(depth + 1)
 
     def get_rect(self, hwnd=None):
         """

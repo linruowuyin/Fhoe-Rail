@@ -14,10 +14,10 @@ from tqdm import tqdm as tq
 from zipfile import ZipFile, BadZipFile
 from typing import Dict, Optional, Any, Union, Tuple, List
 
-from .log import log
-from .requests import *
-from .exceptions import Exception
-from .config import ConfigurationManager
+from utils.log import log
+from utils.requests import *
+from utils.exceptions import CustomException
+from utils.config import ConfigurationManager
 
 cfg = ConfigurationManager()
 tmp_dir = 'tmp'
