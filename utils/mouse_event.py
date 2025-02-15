@@ -6,12 +6,16 @@ import pyautogui
 import cv2
 
 
+from utils.img import Img
 from utils.log import log
+from utils.window import Window
 
 
 class MouseEvent:
     def __init__(self):
-        pass
+        self.img = Img()
+        self.window = Window()
+        self.img_search_val_dict = {}  # 图片匹配值
 
     def click(self, points, slot=0.0, clicks=1, delay=0.05):
         """

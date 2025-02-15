@@ -63,18 +63,34 @@ class MonthlyPass:
 
     def _need_wait_before_check(self, current: datetime) -> bool:
         """
-        判断是否需要提前等待
-        如果当前时间距离目标时间小于{WAIT_INTERVAL}分钟，则需要提前等待
+        判断是否需要提前等待（修正跨天问题版本）
+        生成最近的下一个目标时间，当剩余时间小于等待间隔时返回True
         """
+        # 生成基准目标时间（当日）
         target_time = current.replace(
             hour=self.refresh_hour,
-            minute=self.refresh_minute
+            minute=self.refresh_minute,
+            second=0,
+            microsecond=0
         )
-        return (target_time - current) < self.WAIT_INTERVAL
+        # 若当前时间已过当日目标时间
+        if target_time < current:
+            return False
+
+        # 计算正数时间差
+        delta = target_time - current
+        log.info(f"当前时间：{current}，下一个目标时间：{target_time}，时间差：{delta}")
+
+        # 判断剩余时间是否小于等待间隔
+        need_wait = delta < self.WAIT_INTERVAL
+        log.info(f"是否需要等待：{need_wait}")
+        return need_wait
 
     def _wait_until_refresh_time(self):
         """等待到目标刷新时间"""
         log.info(f"等待至{self.refresh_hour:02d}:{self.refresh_minute:02d}后识别月卡")
+        log.info(f"当前时间：{datetime.now()}")
+        log.info(f"目标时间：{self.next_check_time}")
         while datetime.now() < self.next_check_time:
             time.sleep(2)
 

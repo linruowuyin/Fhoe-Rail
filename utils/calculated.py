@@ -75,7 +75,7 @@ class Calculated:
         self.auto_final_fight_e_cnt = 0  # 秘技E的次数计数
         self._last_step_run = False  # 初始化
         self.need_rotate = False
-        self.img_search_val_dict = {}  # 图片匹配值
+        
         self.arrow_0 = cv2.imread("./picture/screenshot_arrow.png")
         try:
             self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0

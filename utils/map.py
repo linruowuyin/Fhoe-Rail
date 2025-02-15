@@ -10,6 +10,7 @@ from utils.time_utils import TimeUtils
 from utils.map_info import MapInfo
 from utils.img import Img
 from utils.monthly_pass import MonthlyPass
+from utils.mouse_event import MouseEvent
 
 
 class Map:
@@ -19,6 +20,7 @@ class Map:
         self.time_mgr = TimeUtils()
         self.img = Img()
         self.monthly_pass = MonthlyPass()
+        self.mouse_event = MouseEvent()
         self.open_map_btn = "m"
         self.map_list = MapInfo.read_maps(
             self.cfg.config_file.get("map_version", "default"))[0]
@@ -563,7 +565,7 @@ class Map:
                         "未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
                     log.info(f"系统卡顿次数：{self.calculated.time_error_cnt}")
                     log.debug(
-                        f"匹配值小于0.99的图片：{self.calculated.img_search_val_dict}")
+                        f"匹配值小于0.99的图片：{self.mouse_event.img_search_val_dict}")
                     log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
 
         else:
