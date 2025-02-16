@@ -6,16 +6,16 @@
       "map": 1
     },
     {
-      "picture\\map_5-3.png": 1.5,
+      "picture\\map_5-1.png": 1.5,
       "scene": 1
     },
     {
-      "picture\\map_5-3_point_5.png": 1.5,
+      "picture\\map_5-1_point_5.png": 1.5,
       "drag": 1,
       "drag_exact": [4,0,4]
     },
     {
-      "picture\\map_5-3_point_6.png": 1.5
+      "picture\\map_5-1_point_6.png": 1.5
     },
     {
       "picture\\transfer.png": 1.5
@@ -26,7 +26,7 @@
       "s": 2
     },
     {
-      "f": 15
+      "f": 15.0
     },
     {
       "a": 0.5
