@@ -1,4 +1,3 @@
-import ctypes
 import os
 import time
 from datetime import datetime
@@ -165,7 +164,7 @@ class Calculated:
                 log.info(f"检测到地图加载map_load，匹配度{result['max_val']}")
                 if self.img.on_main_interface(check_list=[self.img.main_ui, self.img.finish2_ui, self.img.finish2_1_ui, self.img.finish2_2_ui, self.img.finish3_ui], timeout=10, threshold=threshold):
                     break
-            elif self.blackscreen.blackscreen_check():
+            elif self.blackscreen.check_blackscreen():
                 self.blackscreen.run_blackscreen_cal_time()
                 break
             elif self.img.on_main_interface(check_list=[self.img.main_ui, self.img.finish2_ui, self.img.finish2_1_ui, self.img.finish2_2_ui, self.img.finish3_ui], threshold=threshold):

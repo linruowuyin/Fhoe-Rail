@@ -1,10 +1,11 @@
 import time
-import win32gui
-import win32con
-import win32api
 
 import pyautogui
+import win32api
+import win32con
+import win32gui
 
+from utils.exceptions import CustomException
 from utils.log import log
 from utils.switch_window import switch_window
 
@@ -47,7 +48,7 @@ class Window:
                 log.info(f"初始化失败，重试中... 错误: {e}")
                 time.sleep(2)
         else:
-            raise Exception("无法初始化窗口对象，已达到最大重试次数")
+            raise CustomException("无法初始化窗口对象，已达到最大重试次数")
 
     @staticmethod
     def is_target_window(window):
@@ -77,7 +78,7 @@ class Window:
     def is_fullscreen(hwnd):
         """检测窗口是否处于全屏状态"""
         style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-        return not (style & win32con.WS_OVERLAPPEDWINDOW)
+        return not style & win32con.WS_OVERLAPPEDWINDOW
 
     def get_hwnd_title(self, hwnd_max_retries=10) -> str:
         """获取窗口标题"""
@@ -93,7 +94,7 @@ class Window:
                 log.info(f'查找窗口失败，{e}')
                 time.sleep(2)
 
-        raise Exception("无法找到窗口，已达到最大重试次数")
+        raise CustomException("无法找到窗口，已达到最大重试次数")
 
     def get_hwnd(self) -> str:
         """获取窗口句柄"""

@@ -1,22 +1,22 @@
 import random
 import time
-
 from datetime import datetime
-import win32api
-import win32con
+
 import cv2
 import numpy as np
 import pyautogui
-
+import win32api
+import win32con
 from pynput.keyboard import Controller as KeyboardController
 from pynput.keyboard import Key as KeyboardKey
 
-from utils.mouse_event import MouseEvent
-from utils.log import log
 from utils.config import ConfigurationManager
-from utils.keyboard_event import KeyboardEvent
-from utils.img import Img
 from utils.exceptions import CustomException
+from utils.img import Img
+from utils.keyboard_event import KeyboardEvent
+from utils.log import log
+from utils.mouse_event import MouseEvent
+
 
 class Handle:
     def __init__(self):
@@ -39,7 +39,7 @@ class Handle:
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<3秒的计数
         self.error_fight_threshold = 3  # 异常战斗为战斗时间<3秒
-        
+
         self.multi_config = 1.0
 
         self.arrow_0 = cv2.imread("./picture/screenshot_arrow.png")
@@ -713,7 +713,7 @@ class Handle:
         first_auto_check = False
         screenshot_auto_check = None
         while True:
-            result = self.img.scan_screenshot(self.main_ui)
+            result = self.img.scan_screenshot(self.img.main_ui)
             elapsed_time = time.time() - start_time
             if result["max_val"] > 0.92:
                 points = self.img.img_center_point(
@@ -754,7 +754,7 @@ class Handle:
                             offset=(40, 20, -1725, -800))
                 if elapsed_time > 15:
                     if auto_check_cnt == 0:
-                        first_auto_check = self.on_interface(check_list=[
+                        first_auto_check = self.img.on_interface(check_list=[
                                                              screenshot_auto_check], timeout=1, threshold=0.97, offset=(40, 20, -1725, -800), allow_log=False)
                         auto_check_cnt += 1
                     if elapsed_time > 20 and first_auto_check and auto_check_cnt == 1:

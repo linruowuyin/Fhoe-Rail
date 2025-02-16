@@ -1,18 +1,19 @@
-import time
 import datetime
+import time
+
 import cv2 as cv
 import pyautogui
 
+from utils.blackscreen import BlackScreen
 from utils.calculated import Calculated
 from utils.config import ConfigurationManager
-from utils.log import log, webhook_and_log
-from utils.time_utils import TimeUtils
-from utils.map_info import MapInfo
+from utils.handle import Handle
 from utils.img import Img
+from utils.log import log, webhook_and_log
+from utils.map_info import MapInfo
 from utils.monthly_pass import MonthlyPass
 from utils.mouse_event import MouseEvent
-from utils.handle import Handle
-from utils.blackscreen import BlackScreen
+from utils.time_utils import TimeUtils
 
 
 class Map:
@@ -258,7 +259,7 @@ class Map:
                     key, 0.97, retry_in_map=self.allow_retry_in_map_switch)
                 orientation_delay = min(orientation_delay, 4)
                 time.sleep(orientation_delay)
-                if self.blackscreen.blackscreen_check():
+                if self.blackscreen.check_blackscreen():
                     pyautogui.press('esc')
                     time.sleep(2)
                     orientation_delay += 0.5
@@ -277,7 +278,7 @@ class Map:
                 img = cv.imread("./picture/kaituoli_1.png")
                 delay_time = 0.5
                 while not self.img.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580, 0, 0, -910), allow_log=False):
-                    if self.blackscreen.blackscreen_check():
+                    if self.blackscreen.check_blackscreen():
                         self.planet = key
                         break
                     delay_time += 0.1

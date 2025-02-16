@@ -1,4 +1,3 @@
-import ctypes
 import datetime
 import os
 import subprocess
@@ -8,13 +7,11 @@ import traceback
 
 import pyuac
 
-from get_width import check_mult_screen, get_width
+from get_width import check_mult_screen
 from utils.config import ConfigurationManager
-from utils.exceptions import CustomException
-from utils.log import fetch_php_file_content, log, webhook_and_log
+from utils.log import fetch_php_file_content, log
 from utils.map import Map
 from utils.map_selector import choose_map, choose_map_debug
-from utils.setting import Setting
 from utils.switch_window import switch_window
 from utils.time_utils import TimeUtils
 
@@ -36,8 +33,8 @@ def print_version():
         ConfigurationManager.modify_json_file(
             ConfigurationManager.CONFIG_FILE_NAME, "version", version)
         cfg.config_file.get("version", "")
-    except:
-        pass
+    except (FileNotFoundError, IOError) as e:
+        log.error(f"版本文件读取错误: {e}")
 
 
 def print_info():
@@ -52,8 +49,8 @@ def print_info():
 
 
 def print_end():
-    log.info(f"结束运行")
-    log.info(f"=" * 60)
+    log.info("结束运行")
+    log.info("=" * 60)
 
 
 def main():
@@ -95,7 +92,7 @@ def main():
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         start_time = datetime.datetime.now()
         map_instance.auto_map(start, start_in_mid, dev=dev)  # 读取配置
-        start_map = f"1-1_0"
+        start_map = "1-1_0"
         allow_run_again = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
             "allow_run_again", False
         )
@@ -109,9 +106,9 @@ def main():
         if cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
             "allow_run_next_day", False
         ):
-            log.info(f"开始执行跨日连锄")
+            log.info("开始执行跨日连锄")
             if time_mgr.has_crossed_4am(start=start_time, end=end_time):
-                log.info(f"检测到换日，即将从头开锄")
+                log.info("检测到换日，即将从头开锄")
                 map_instance.auto_map(start_map, start_in_mid, dev=dev)
             else:
                 map_instance.calculated.back_to_main(delay=2.0)
@@ -130,7 +127,7 @@ def main():
                     time.sleep(wait_time)
                     map_instance.auto_map(start_map, start_in_mid, dev=dev)
                 else:
-                    log.info(f"等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
+                    log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
         # shutdown_computer(shutdown_type)
         if dev:  # 开发者模式自动重选地图
@@ -175,5 +172,7 @@ if __name__ == "__main__":
     except NameError as e:
         print(traceback.format_exc())
         print("请重新运行")
-    except:
+    except Exception as e:
+        log.error(traceback.format_exc())
+    except BaseException as e:
         log.error(traceback.format_exc())

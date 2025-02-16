@@ -13,7 +13,20 @@ from utils.window import Window
 
 
 class MouseEvent:
+    _instance = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._initialized = False
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+
         self.img = Img()
         self.window = Window()
         self.cfg = ConfigurationManager()
@@ -24,8 +37,8 @@ class MouseEvent:
             self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0
             log.debug(f"scale:{self.scale}")
         except Exception:
-            log.info('DPI获取失败')
             self.scale = 1.0
+            log.info(f'DPI获取失败，使用默认比例scale:{self.scale}')
 
     def click(self, points, slot=0.0, clicks=1, delay=0.05):
         """
