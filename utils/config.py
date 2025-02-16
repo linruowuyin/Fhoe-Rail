@@ -246,7 +246,7 @@ class ConfigurationManager:
     @classmethod
     def main_start_rewrite(cls):
         """写入需要询问的配置"""
-        from .setting import Setting
+        from utils.setting import Setting
         Setting().set_config(slot="start_rewrite")
         cls.ensure_config_complete()
 

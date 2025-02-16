@@ -29,10 +29,10 @@ class MonthlyPass:
         self.refresh_minute = self.cfg.config_file.get("refresh_minute", 0)
 
         # 状态管理
-        self.next_check_time: Optional[datetime] = None
-        self.last_check_time: Optional[datetime] = None
-        self.monthly_pass_status: Optional[int] = None
-        self.have_monthly_pass = False
+        self.next_check_time: Optional[datetime] = None  # 下次检查时间
+        self.last_check_time: Optional[datetime] = None  # 月卡检测时间
+        self.monthly_pass_status: Optional[int] = None  # 月卡状态，0未检测，1有月卡并领取，2无月卡，3找不到与月卡图片相符的图
+        self.have_monthly_pass = False  # 标志是否领取完月卡
 
     @staticmethod
     def _calculate_next_check(base_time: datetime, hour: int, minute: int) -> datetime:
@@ -79,11 +79,11 @@ class MonthlyPass:
 
         # 计算正数时间差
         delta = target_time - current
-        log.info(f"当前时间：{current}，下一个目标时间：{target_time}，时间差：{delta}")
+        # log.info(f"当前时间：{current}，下一个目标时间：{target_time}，时间差：{delta}")
 
         # 判断剩余时间是否小于等待间隔
         need_wait = delta < self.WAIT_INTERVAL
-        log.info(f"是否需要等待：{need_wait}")
+        # log.info(f"是否需要等待：{need_wait}")
         return need_wait
 
     def _wait_until_refresh_time(self):

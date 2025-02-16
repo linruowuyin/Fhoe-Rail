@@ -18,8 +18,6 @@ from loguru import logger
 from utils.requests import post
 
 
-
-
 def get_ver():
     from utils.config import ConfigurationManager
     cfg = ConfigurationManager()
@@ -71,7 +69,7 @@ def webhook_and_log(message):
     if url == "" or url is None:
         return
     try:
-        requests.post(url, json={"content": message})
+        post(url, json={"content": message})
     except Exception as e:
         log.error(f"Webhook发送失败: {e}")
 

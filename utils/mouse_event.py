@@ -1,11 +1,12 @@
+import ctypes
 import time
 
+import cv2
+import pyautogui
 import win32api
 import win32con
-import pyautogui
-import cv2
 
-
+from utils.config import ConfigurationManager
 from utils.img import Img
 from utils.log import log
 from utils.window import Window
@@ -15,7 +16,16 @@ class MouseEvent:
     def __init__(self):
         self.img = Img()
         self.window = Window()
+        self.cfg = ConfigurationManager()
+
         self.img_search_val_dict = {}  # 图片匹配值
+        self.multi_num = 1
+        try:
+            self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0
+            log.debug(f"scale:{self.scale}")
+        except Exception:
+            log.info('DPI获取失败')
+            self.scale = 1.0
 
     def click(self, points, slot=0.0, clicks=1, delay=0.05):
         """
@@ -206,3 +216,35 @@ class MouseEvent:
                 win32api.keybd_event(
                     win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP | win32con.KEYEVENTF_EXTENDEDKEY, 0)
             time.sleep(0.1)
+
+    def mouse_move(self, x, fine=1, align=False):
+        """
+        说明：
+            视角转动x度
+        参数：
+            :param x: 转动角度
+            :param fine: 精细度
+            :param align: 是否对齐
+        """
+        if x > 30 // fine:
+            y = 30 // fine
+        elif x < -30 // fine:
+            y = -30 // fine
+        else:
+            y = x
+        if align:
+            dx = int(16.5 * y * 1 * self.scale)
+            log.debug(f"dx1:{dx}")
+        else:
+            self.multi_num = self.get_multi_num()
+            dx = int(16.5 * y * self.multi_num * self.scale)
+            log.debug(f"dx2:{dx}")
+        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, dx, 0)  # 进行视角移动
+        time.sleep(0.2 * fine)
+        if x != y:
+            self.mouse_move(x - y, fine, align)
+
+    def get_multi_num(self) -> float:
+        """获取视角旋转偏移参数"""
+        self.multi_num = float(self.cfg.config_file.get("angle", 1))
+        return self.multi_num

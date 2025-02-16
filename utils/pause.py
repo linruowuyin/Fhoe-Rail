@@ -1,13 +1,16 @@
 import threading
-import keyboard
-import cv2 as cv
 from typing import Union
-from .log import log
+
+import keyboard
+import cv2
+
+from utils.log import log
+
 
 class Pause:
     def __init__(self, dev=False):
         self.dev = dev
-        
+
         self.pause_event = threading.Event()
         self.last_key_pressed = None  # 记录最后按下的按键
         self.pause_event.clear()
@@ -21,7 +24,7 @@ class Pause:
             log.info("检测到按下'F7'，即将继续")
             self.pause_event.clear()
             self.last_key_pressed = 'F7'
-            
+
     def toggle_pause(self, event):
         if self.pause_event.is_set():
             log.info("检测到按下'F8'，当前已在暂停，无操作")
@@ -38,7 +41,7 @@ class Pause:
             log.info("检测到按下'F9'，即将重新传送至地图")
             self.pause_event.clear()
             self.last_key_pressed = 'F9'
-            
+
     def continue_new_map(self, event):
         if not self.dev:
             return
@@ -46,7 +49,7 @@ class Pause:
             log.info("检测到按下'F10'，即将重跑map")
             self.pause_event.clear()
             self.last_key_pressed = 'F10'
-    
+
     def _show_img(self, img: str):
         """展示图片
 
@@ -54,11 +57,11 @@ class Pause:
             img (str): 图片地址
         """
         log.info(f"展示图片：{img}")
-        image = cv.imread(img)
+        image = cv2.imread(img)
         if image is not None:
-            cv.imshow('temp_point', image)
+            cv2.imshow('temp_point', image)
             while self.pause_event.is_set():
-                cv.waitKey(1)
+                cv2.waitKey(1)
 
     def check_pause(self, dev: bool, last_point: str) -> Union[str, bool]:
         """检查是否暂停，暂停情况下返回取消暂停使用的按键
@@ -79,7 +82,7 @@ class Pause:
                 show = True
                 self._show_img(last_point)
         if press:
-            cv.destroyAllWindows()
+            cv2.destroyAllWindows()
             return self.last_key_pressed
         else:
             return False

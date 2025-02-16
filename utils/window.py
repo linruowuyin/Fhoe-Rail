@@ -2,29 +2,46 @@ import time
 import win32gui
 import win32con
 import win32api
+
 import pyautogui
-from .log import log
-from .switch_window import switch_window
+
+from utils.log import log
+from utils.switch_window import switch_window
 
 
 class Window:
+    _instance = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._initialized = False
+        return cls._instance
+
     def __init__(self, max_retries=3):
         """
         初始化窗口对象，确保 hwnd 可用
         :param max_retries: 最大重试次数
         """
+        if self._initialized:
+            return
+        self._initialized = True
+
         self.title = None
         self.hwnd = None
         self.client = None
         self.winrect = ()  # 截图窗口范围
-
         # 强制初始化 hwnd
         for _ in range(max_retries):
             try:
                 self.title = self.get_hwnd_title()
+                log.info(f"窗口标题: {self.title}")
                 self.hwnd = self.get_hwnd()
+                log.info(f"窗口句柄: {self.hwnd}")
                 if self.hwnd:
                     self.client = self._get_client(self.title)
+                    log.info(f"客户端类型: {self.client}")
                     break
             except Exception as e:
                 log.info(f"初始化失败，重试中... 错误: {e}")
@@ -115,11 +132,10 @@ class Window:
                     return True
                 else:
                     cnt += 1
-            else:
-                # 等待用户输入回车键继续
-                input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
-                time.sleep(1)
-                return self.check_window_visibility(depth + 1)
+            # 等待用户输入回车键继续
+            input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
+            time.sleep(1)
+            return self.check_window_visibility(depth + 1)
 
     def get_rect(self, hwnd=None):
         """
@@ -129,7 +145,7 @@ class Window:
             if self.hwnd is None:
                 self.get_hwnd()
             hwnd = self.hwnd
-        
+
         if self.client == "云游戏":
             # 全屏模式特殊处理
             self.winrect = self._get_fullscreen_rect(hwnd)
@@ -145,11 +161,12 @@ class Window:
         left, top, right, bottom = win32gui.GetWindowRect(hwnd)
         window_center_x = (left + right) // 2
         window_center_y = (top + bottom) // 2
-        
+
         # 获取窗口所在的显示器
-        monitor_handle = win32api.MonitorFromPoint((window_center_x, window_center_y), win32con.MONITOR_DEFAULTTONEAREST)
+        monitor_handle = win32api.MonitorFromPoint(
+            (window_center_x, window_center_y), win32con.MONITOR_DEFAULTTONEAREST)
         monitor_info = win32api.GetMonitorInfo(monitor_handle)
-        
+
         # 获取显示器的全屏大小
         monitor_rect = monitor_info["Monitor"]
         # log.info(f"窗口所在显示器的全屏大小: {monitor_rect}")
@@ -165,7 +182,8 @@ class Window:
         left, top, right, bottom = win32gui.GetClientRect(hwnd)
         pt = win32gui.ClientToScreen(hwnd, (left, top))
         rect = (pt[0], pt[1], pt[0] + (right - left), pt[1] + (bottom - top))
-        log.info(f"窗口矩形区域: {rect}")
-        
+
+        # log.info(f"窗口矩形区域: {rect}")
+
         # 返回普通窗口的矩形区域
         return rect

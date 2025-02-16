@@ -21,6 +21,8 @@ from pynput.mouse import Controller as mouseController
 from config import ConfigurationManager
 
 cfg = ConfigurationManager()
+
+
 def timestamped_print(*args, **kwargs):
     currentDT = datetime.now().strftime('%H:%M:%S')
     builtins.print(str(currentDT), *args, **kwargs)
@@ -29,6 +31,8 @@ def timestamped_print(*args, **kwargs):
 print = timestamped_print
 
 # 获取管理员权限
+
+
 def run_as_admin():
     try:
         # 检查是否已经有管理员权限
@@ -36,11 +40,13 @@ def run_as_admin():
             return
         # 如果没有管理员权限，则使用管理员权限重新启动脚本
         script_path = os.path.abspath(sys.argv[0])
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, script_path, None, 1)
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, script_path, None, 1)
         return  # 修改这里，使用return退出函数而不是sys.exit(0)
     except Exception as e:
         print(f"Failed to run as admin: {e}")
         sys.exit(1)
+
 
 # 在这里运行获取管理员权限的函数
 run_as_admin()
@@ -94,18 +100,20 @@ def on_press(key):
                 print("捕捉按键按下:", key.char, time.time())
     except AttributeError:
         pass
-    
+
     # 检查是否按下空格键
     if key == keyboard.Key.space:
         save_mouse_move_by_key()
-        event_list.append({'key': 'space', 'time_sleep': time.time() - last_time})
+        event_list.append(
+            {'key': 'space', 'time_sleep': time.time() - last_time})
         last_time = time.time()
         print("捕捉: space")
 
     # 检查是否按下Esc键
     if key == keyboard.Key.esc:
         save_mouse_move_by_key()
-        event_list.append({'key': 'esc', 'time_sleep': time.time() - last_time})
+        event_list.append(
+            {'key': 'esc', 'time_sleep': time.time() - last_time})
         last_time = time.time()
         print("捕捉: esc")
 
@@ -117,7 +125,7 @@ def on_release(key):
         if key.char in key_list and key.char in key_down_time:
             event_list.append(
                 {'key': key.char, 'time_sleep': key_down_time[key.char] - last_time,
-                 'duration': round(time.time() - key_down_time[key.char], 2)}) # Round the duration to 2 decimal places
+                 'duration': round(time.time() - key_down_time[key.char], 2)})  # Round the duration to 2 decimal places
             last_time = time.time()
             del key_down_time[key.char]
             if debug_mode:
@@ -135,7 +143,7 @@ def on_release(key):
         dx = int(x * 1295 / real_width)
         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, dx, 0)  # 进行视角移动
         mouse_move_pos_list.append(
-            {"mouse_move_dxy": (x, 0), "time_sleep": round(current_time - last_time, 2)}) # Round the time_sleep to 2 decimal places
+            {"mouse_move_dxy": (x, 0), "time_sleep": round(current_time - last_time, 2)})  # Round the time_sleep to 2 decimal places
         last_time = current_time
         if debug_mode:
             print("捕捉M:", "mouse_move_dxy", (x, 0), "MExec:", dx)
@@ -144,7 +152,7 @@ def on_release(key):
         dx = int(x * 1295 / real_width)
         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, dx, 0)  # 进行视角移动
         mouse_move_pos_list.append(
-            {"mouse_move_dxy": (x, 0), "time_sleep": round(current_time - last_time, 2)}) # Round the time_sleep to 2 decimal places
+            {"mouse_move_dxy": (x, 0), "time_sleep": round(current_time - last_time, 2)})  # Round the time_sleep to 2 decimal places
         last_time = current_time
         if debug_mode:
             print("捕捉M:", "mouse_move_dxy", (x, 0), "MExec:", dx)
@@ -162,7 +170,7 @@ def on_click(x, y, button, pressed):
         global last_time
         if pressed:
             event_list.append(
-                {'key': 'click', 'time_sleep': round(time.time() - last_time, 2)}) # Round the time_sleep to 2 decimal places
+                {'key': 'click', 'time_sleep': round(time.time() - last_time, 2)})  # Round the time_sleep to 2 decimal places
             print("捕捉:", event_list[-1])
     else:
         pass
@@ -178,8 +186,10 @@ def save_mouse_move_by_key():
             mouse_dx += element["mouse_move_dxy"][0]
             mouse_dy += element["mouse_move_dxy"][1]
         event_list.append(
-            {"mouse_move_dxy": (mouse_dx, mouse_dy), "time_sleep": round(element["time_sleep"], 2)}) # Round the time_sleep to 2 decimal places
-        print("视角相对距离计算完成:", mouse_dx, mouse_dy, round(element["time_sleep"], 2)) # Round the time_sleep to 2 decimal places
+            {"mouse_move_dxy": (mouse_dx, mouse_dy), "time_sleep": round(element["time_sleep"], 2)})  # Round the time_sleep to 2 decimal places
+        # Round the time_sleep to 2 decimal places
+        print("视角相对距离计算完成:", mouse_dx, mouse_dy,
+              round(element["time_sleep"], 2))
     mouse_move_pos_list.clear()
 
 
@@ -204,16 +214,16 @@ def save_json():
             elif element_save['key'] == "f":
                 normal_save_dict["map"].append({"f": 15})  # F交互，默认15秒
             else:
-                key_duration = element_save.get('duration', 1)  # 获取按键持续时间，默认为1秒
+                key_duration = element_save.get(
+                    'duration', 1)  # 获取按键持续时间，默认为1秒
                 normal_save_dict["map"].append(
                     {element_save['key']: round(key_duration, 2)})  # Round the duration to 2 decimal places
         elif 'mouse_move_dxy' in element_save:
             normal_save_dict["map"].append(
-                {"mouse_move": round(element_save['mouse_move_dxy'][0], 2)}) # Round the mouse_move to 2 decimal places
+                {"mouse_move": round(element_save['mouse_move_dxy'][0], 2)})  # Round the mouse_move to 2 decimal places
 
     with open(f'output{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.json', 'wb') as f:
         f.write(orjson.dumps(normal_save_dict, option=orjson.OPT_INDENT_2))
-
 
 
 mouse_listener = mouse.Listener(on_click=on_click)  # , on_move=on_move

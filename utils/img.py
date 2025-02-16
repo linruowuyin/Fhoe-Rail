@@ -14,6 +14,19 @@ class Img:
         self.temp_screenshot = (0, 0, 0, 0, 0)  # 初始化临时截图
         self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
 
+        # 识别图片初始化
+        self.main_ui = cv2.imread("./picture/finish_fighting.png")
+        self.doubt_ui = cv2.imread("./picture/doubt.png")
+        self.warn_ui = cv2.imread("./picture/warn.png")
+        self.finish2_ui = cv2.imread("./picture/finish_fighting2.png")
+        self.finish2_1_ui = cv2.imread("./picture/finish_fighting2_1.png")
+        self.finish2_2_ui = cv2.imread("./picture/finish_fighting2_2.png")
+        self.finish3_ui = cv2.imread("./picture/finish_fighting3.png")
+        self.finish4_ui = cv2.imread("./picture/finish_fighting4.png")
+        self.finish5_ui = cv2.imread("./picture/finish_fighting5.png")
+        self.battle_esc_check = cv2.imread("./picture/battle_esc_check.png")
+        self.switch_run = cv2.imread("./picture/switch_run.png")
+
     @staticmethod
     def get_img(img_path):
         """
@@ -201,3 +214,84 @@ class Img:
             return True
         else:
             return False
+
+    def on_main_interface(self, check_list=None, timeout=60.0, threshold=0.9, offset=(0, 0, 0, 0), allow_log=True):
+        """
+        说明：
+            检测主页面
+        参数：
+            :param check_list:检测图片列表，默认检测左上角地图的灯泡，遍历检测
+            :param timeout:超时时间（秒），超时后返回False
+            :param threshold:识别阈值，默认0.9
+        返回：
+            是否在主界面
+        """
+        if check_list is None:
+            check_list = [self.main_ui]
+            offset = (0, 0, -1630, -800)
+        interface_desc = '游戏主界面，非战斗/传送/黑屏状态'
+
+        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold, offset=offset, allow_log=allow_log)
+
+    def on_interface(self, check_list=None, timeout=60.0, interface_desc='', threshold=0.9, offset=(0, 0, 0, 0), allow_log=True):
+        """
+        说明：
+            检测check_list中的图片是否在某个页面
+        参数：
+            :param check_list:检测图片列表，默认为检测[self.main_ui]主界面左上角灯泡
+            :param timeout:超时时间（秒），超时后返回False
+            :param interface_desc:界面名称或说明，用于日志输出
+        返回：
+            是否在check_list存在的界面
+        """
+        if check_list is None:
+            check_list = [self.main_ui]
+
+        start_time = time.time()
+        temp_max_val = []
+
+        while True:
+            for index, img in enumerate(check_list):
+                result = self.scan_screenshot(img, offset=offset)
+                if result["max_val"] > threshold:
+                    if allow_log:
+                        log.info(
+                            f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
+                        log.info(
+                            f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
+                    return True
+                else:
+                    temp_max_val.append(result['max_val'])
+                    time.sleep(0.2)
+
+            if time.time() - start_time >= timeout:
+                if allow_log:
+                    log.info(
+                        f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
+                return False
+
+    def image_rotate(self, src, rotate=0):
+        """
+        图像旋转（中心旋转）
+        参数：
+            :param src: 源图像
+            :param rotate: 旋转角度
+        """
+        h, w, _ = src.shape
+        m = self.handle_rotate_val(w // 2, h // 2, rotate)
+        # M = cv2.getRotationMatrix2D((w // 2, h // 2), rotate, 1.0)
+        img = cv2.warpAffine(src, m, (w, h), flags=cv2.INTER_LINEAR)
+        return img
+
+    def handle_rotate_val(self, x, y, rotate):
+        """
+        计算旋转变换矩阵
+        """
+        cos_val = np.cos(np.deg2rad(rotate))
+        sin_val = np.sin(np.deg2rad(rotate))
+        return np.float32(
+            [
+                [cos_val, sin_val, x * (1 - cos_val) - y * sin_val],
+                [-sin_val, cos_val, x * sin_val + y * (1 - cos_val)],
+            ]
+        )

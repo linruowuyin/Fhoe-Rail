@@ -1,23 +1,26 @@
-import os
-import sys
-import traceback
-import time
 import ctypes
-import pyuac
 import datetime
+import os
 import subprocess
-from utils.log import log, webhook_and_log, fetch_php_file_content
-from get_width import get_width, check_mult_screen
+import sys
+import time
+import traceback
+
+import pyuac
+
+from get_width import check_mult_screen, get_width
 from utils.config import ConfigurationManager
-from utils.map import Map
-from utils.time_utils import TimeUtils
-from utils.switch_window import switch_window
 from utils.exceptions import CustomException
+from utils.log import fetch_php_file_content, log, webhook_and_log
+from utils.map import Map
 from utils.map_selector import choose_map, choose_map_debug
 from utils.setting import Setting
+from utils.switch_window import switch_window
+from utils.time_utils import TimeUtils
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
+
 
 def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
@@ -30,10 +33,9 @@ def print_version():
             version = file.read().strip()
             log.info(f"当前版本：{version}")
         log.info(f"{cfg.CONFIG_FILE_NAME}")
-        ConfigurationManager.modify_json_file(ConfigurationManager.CONFIG_FILE_NAME, "version", version)
-        from utils.calculated import Calculated
-
-        Calculated.config_file.get("version", "")
+        ConfigurationManager.modify_json_file(
+            ConfigurationManager.CONFIG_FILE_NAME, "version", version)
+        cfg.config_file.get("version", "")
     except:
         pass
 
@@ -44,8 +46,8 @@ def print_info():
     filtered_content = filter_content(php_content, "舔狗日记")  # 过滤关键词
     log.info("\n" + filtered_content)  # 将过滤后的内容输出到日志
     log.info("")  # 添加一行空行
-    log.info(f"=" * 60)
-    log.info(f"开始运行")
+    log.info("=" * 60)
+    log.info("开始运行")
     print_version()
 
 
@@ -136,6 +138,7 @@ def main():
     else:
         log.info("前面的区域，以后再来探索吧")
         main()
+
 
 def shutdown_computer(shutdown_type):
     if shutdown_type == 0:

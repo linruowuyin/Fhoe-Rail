@@ -11,6 +11,8 @@ from utils.map_info import MapInfo
 from utils.img import Img
 from utils.monthly_pass import MonthlyPass
 from utils.mouse_event import MouseEvent
+from utils.handle import Handle
+from utils.blackscreen import BlackScreen
 
 
 class Map:
@@ -21,6 +23,9 @@ class Map:
         self.img = Img()
         self.monthly_pass = MonthlyPass()
         self.mouse_event = MouseEvent()
+        self.handle = Handle()
+        self.blackscreen = BlackScreen()
+
         self.open_map_btn = "m"
         self.map_list = MapInfo.read_maps(
             self.cfg.config_file.get("map_version", "default"))[0]
@@ -58,7 +63,7 @@ class Map:
                 break
             else:
                 attempts += 1
-                self.calculated.back_to_main()  # 确保返回主界面以重试
+                self.handle.back_to_main()  # 确保返回主界面以重试
 
     def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60, offset=None):
         """
@@ -169,13 +174,14 @@ class Map:
         return map_list
 
     def reset_round_count(self):
-        """重置该锄地轮次相关的计数
         """
-        self.calculated.total_fight_time = 0
-        self.calculated.tatol_save_time = 0
-        self.calculated.total_fight_cnt = 0
-        self.calculated.total_no_fight_cnt = 0
-        self.calculated.auto_final_fight_e_cnt = 0
+        重置该锄地轮次相关的计数
+        """
+        self.handle.total_fight_time = 0
+        self.handle.tatol_save_time = 0
+        self.handle.total_fight_cnt = 0
+        self.handle.total_no_fight_cnt = 0
+        self.handle.auto_final_fight_e_cnt = 0
 
     def allow_map_drag(self, start):
         self.allow_drap_map_switch = bool(start.get("drag", False))  # 默认禁止拖动地图
@@ -230,7 +236,7 @@ class Map:
         """
         if not self.cfg.config_file.get("angle_set", False) or self.cfg.config_file.get("angle", "1.0") == "1.0":
             self.monthly_pass.monthly_pass_check()  # 月卡检查
-            self.calculated.back_to_main()
+            self.handle.back_to_main()
             time.sleep(1)
             self.calculated.set_angle()
 
@@ -252,7 +258,7 @@ class Map:
                     key, 0.97, retry_in_map=self.allow_retry_in_map_switch)
                 orientation_delay = min(orientation_delay, 4)
                 time.sleep(orientation_delay)
-                if self.calculated.blackscreen_check():
+                if self.blackscreen.blackscreen_check():
                     pyautogui.press('esc')
                     time.sleep(2)
                     orientation_delay += 0.5
@@ -270,8 +276,8 @@ class Map:
                 time.sleep(5)
                 img = cv.imread("./picture/kaituoli_1.png")
                 delay_time = 0.5
-                while not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580, 0, 0, -910), allow_log=False):
-                    if self.calculated.blackscreen_check():
+                while not self.img.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580, 0, 0, -910), allow_log=False):
+                    if self.blackscreen.blackscreen_check():
                         self.planet = key
                         break
                     delay_time += 0.1
@@ -296,7 +302,7 @@ class Map:
         """点击右上角返回
         """
         img = cv.imread("./picture/kaituoli_1.png")
-        if not self.calculated.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580, 0, 0, -910), allow_log=False):
+        if not self.img.on_interface(check_list=[img], timeout=1, interface_desc='星轨航图', threshold=0.97, offset=(1580, 0, 0, -910), allow_log=False):
             self.mouse_event.click_target(key, 0.94, timeout=3, offset=(
                 1660, 100, -40, -910), retry_in_map=False)
         else:
@@ -321,7 +327,7 @@ class Map:
         """
         黄泉e的状态下快速打开地图，采用按下s打断技能并且按下地图键的方式
         """
-        while self.calculated.on_main_interface(timeout=0.0, allow_log=False):
+        while self.img.on_main_interface(timeout=0.0, allow_log=False):
             if time.time() - start_time > 3:
                 return
             if not speed_open:
@@ -441,7 +447,7 @@ class Map:
                         elif key == 'map':
                             self.open_map()
                         elif key == 'main':
-                            self.calculated.back_to_main()  # 检测并回到主界面
+                            self.handle.back_to_main()  # 检测并回到主界面
                             time.sleep(2)
                         elif key == 'b':
                             pyautogui.press('b')
@@ -451,11 +457,11 @@ class Map:
                         elif key == "space":
                             pyautogui.press('space')
                         elif key in ["w", "a", "s", "d"]:
-                            self.calculated.handle_move(value, key)
+                            self.handle.handle_move(value, key)
                         elif key in ["F4"]:
                             pyautogui.press(key)
                         elif key == "f":
-                            self.calculated.handle_f()
+                            self.handle.handle_f(value)
                         elif key == "picture\\max.png":
                             if self.calculated.allow_buy_item():
                                 jump_this_map = False
@@ -507,7 +513,7 @@ class Map:
                                         key, threshold=0.975, offset=self.drag_exact)
                                 if self.allow_scene_drag_switch:
                                     self.find_scene(key, threshold=0.990)
-                                if self.calculated.on_main_interface(timeout=0.5, allow_log=False):
+                                if self.img.on_main_interface(timeout=0.5, allow_log=False):
                                     log.info("执行alt")
                                     self.mouse_event.click_target_with_alt(
                                         key, 0.93, clicks=self.multi_click)
@@ -549,21 +555,21 @@ class Map:
 
                 if index == max_index:
                     total_time = time.time() - total_start_time
-                    total_fight_time = self.calculated.total_fight_time
+                    total_fight_time = self.handle.total_fight_time
                     log.info(
                         f"结束该阶段的锄地，总计用时 {self.time_mgr.format_time(total_time)}，总计战斗用时 {self.time_mgr.format_time(total_fight_time)}")
-                    error_fight_cnt = self.calculated.error_fight_cnt
+                    error_fight_cnt = self.handle.error_fight_cnt
                     log.info(
-                        f"异常战斗识别（战斗时间 < {self.calculated.error_fight_threshold} 秒）次数：{error_fight_cnt}")
+                        f"异常战斗识别（战斗时间 < {self.handle.error_fight_threshold} 秒）次数：{error_fight_cnt}")
                     if error_check_point:
                         log.info("筑梦机关检查不通过，请将机关调整到正确的位置上")
                     log.info(
-                        f"疾跑节约的时间为 {self.time_mgr.format_time(self.calculated.tatol_save_time)}")
-                    log.info(f"战斗次数{self.calculated.total_fight_cnt}")
-                    log.info(f"未战斗次数{self.calculated.total_no_fight_cnt}")
+                        f"疾跑节约的时间为 {self.time_mgr.format_time(self.handle.tatol_save_time)}")
+                    log.info(f"战斗次数{self.handle.total_fight_cnt}")
+                    log.info(f"未战斗次数{self.handle.total_no_fight_cnt}")
                     log.info(
                         "未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
-                    log.info(f"系统卡顿次数：{self.calculated.time_error_cnt}")
+                    log.info(f"系统卡顿次数：{self.handle.time_error_cnt}")
                     log.debug(
                         f"匹配值小于0.99的图片：{self.mouse_event.img_search_val_dict}")
                     log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
