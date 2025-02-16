@@ -2,34 +2,25 @@
     "name": "幽囚狱-4",
     "author": "和月",
     "start": [
-        {
-            "map": 1
-        },
-        {
-            "picture\\map_3-8_point_1.png": 1.5
-        },
-        {
-            "picture\\transfer.png": 1.5
-        }
-    ],
-    "map": [
-        {
-            "s": 5.0
-        },
-        {
-            "fighting": 2
-        },
-        {
-            "d": 2.2
-        },
-        {
-            "s": 4.3
-        },
-        {
-            "d": 2.7
-        },
-        {
-            "fighting": 1
-        }
-    ]
+             {"map": 1},
+             {"picture\\b4floor.png": 1.5},
+             {"picture\\map_3-8_point_3.png": 1.5},
+             {"picture\\transfer.png": 1.5}
+             ],
+    "map":   [
+             {"w": 4.3},
+             {"a": 0.5},
+             {"w": 5.0},
+             {"fighting": 1},
+
+             {"d": 5.0},
+             {"w": 0.5},
+             {"d": 1.2},
+             {"fighting": 1},
+
+
+             {"d": 4.8},
+             {"s": 3.7},
+             {"fighting": 1}
+             ]
 }
