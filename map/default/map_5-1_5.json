@@ -1,0 +1,83 @@
+{
+  "name": "浴血战端-5",
+  "author": "和月",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\fanhui_2.png": 1.5
+    },
+    {
+      "picture\\1floor.png": 1.5
+    },
+    {
+      "picture\\map_5-1_point_2.png": 1.5,
+      "drag": 1,
+      "drag_exact": [
+        4,
+        1,
+        1
+      ]
+    },
+    {
+      "picture\\map_5-1_point_3.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "a": 1.5
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "d": 1.5
+    },
+    {
+      "s": 2.8
+    },
+    {
+      "r": 3.0
+    },
+    {
+      "s": 4.5
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "w": 5.0
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "r": 3.0
+    },
+    {
+      "w": 2.2
+    },
+    {
+      "d": 8.0
+    },
+    {
+      "s": 4.0
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "d": 3.5
+    },
+    {
+      "s": 4.5
+    },
+    {
+      "fighting": 1
+    }
+  ]
+}
