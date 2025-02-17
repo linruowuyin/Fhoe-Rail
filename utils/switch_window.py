@@ -3,24 +3,56 @@ import pyautogui
 from win32com import client
 import time
 import random
+from .log import log
 
-def switch_window(title='崩坏：星穹铁道'):
+# 测试用
+# all_titles = [win.title for win in pyautogui.getAllWindows()]
+# print("当前所有窗口标题:", [t for t in all_titles if t.strip()])
+
+def switch_window():
     lnk_started = False  # 添加一个标志，用于记录lnk文件是否已经启动
     
     while True:
         if not lnk_started:  # 如果lnk文件未启动，继续查找窗口
-            ws = pyautogui.getWindowsWithTitle(title)
+            def is_target_window(w):
+                """智能窗口匹配规则"""
+                # 精确匹配
+                if w.title == '崩坏：星穹铁道':
+                    return True
+                # 模糊匹配网页
+                if '云星穹铁道' in w.title.replace(' ', '').replace('·', ''):
+                    return True
+                return False
 
-            if len(ws) >= 1:
-                for w in ws:
-                    # 避免其他窗口也包含崩坏：星穹铁道，比如正好开着github脚本页面
-                    # print(w.title)
-                    if w.title == title:
-                        client.Dispatch("WScript.Shell").SendKeys('%')
+            all_windows = pyautogui.getAllWindows()
+            for w in all_windows:
+                if is_target_window(w):
+                    log.info(f'激活窗口: {w.title}')
+                    # client.Dispatch("WScript.Shell").SendKeys('%')  # 确保窗口可激活
+                    try:
+                        w.restore()  # 防止最小化状态
+                        # w.maximize() # 最大化窗口确保可见
                         w.activate()
-                        return  # 找到窗口后直接返回函数
+                        # 获取窗口的位置和尺寸
+                        left, top, width, height = w.left, w.top, w.width, w.height
+                        log.info(f'窗口位置和尺寸: {left}, {top}, {width}, {height}')
 
-            print(f'没有找到窗口【{title}】')
+                        # 计算窗口中心坐标
+                        center_x = left + width // 2
+                        center_y = top + height // 2
+
+                        # 移动鼠标到窗口中心
+                        log.info(f'移动鼠标到窗口中心: {center_x}, {center_y}')
+                        pyautogui.moveTo(center_x, center_y)
+                        return
+                    except Exception as e:
+                        log.info(f'窗口激活失败: {e}')
+                        continue
+            log.debug(f'未找到目标窗口，已扫描{len(all_windows)}个窗口')
+            log.debug('当前存在的窗口标题：')
+            for w in pyautogui.getAllWindows():
+                if w.title.strip():
+                    log.debug(f' - "{w.title}"')
         
         # 尝试查找并启动lnk文件
         lnk_files = find_lnk_files("./map")  # 指定lnk文件所在的目录

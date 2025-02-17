@@ -1,0 +1,69 @@
+{
+  "name": "浴血战端-2",
+  "author": "和月",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\2floor.png": 1.5
+    },
+    {
+      "picture\\map_5-1_point_1.png": 1.5,
+      "drag": 1
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "s": 5.8
+    },
+    {
+      "w": 1.0
+    },
+    {
+      "a": 2.0
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "a": 12.0
+    },
+    {
+      "s": 9.0
+    },
+    {
+      "w": 0.7
+    },
+    {
+      "d": 7.7
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "d": 3.5
+    },
+    {
+      "s": 5.5
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "s": 3.5
+    },
+    {
+      "fighting": 1
+    }
+  ]
+}

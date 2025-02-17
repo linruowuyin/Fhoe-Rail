@@ -1,6 +1,6 @@
 {
   "name": "大剧院-1",
-  "author": "smjes3",
+  "author": "smjes3,和月",
   "start": [
     {
       "map": 1
@@ -87,10 +87,16 @@
       "a": 2.8
     },
     {
-      "w": 5
+      "w": 4.5
     },
     {
-      "a": 0.5
+      "a": 1.0
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "view_reset": 0.1
     },
     {
       "fighting": 1

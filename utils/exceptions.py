@@ -8,12 +8,12 @@ Description:
 
 Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
 """
-from .log import log
 import traceback
 
+from utils.log import log
 
-class Exception(Exception):
 
+class CustomException(Exception):
     def __init__(self, message):
         super().__init__(message)
         log.error(message)

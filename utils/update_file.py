@@ -14,10 +14,10 @@ from tqdm import tqdm as tq
 from zipfile import ZipFile, BadZipFile
 from typing import Dict, Optional, Any, Union, Tuple, List
 
-from .log import log
-from .requests import *
-from .exceptions import Exception
-from .config import ConfigurationManager
+from utils.log import log
+from utils.requests import *
+from utils.exceptions import CustomException
+from utils.config import ConfigurationManager
 
 cfg = ConfigurationManager()
 tmp_dir = 'tmp'
@@ -123,9 +123,9 @@ async def update_file(url_proxy: str="",
         os.makedirs(tmp_dir)
     if not os.path.exists(unzip_path):
         os.makedirs(unzip_path)
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, f"{type}_version", "0")
+        ConfigurationManager.modify_json_file(ConfigurationManager.CONFIG_FILE_NAME, f"{type}_version", "0")
     elif rm_all:
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, f"{type}_version", "0")
+        ConfigurationManager.modify_json_file(ConfigurationManager.CONFIG_FILE_NAME, f"{type}_version", "0")
 
     log.info(f'[资源文件更新]正在检查远程版本是否有更新...')
 
@@ -193,7 +193,7 @@ async def update_file(url_proxy: str="",
         log.info(f'[资源文件更新]校验完成, 更新本地{name}文件版本号 {local_version} -> {remote_version}')
 
         # 更新版本号
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, f"{type}_version", remote_version)
+        ConfigurationManager.modify_json_file(ConfigurationManager.CONFIG_FILE_NAME, f"{type}_version", remote_version)
 
         log.info(f'[资源文件更新]删除临时文件{tmp_dir}')
         shutil.rmtree(tmp_dir, ignore_errors=True)

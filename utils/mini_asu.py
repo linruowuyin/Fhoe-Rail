@@ -1,10 +1,12 @@
 import cv2 as cv
 import numpy as np
+
+
 class ASU:
     def __init__(self):
         self.screen = None
         self.rotate = False
-        
+
     # 计算旋转变换矩阵
     def handle_rotate_val(self, x, y, rotate):
         cos_val = np.cos(np.deg2rad(rotate))
@@ -15,17 +17,17 @@ class ASU:
                 [-sin_val, cos_val, x * sin_val + y * (1 - cos_val)],
             ]
         )
-        
+
     # 图像旋转（以任意点为中心旋转）
     def image_rotate(self, src, rotate=0):
         h, w, _ = src.shape
-        M = self.handle_rotate_val(w // 2, h // 2, rotate)
-        img = cv.warpAffine(src, M, (w, h))
+        m = self.handle_rotate_val(w // 2, h // 2, rotate)
+        img = cv.warpAffine(src, m, (w, h))
         return img
-    
+
     # 计算小地图中蓝色箭头的角度
     def get_now_direc(self):
-        loc_scr = self.screen[101:241,94:224]
+        loc_scr = self.screen[101:241, 94:224]
         arrow = "./picture/loc_arrow.jpg"
         arrow = cv.imread(arrow)
         hsv = cv.cvtColor(loc_scr, cv.COLOR_BGR2HSV)  # 转HSV

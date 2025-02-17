@@ -10,28 +10,28 @@ Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
 '''
 import os
 import sys
-import requests
 import datetime
+import requests
+
 from loguru import logger
 
-try:
-    from .requests import post
-except:
-    from requests import post
+from utils.requests import post
 
 
 def get_ver():
-    from .config import ConfigurationManager
+    from utils.config import ConfigurationManager
     cfg = ConfigurationManager()
-    VER = cfg.CONFIG.get("version", "")
-    if VER == "":
+    ver = cfg.config_file.get("version", "")
+    if ver == "":
         month, day, hour, minute = get_folder_modified_time('map')
-        VER = f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
-    return VER
+        ver = f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
+    return ver
+
 
 log = logger
-dir_log = "logs"
-path_log = os.path.join(dir_log, '日志文件.log')
+LOG_DIR = "logs"
+PATH_LOG = os.path.join(LOG_DIR, '日志文件.log')
+
 
 def update_extra(record):
     module = record["module"]
@@ -42,32 +42,37 @@ def update_extra(record):
     record["new_module"] = f"{module}.{function}:{line}"
     record["VER"] = f"{version}"
 
+
 log = logger.patch(update_extra)
-    
+
 logger.remove()
 log.add(sys.stdout, level='INFO', colorize=True,
-            format="{time:HH:mm:ss} - "
-                    "<cyan>{module}.{function}:{line}</cyan> - "+"<cyan>{VER}</cyan> - "
-                    "<level>{message}</level>"
-            )
+        format="{time:HH:mm:ss} - "
+        "<cyan>{module}.{function}:{line}</cyan> - "+"<cyan>{VER}</cyan> - "
+        "<level>{message}</level>"
+        )
 
-log.add(path_log,
-            format="{time:HH:mm:ss} - "
-                    "{level:<6} \t| "
-                    "<cyan>{new_module:<40}</cyan> \t- "+"<cyan>{VER}</cyan> - "+"{message}",
-            rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="7 days")
+log.add(PATH_LOG,
+        format="{time:HH:mm:ss} - "
+        "{level:<6} \t| "
+        "<cyan>{new_module:<40}</cyan> \t- " +
+        "<cyan>{VER}</cyan> - "+"{message}",
+        rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="7 days")
+
 
 def webhook_and_log(message):
     log.info(message)
-    from .config import ConfigurationManager # Circular import
+    from utils.config import ConfigurationManager  # Circular import
     cfg = ConfigurationManager()
-    url = cfg.read_json_file(filename=cfg.CONFIG_FILE_NAME, path=False).get("webhook_url")
-    if url == "" or url == None:
+    url = cfg.read_json_file(
+        filename=cfg.CONFIG_FILE_NAME, path=False).get("webhook_url")
+    if url == "" or url is None:
         return
     try:
         post(url, json={"content": message})
     except Exception as e:
         log.error(f"Webhook发送失败: {e}")
+
 
 def fetch_php_file_content():
     php_urls = [
@@ -87,6 +92,7 @@ def fetch_php_file_content():
 
     return ""
 
+
 def get_folder_modified_time(folder_path):
     """
     获取文件夹的修改时间
@@ -96,13 +102,13 @@ def get_folder_modified_time(folder_path):
     try:
         modified_time = os.path.getmtime(folder_path)
         modified_datetime = datetime.datetime.fromtimestamp(modified_time)
-        
+
         # 提取月、日、时、分
         month = modified_datetime.month
         day = modified_datetime.day
         hour = modified_datetime.hour
         minute = modified_datetime.minute
-        
+
         return month, day, hour, minute
     except Exception as e:
         print(f"Error: {e}")
