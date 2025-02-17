@@ -1,4 +1,6 @@
+import asyncio
 import random
+import threading
 import time
 from datetime import datetime
 
@@ -19,7 +21,19 @@ from utils.mouse_event import MouseEvent
 
 
 class Handle:
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+
         self.mouse_event = MouseEvent()
         self.img = Img()
         self.cfg = ConfigurationManager()
@@ -41,6 +55,9 @@ class Handle:
         self.error_fight_threshold = 3  # 异常战斗为战斗时间<3秒
 
         self.multi_config = 1.0
+
+        self.running = False
+        self.thread = None
 
         self.arrow_0 = cv2.imread("./picture/screenshot_arrow.png")
 
@@ -523,6 +540,7 @@ class Handle:
                 self.move_run_fix(start_time)
                 if time.perf_counter() - start_time > 1:
                     self.enable_run()
+                    self.start_checking()
                     run_in_road = True
                     temp_value = value
                     value = round((value - 1) / 1.53, 4) + 1
@@ -536,6 +554,7 @@ class Handle:
             elif value <= 2:
                 self.move_run_fix(start_time)
                 self.last_step_run = False
+        self.stop_checking()
         temp_time = time.perf_counter() - start_time
         KeyboardController().release(KeyboardKey.shift)
         KeyboardController().release(key)
@@ -568,23 +587,59 @@ class Handle:
                     KeyboardController().press(key)
                     KeyboardController().release(key)
 
-    def enable_run(self):
-        """强制开启疾跑，检查2次"""
+    def is_running(self):
+        """
+        判断是否在疾跑状态
+        """
+        result = self.img.scan_screenshot(
+            self.img.switch_run, (1720, 930, 0, 0))
+        return result['max_val'] > 0.996
 
-        def is_running():
-            result = self.img.scan_screenshot(
-                self.img.switch_run, (1720, 930, 0, 0))
-            return result['max_val'] > 0.996
-        if not is_running():
-            KeyboardController().press(KeyboardKey.shift)
-            log.info("开启疾跑")
-            time.sleep(0.08)
-            if not is_running():
-                log.warning("疾跑未能成功开启，再尝试一次")
+    async def check_running_async(self):
+        """异步检测疾跑状态"""
+        count = 0
+        while self.running and count < 2:
+            await asyncio.sleep(0.12)
+            if not self.is_running():
+                log.warning(f"疾跑未能成功开启，再尝试一次，当前{count + 1}次")
                 KeyboardController().press(KeyboardKey.shift)
                 log.info("开启疾跑")
             else:
                 log.info("疾跑已成功开启")
+                break
+            count += 1
+        self.running = False
+
+    def start_checking(self):
+        """启动检测疾跑任务"""
+        self.running = True
+        self.thread = threading.Thread(
+            target=self._run_async_task, daemon=True)
+        self.thread.start()
+
+    def stop_checking(self):
+        """停止检测疾跑任务"""
+        if not self.running:
+            log.warning("检测任务未运行")
+            return
+        self.running = False
+        if self.thread:
+            self.thread.join()
+            self.thread = None
+        log.info("检测任务已停止")
+
+    def _run_async_task(self):
+        """运行异步任务，处理疾跑状态"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.check_running_async())
+
+    def enable_run(self):
+        """强制开启疾跑"""
+        log.info("调用enable_run")
+        if not self.is_running():
+            KeyboardController().press(KeyboardKey.shift)
+            log.info("开启疾跑")
 
     def move_run_fix(self, start_time, time_limit=0.3):
         '''
@@ -755,7 +810,7 @@ class Handle:
                 if elapsed_time > 15:
                     if auto_check_cnt == 0:
                         first_auto_check = self.img.on_interface(check_list=[
-                                                             screenshot_auto_check], timeout=1, threshold=0.97, offset=(40, 20, -1725, -800), allow_log=False)
+                            screenshot_auto_check], timeout=1, threshold=0.97, offset=(40, 20, -1725, -800), allow_log=False)
                         auto_check_cnt += 1
                     if elapsed_time > 20 and first_auto_check and auto_check_cnt == 1:
                         auto_check_cnt += 1

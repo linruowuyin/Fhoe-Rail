@@ -34,7 +34,7 @@ class MouseEvent:
         self.img_search_val_dict = {}  # 图片匹配值
         self.multi_num = 1
         try:
-            self.scale = ctypes.windll.user32.GetDpiForWindow(self.hwnd) / 96.0
+            self.scale = ctypes.windll.user32.GetDpiForWindow(self.window.hwnd) / 96.0
             log.debug(f"scale:{self.scale}")
         except Exception:
             self.scale = 1.0
