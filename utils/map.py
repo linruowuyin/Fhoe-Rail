@@ -255,7 +255,7 @@ class Map:
             self.monthly_pass.monthly_pass_check()  # 月卡检查
             self.handle.back_to_main()
             time.sleep(1)
-            self.calculated.set_angle()
+            self.handle.set_angle()
 
     def handle_orientation(self, key, map_data):
         """
