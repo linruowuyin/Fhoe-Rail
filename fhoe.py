@@ -11,13 +11,16 @@ from get_width import check_mult_screen
 from utils.config import ConfigurationManager
 from utils.log import fetch_php_file_content, log
 from utils.map import Map
+from utils.map_info import MapInfo
 from utils.map_selector import choose_map, choose_map_debug
+from utils.setting import Setting
 from utils.switch_window import switch_window
 from utils.time_utils import TimeUtils
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
-
+map_info_instance = MapInfo()
+setting = Setting()
 
 def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
@@ -54,32 +57,37 @@ def print_end():
 
 
 def main():
-    map_instance = Map()
+
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
     dev = False  # 初始开发者模式，为否
 
     if len(sys.argv) > 1:
         if sys.argv[1] == "--debug":
             cfg.main_start()
-            start = choose_map_debug(map_instance)
+            start = choose_map_debug(map_info_instance)
         elif sys.argv[1] == "--config":
-            cfg.main_start_rewrite()
-            start = choose_map_debug(map_instance)
+            cfg.main_start_rewrite(setting)
+            start = choose_map_debug(map_info_instance)
         elif sys.argv[1] == "--dev":
             cfg.main_start()
-            start = choose_map_debug(map_instance)
+            start = choose_map_debug(map_info_instance)
             dev = True  # 设置开发者模式
+        elif sys.argv[1] == "--white":
+            cfg.main_start()
+            start = choose_map(map_info_instance)
+            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True)  # 启用一次白名单模式
         else:
             cfg.main_start()
-            start = choose_map(map_instance)
+            start = choose_map(map_info_instance)
     else:
         cfg.main_start()
-        start = choose_map(map_instance)
+        start = choose_map(map_info_instance)
 
     if isinstance(start, tuple):
         start_in_mid, start = start[1], start[0]
 
     if start:
+        map_instance = Map()
         cfg.config_fix()
         log.info(f"config.json:{cfg.load_config()}")
         log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")

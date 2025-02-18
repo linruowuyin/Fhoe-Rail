@@ -38,12 +38,21 @@ echo   [4] 录制
 echo.
 echo   [5] 测试（测图用,F8暂停）
 echo.
+echo   [6] 仅运行白名单地图
+echo.
 
 REM 等待用户输入或超时
 choice /C 123456 /T 30 /D 2 /N >nul
 
 REM 处理用户输入
-if errorlevel 5 (
+if errorlevel 6 (
+    echo.
+    echo   正在启动...
+    python -i -X utf8 fhoe.py --white
+    echo.
+    pause
+    goto :end
+) else if errorlevel 5 (
     echo.
     echo   Tips：按F8暂停，暂停后按F8继续，按F9重新运行当前地图
     python -i -X utf8 fhoe.py --dev

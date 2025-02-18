@@ -3,9 +3,10 @@ from utils.config import ConfigurationManager
 from utils.log import log
 from utils.time_utils import TimeUtils
 from utils.map_info import MapInfo
+from utils.setting import Setting
 
 cfg = ConfigurationManager()
-
+setting = Setting()
 
 def choose_map(map_info: MapInfo):
     map_version = cfg.config_file.get("map_version", "default")
@@ -47,6 +48,7 @@ def _h_main_map(map_info: MapInfo):
         "4 匹诺康尼": "4",
         "5 翁法罗斯": "5",
         "优先星球": "first_map",
+        "仅此次运行白名单地图": "allowlist",
         "[设置]": "option",
         "[定时]": "scheduled",
     }
@@ -57,8 +59,10 @@ def _h_main_map(map_info: MapInfo):
 
     if choice == "优先星球":
         return _h_priority(map_info)
+    elif choice == "仅此次运行白名单地图":
+        return _h_allowlist()
     elif choice == "[设置]":
-        cfg.main_start_rewrite()
+        cfg.main_start_rewrite(setting)
         log.info("设置完成")
         return "back"
     elif choice == "[定时]":
@@ -96,6 +100,14 @@ def _h_priority(map_info: MapInfo):
     ConfigurationManager.modify_json_file(
         ConfigurationManager.CONFIG_FILE_NAME, "main_map", main)
     return (f"{main}-{side}", True)
+
+
+def _h_allowlist():
+    cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True)
+    if cfg.config_file.get("allowlist_map"):
+        return ("1-1_0", False)
+    print(f"请配置allowlist_map的值，当前allowlist_map:{cfg.config_file.get('allowlist_map')}")
+    return "back"
 
 
 def _h_side_map(map_info: MapInfo, main):

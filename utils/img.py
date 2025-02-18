@@ -9,30 +9,55 @@ from utils.window import Window
 
 
 class Img:
-    def __init__(self):
+    def __init__(self, image_paths: dict = None):
         self.window = Window()
         self.temp_screenshot = (0, 0, 0, 0, 0)  # 初始化临时截图
         self.search_img_allow_retry = False  # 初始化查找图片允许重试为不允许
 
-        # 识别图片初始化
-        self.main_ui = cv2.imread("./picture/finish_fighting.png")
-        self.doubt_ui = cv2.imread("./picture/doubt.png")
-        self.warn_ui = cv2.imread("./picture/warn.png")
-        self.finish2_ui = cv2.imread("./picture/finish_fighting2.png")
-        self.finish2_1_ui = cv2.imread("./picture/finish_fighting2_1.png")
-        self.finish2_2_ui = cv2.imread("./picture/finish_fighting2_2.png")
-        self.finish3_ui = cv2.imread("./picture/finish_fighting3.png")
-        self.finish4_ui = cv2.imread("./picture/finish_fighting4.png")
-        self.finish5_ui = cv2.imread("./picture/finish_fighting5.png")
-        self.battle_esc_check = cv2.imread("./picture/battle_esc_check.png")
-        self.switch_run = cv2.imread("./picture/switch_run.png")
+        if image_paths is None:
+            self.image_paths = {
+                "main_ui": "./picture/finish_fighting.png",
+                "doubt_ui": "./picture/doubt.png",
+                "warn_ui": "./picture/warn.png",
+                "finish2_ui": "./picture/finish_fighting2.png",
+                "finish2_1_ui": "./picture/finish_fighting2_1.png",
+                "finish2_2_ui": "./picture/finish_fighting2_2.png",
+                "finish3_ui": "./picture/finish_fighting3.png",
+                "finish4_ui": "./picture/finish_fighting4.png",
+                "finish5_ui": "./picture/finish_fighting5.png",
+                "battle_esc_check": "./picture/battle_esc_check.png",
+                "switch_run": "./picture/switch_run.png",
+            }
+        else:
+            self.image_paths = image_paths
+
+        # 加载所有图片
+        self.load_images()
 
     @staticmethod
     def get_img(img_path):
         """
         获取图片
+        :param img_path: 图片路径
+        :return: 图片数据（numpy 数组），如果加载失败返回 None
         """
-        return cv2.imread(img_path)
+        try:
+            img = cv2.imread(img_path)
+            if img is None:
+                raise FileNotFoundError(f"图片加载失败，路径不存在或文件损坏: {img_path}")
+            return img
+        except Exception as e:
+            log.error(f"加载图片时发生错误: {e}")
+            return None
+
+    def load_images(self):
+        """加载所有图片"""
+        for name, path in self.image_paths.items():
+            img = self.get_img(path)
+            if img is not None:
+                setattr(self, name, img)
+            else:
+                log.warning(f"警告: 图片 {name} 加载失败，路径为 {path}")
 
     def cal_screenshot(self):
         """

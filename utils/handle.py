@@ -620,7 +620,7 @@ class Handle:
     def stop_checking(self):
         """停止检测疾跑任务"""
         if not self.running:
-            log.warning("检测任务未运行")
+            # log.warning("检测任务未运行")
             return
         self.running = False
         if self.thread:
