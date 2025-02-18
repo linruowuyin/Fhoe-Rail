@@ -119,7 +119,7 @@ def main():
                 log.info("检测到换日，即将从头开锄")
                 map_instance.auto_map(start_map, start_in_mid, dev=dev)
             else:
-                map_instance.calculated.back_to_main(delay=2.0)
+                map_instance.handle.back_to_main(delay=2.0)
                 now = datetime.datetime.now()
                 refresh_hour = cfg.config_file.get("refresh_hour", 4)
                 refresh_minute = cfg.config_file.get("refresh_minute", 0)
