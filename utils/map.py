@@ -211,7 +211,8 @@ class Map:
         """检查并跳过非白名单地图"""
         if self.cfg.config_file.get("allowlist_mode_once", False):
             self.allowlist_mode = True
-            self.cfg.modify_json_file(self.cfg.CONFIG_FILE_NAME, "allowlist_mode_once", False)
+            self.cfg.modify_json_file(
+                self.cfg.CONFIG_FILE_NAME, "allowlist_mode_once", False)
         if self.cfg.config_file.get("allowlist_mode", False):
             self.allowlist_mode = True
         if self.allowlist_mode:
@@ -589,6 +590,7 @@ class Map:
                     log.info(
                         "未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
                     log.info(f"系统卡顿次数：{self.handle.time_error_cnt}")
+                    log.info(f"奇巧零食使用次数：{self.handle.snack_used}")
                     log.debug(
                         f"匹配值小于0.99的图片：{self.mouse_event.img_search_val_dict}")
                     log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
