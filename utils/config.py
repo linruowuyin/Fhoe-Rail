@@ -159,6 +159,9 @@ class ConfigurationManager:
             "refresh_hour": 4,
             "refresh_minute": 0,
             "forbid_map": [],
+            "allowlist_mode": False,
+            "allowlist_mode_once": False,
+            "allowlist_map": [],
             "angle": "1.0",
             "angle_set": False
         }
@@ -198,6 +201,7 @@ class ConfigurationManager:
         写入未找到配置的默认值
         """
         if not cls.config_issubset():
+            print("配置文件不完整，正在写入默认配置")
             all_keys = cls.config_all_keys()
             existing_keys = ConfigurationManager.read_json_file(
                 cls.CONFIG_FILE_NAME, False).keys()
@@ -244,10 +248,10 @@ class ConfigurationManager:
         cls.ensure_config_complete()
 
     @classmethod
-    def main_start_rewrite(cls):
+    def main_start_rewrite(cls, setting):
         """写入需要询问的配置"""
-        from utils.setting import Setting
-        Setting().set_config(slot="start_rewrite")
+        # from utils.setting import Setting
+        setting.set_config(slot="start_rewrite")
         cls.ensure_config_complete()
 
     @classmethod

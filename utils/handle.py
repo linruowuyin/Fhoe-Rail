@@ -53,6 +53,7 @@ class Handle:
         self.total_fight_time = 0  # 总计战斗时间
         self.error_fight_cnt = 0  # 异常战斗<3秒的计数
         self.error_fight_threshold = 3  # 异常战斗为战斗时间<3秒
+        self.snack_used = 0  # 奇巧零食使用次数
 
         self.multi_config = 1.0
 
@@ -285,6 +286,7 @@ class Handle:
                                         time.sleep(0.1)
                                         self.mouse_event.click_target(
                                             "./picture/round.png", 0.9, timeout=8)
+                                        self.snack_used += 1
                                         time.sleep(0.5)
                                         allow_buy = True
                             else:
@@ -620,7 +622,7 @@ class Handle:
     def stop_checking(self):
         """停止检测疾跑任务"""
         if not self.running:
-            log.warning("检测任务未运行")
+            # log.warning("检测任务未运行")
             return
         self.running = False
         if self.thread:

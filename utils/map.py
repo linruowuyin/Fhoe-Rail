@@ -35,6 +35,7 @@ class Map:
         self.map_version = MapInfo.read_maps(
             self.cfg.config_file.get("map_version", "default"))[2]
         self.now = datetime.datetime.now()
+        self.allowlist_mode = False
         self.retry_cnt_max = 2
         self.map_statu_minimize = False  # 地图最小化
         self.planet = None  # 当前星球初始化
@@ -206,8 +207,23 @@ class Map:
         self.allow_retry_in_map_switch = not bool(
             start.get("forbid_retry", False))  # 默认允许自动重试查找地图点位
 
-    def check_and_skip_forbidden_maps(self, map_data_name):
-        """检查并跳过配置中禁止的地图。
+    def check_allowlist_maps(self, map_data_name):
+        """检查并跳过非白名单地图"""
+        if self.cfg.config_file.get("allowlist_mode_once", False):
+            self.allowlist_mode = True
+            self.cfg.modify_json_file(
+                self.cfg.CONFIG_FILE_NAME, "allowlist_mode_once", False)
+        if self.cfg.config_file.get("allowlist_mode", False):
+            self.allowlist_mode = True
+        if self.allowlist_mode:
+            map_data_first_name = map_data_name.split('-')[0]
+            if map_data_first_name not in self.cfg.config_file.get("allowlist_map", []):
+                log.info(f"地图 {map_data_name} 不在白名单中，将跳过此地图。")
+                return True
+        return False
+
+    def check_forbidden_maps(self, map_data_name):
+        """检查是否应该跳过这张地图。
 
         Args:
             map_data_name (str): 当前处理的地图的名称。
@@ -376,8 +392,11 @@ class Map:
                     f"map/{self.map_version}/{map_base}.json")
                 map_data_name = map_data['name']
                 map_data_author = map_data['author']
+                # 白名单模式下，只运行白名单中的地图
+                if self.check_allowlist_maps(map_data_name):
+                    continue
                 # 检查是否应该跳过这张地图
-                if self.check_and_skip_forbidden_maps(map_data_name):
+                if self.check_forbidden_maps(map_data_name):
                     continue
                 self.map_drag = next_map_drag
                 next_map_drag = False
@@ -571,6 +590,7 @@ class Map:
                     log.info(
                         "未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
                     log.info(f"系统卡顿次数：{self.handle.time_error_cnt}")
+                    log.info(f"奇巧零食使用次数：{self.handle.snack_used}")
                     log.debug(
                         f"匹配值小于0.99的图片：{self.mouse_event.img_search_val_dict}")
                     log.info(f"开始地图：{start_map_name}，结束地图：{end_map_name}")
