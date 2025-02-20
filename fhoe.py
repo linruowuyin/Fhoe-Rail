@@ -176,11 +176,21 @@ if __name__ == "__main__":
             print_end()
     except ModuleNotFoundError as e:
         print(traceback.format_exc())
+        log.error(traceback.format_exc())
         print("请重新运行")
+        input("按回车键退出")
     except NameError as e:
         print(traceback.format_exc())
+        log.error(traceback.format_exc())
         print("请重新运行")
+        input("按回车键退出")
     except Exception as e:
+        print(traceback.format_exc())
         log.error(traceback.format_exc())
+        print("请重新运行")
+        input("按回车键退出")
     except BaseException as e:
+        print(traceback.format_exc())
         log.error(traceback.format_exc())
+        print("请重新运行")
+        input("按回车键退出")
