@@ -1,37 +1,67 @@
 import os
+
 from utils.config import ConfigurationManager
+from utils.log import log
+from utils.singleton import SingletonMeta
 
 
-class MapInfo:
+class MapInfo(metaclass=SingletonMeta):
     def __init__(self):
-        self.map_versions = self.read_maps_versions()
         self.cfg = ConfigurationManager()
-        self.map_list = MapInfo.read_maps(
-            self.cfg.config_file.get("map_version", "default"))[0]
-        self.map_list_map = MapInfo.read_maps(
-            self.cfg.config_file.get("map_version", "default"))[1]
-        self.map_version = MapInfo.read_maps(
-            self.cfg.config_file.get("map_version", "default"))[2]
+
+        self.map_versions = MapInfo.read_maps_versions()
+        self.map_version = self.cfg.config_file.get("map_version", "default")
+        log.info(f"地图版本：{self.map_version}")
+        self.map_list = MapInfo.read_maps(self.map_version)[0]
+        self.map_list_map = MapInfo.read_maps(self.map_version)[1]
 
     @staticmethod
-    def read_maps_versions(map_dir: str = "./map") -> list:
+    def read_maps_versions(map_dir: str = "map") -> list:
         """
         读取地图版本
         """
+
+        project_root = ConfigurationManager.get_project_root()
+        map_dir = os.path.join(project_root, map_dir)
+        map_dir = os.path.normpath(map_dir)
+
+        if not os.path.exists(map_dir):
+            log.error(f"地图文件目录不存在：{map_dir}")
+            raise FileNotFoundError(f"地图文件目录不存在：{map_dir}")
+
         map_versions = [
             f for f in os.listdir(map_dir) if os.path.isdir(os.path.join(map_dir, f))
         ]
         return map_versions
 
     @staticmethod
-    def read_maps(map_version: str, map_dir: str = './map') -> tuple:
+    def read_maps(map_version: str, map_dir: str = 'map') -> tuple:
         """
         读取地图文件
         """
+        project_root = ConfigurationManager.get_project_root()
+        map_dir = os.path.join(project_root, map_dir)
+        map_dir = os.path.normpath(map_dir)
+
         map_version_dir = os.path.join(map_dir, map_version)
-        json_files = MapInfo.get_json_files(map_version_dir)
-        map_list_map = MapInfo.process_json_files(
-            map_version, json_files, map_dir)
+
+        if not os.path.exists(map_version_dir):
+            log.error(f"地图文件目录不存在：{map_version_dir}")
+            raise FileNotFoundError(f"地图文件目录不存在：{map_version_dir}")
+
+        try:
+            json_files = MapInfo.get_json_files(map_version_dir)
+        except Exception as e:
+            log.error(f"读取地图文件失败：{e}")
+            raise
+
+        try:
+            map_list_map = MapInfo.process_json_files(
+                map_version, json_files, map_dir)
+        except Exception as e:
+            log.error(f"处理地图文件失败：{e}")
+            raise
+
         return json_files, map_list_map, map_version
 
     @staticmethod

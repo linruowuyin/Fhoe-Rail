@@ -7,29 +7,22 @@ from utils.config import ConfigurationManager
 from utils.log import log
 from utils.map_info import MapInfo
 from utils.time_utils import TimeUtils
+from utils.singleton import SingletonMeta
 
 
-class Setting:
-    _instance = None
-    _initialized = False
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+class Setting(metaclass=SingletonMeta):
 
     def __init__(self):
-        if self._initialized:
-            return
-        self._initialized = True
 
         self.cfg = ConfigurationManager()
         self.map_info = MapInfo()
         self.time_mgr = TimeUtils()
+
         self.config = self.cfg.load_config()  # 加载配置文件并缓存
-        self.map_versions = self.map_info.read_maps_versions()  # 加载地图版本并缓存
+        self.map_versions = MapInfo.read_maps_versions()  # 加载地图版本并缓存
 
     def set_config(self, slot: str = "start"):
+
         def get_title(q):
             return q.get('dynamic_title', lambda _: q['title'])(self.config)
 
@@ -139,9 +132,9 @@ class Setting:
 
     def get_questions_for_slot(self, slot: str) -> list:
         """获取配置问题"""
-        map_versions = self.map_info.read_maps_versions()
+        map_versions = MapInfo.read_maps_versions()
         try:
-            self.map_info.read_maps_versions()
+            MapInfo.read_maps_versions()
         except Exception as e:
             log.error(f"地图数据加载失败: {e}")
         default_questions = [

@@ -99,13 +99,13 @@ def main():
         log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         start_time = datetime.datetime.now()
-        map_instance.auto_map(start, start_in_mid, dev=dev)  # 读取配置
+        map_instance.process_map(start, start_in_mid, dev=dev)  # 读取配置
         start_map = "1-1_0"
         allow_run_again = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
             "allow_run_again", False
         )
         if allow_run_again:
-            map_instance.auto_map(start_map, start_in_mid, dev=dev)
+            map_instance.process_map(start_map, start_in_mid, dev=dev)
         end_time = datetime.datetime.now()
         shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
             "auto_shutdown", 0
@@ -117,7 +117,7 @@ def main():
             log.info("开始执行跨日连锄")
             if time_mgr.has_crossed_4am(start=start_time, end=end_time):
                 log.info("检测到换日，即将从头开锄")
-                map_instance.auto_map(start_map, start_in_mid, dev=dev)
+                map_instance.process_map(start_map, start_in_mid, dev=dev)
             else:
                 map_instance.handle.back_to_main(delay=2.0)
                 now = datetime.datetime.now()
@@ -133,7 +133,7 @@ def main():
                 if wait_time <= 14400:
                     log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
                     time.sleep(wait_time)
-                    map_instance.auto_map(start_map, start_in_mid, dev=dev)
+                    map_instance.process_map(start_map, start_in_mid, dev=dev)
                 else:
                     log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
         # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
