@@ -290,12 +290,12 @@ class Handle(metaclass=SingletonMeta):
                                 time.sleep(0.5)
                                 drag += 1
                         time.sleep(1)
-                    self.back_to_main(delay=0.1)
+                    self.mouse_event.click_target("./picture/cancel.png", 0.95, timeout=2)
                     if allow_buy:
                         pyautogui.press('e')
                         time.sleep(0.25)
                 else:
-                    self.back_to_main(delay=0.1)
+                    self.mouse_event.click_target("./picture/cancel.png", 0.95, timeout=2)
 
     def back_to_main(self, delay=2.0):
         """
