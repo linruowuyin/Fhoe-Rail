@@ -1,6 +1,8 @@
-import os
-import time
 import json
+import os
+import sys
+import time
+
 import orjson
 
 
@@ -84,6 +86,15 @@ class ConfigurationManager:
             else:
                 # 如果上一级目录中也没有该文件，则返回None
                 return None
+
+    @staticmethod
+    def get_project_root() -> str:
+        """
+        获取项目根目录
+        """
+        script_path = os.path.abspath(sys.argv[0])
+        project_root = os.path.dirname(script_path)
+        return project_root
 
     @staticmethod
     def read_json_file(filename: str, path=False) -> tuple[dict, str]:

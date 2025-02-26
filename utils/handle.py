@@ -18,22 +18,11 @@ from utils.img import Img
 from utils.keyboard_event import KeyboardEvent
 from utils.log import log
 from utils.mouse_event import MouseEvent
+from utils.singleton import SingletonMeta
 
 
-class Handle:
-    _instance = None
-    _initialized = False
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
+class Handle(metaclass=SingletonMeta):
     def __init__(self):
-        if self._initialized:
-            return
-        self._initialized = True
-
         self.mouse_event = MouseEvent()
         self.img = Img()
         self.cfg = ConfigurationManager()
@@ -54,6 +43,8 @@ class Handle:
         self.error_fight_cnt = 0  # 异常战斗<3秒的计数
         self.error_fight_threshold = 3  # 异常战斗为战斗时间<3秒
         self.snack_used = 0  # 奇巧零食使用次数
+
+        self.f_key_error = False  # F键错误
 
         self.multi_config = 1.0
 
@@ -87,8 +78,10 @@ class Handle:
 
     def handle_f(self, value):
         """
-        按下f键，等待delay秒后抬起
+        按下f键，等待value秒后进行下一步
         """
+        # 初始化F键错误
+        self.f_key_error = False
         use_time, delay, allow_f = self._check_f_img(value)
         if allow_f:
             if use_time:
@@ -103,6 +96,7 @@ class Handle:
                 time.sleep(2)  # 等待 2 秒加载人物
         else:
             log.info("检测到非正常'F'情况，不执行并跳过'F'")
+            self.f_key_error = True
 
     def _check_f_img(self, value=15, timeout=5):
         """
@@ -855,7 +849,7 @@ class Handle:
 
     def rotate(self):
         """
-        旋转视角
+        旋转视角，废弃
         """
         if self.need_rotate:
             KeyboardEvent.keyboard_press('w')
@@ -864,3 +858,16 @@ class Handle:
             ang = self.ang - self.asu.get_now_direc()
             ang = (ang + 900) % 360 - 180
             # self.mouse_move(ang * 10.2)
+
+    def handle_await(self, value):
+        """
+        等待value秒后进行下一步
+        """
+        time.sleep(abs(value))
+
+    def handle_b(self):
+        """
+        按下b键
+        """
+        pyautogui.press('b')
+        time.sleep(1)

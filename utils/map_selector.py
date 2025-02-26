@@ -19,11 +19,10 @@ def choose_map(map_info: MapInfo):
 
 
 def choose_map_debug(map_info: MapInfo):
-    map_version = cfg.config_file.get("map_version", "default")
-    MapInfo.read_maps(map_version=map_version)
     main_map = None
 
     while True:
+        map_version = cfg.config_file.get("map_version", "default")
         if not main_map:
             result = _h_main_map(map_info)
             if result == "back":
@@ -69,16 +68,6 @@ def _h_main_map(map_info: MapInfo):
         TimeUtils.wait_and_run()
         return ("1-1_0", False)
     return opts[choice]
-
-
-def _h_side_map(map_info: MapInfo, main_map):
-    choices = list(map_info.map_list_map.get(main_map).keys())
-    choices.append("back")
-    result = questionary.select("选择子地图:", choices=choices).ask()
-    if result == "back":
-        return result
-    return (f"{main_map}-{result}", True)
-
 
 def _h_priority(map_info: MapInfo):
     title = "优先星球选择"
