@@ -10,10 +10,25 @@ class MapInfo(metaclass=SingletonMeta):
         self.cfg = ConfigurationManager()
 
         self.map_versions = MapInfo.read_maps_versions()
-        self.map_version = self.cfg.config_file.get("map_version", "default")
-        log.info(f"地图版本：{self.map_version}")
-        self.map_list = MapInfo.read_maps(self.map_version)[0]
-        self.map_list_map = MapInfo.read_maps(self.map_version)[1]
+
+        self._map_version = self.cfg.config_file.get("map_version", "default")
+        log.info(f"初始化地图版本：{self._map_version}")
+
+
+    @property
+    def map_version(self):
+        if self.cfg.config_file.get("map_version", "default") != self._map_version:
+            self._map_version = self.cfg.config_file.get("map_version", "default")
+            log.info(f"地图版本更新为：{self._map_version}")
+        return self._map_version
+
+    @property
+    def map_list(self):
+        return MapInfo.read_maps(self.map_version)[0]
+
+    @property
+    def map_list_map(self):
+        return MapInfo.read_maps(self.map_version)[1]
 
     @staticmethod
     def read_maps_versions(map_dir: str = "map") -> list:
@@ -122,3 +137,4 @@ class MapInfo(metaclass=SingletonMeta):
         map_data_first_name = map_data_first_name[:map_data_first_name.index(
             '-')]
         return f"{key1}-{key2_front} {map_data_first_name}"
+

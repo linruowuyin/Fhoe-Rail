@@ -30,14 +30,9 @@ class Map:
         self.handle = Handle()
         self.blackscreen = BlackScreen()
         self.map_statu = MapStatu()
-
+        self.map_info = MapInfo()
         self.open_map_btn = "m"
-        self.map_list = MapInfo.read_maps(
-            self.cfg.config_file.get("map_version", "default"))[0]
-        self.map_list_map = MapInfo.read_maps(
-            self.cfg.config_file.get("map_version", "default"))[1]
-        self.map_version = MapInfo.read_maps(
-            self.cfg.config_file.get("map_version", "default"))[2]
+
         self.now = datetime.datetime.now()
         self.allowlist_mode = False
         self.retry_cnt_max = 2
@@ -170,12 +165,12 @@ class Map:
         """
         获取地图列表
         """
-        start_index = self.map_list.index(f'map_{start}.json')
+        start_index = self.map_info.map_list.index(f'map_{start}.json')
         if start_in_mid:
-            mid_slice = self.map_list[start_index:]
-            map_list = mid_slice + self.map_list[:start_index]
+            mid_slice = self.map_info.map_list[start_index:]
+            map_list = mid_slice + self.map_info.map_list[:start_index]
         else:
-            map_list = self.map_list[start_index:]
+            map_list = self.map_info.map_list[start_index:]
 
         return map_list
 
@@ -384,7 +379,7 @@ class Map:
         self.map_statu.teleport_click_count = 0
         self.map_statu.error_check_point = False  # 初始化筑梦机关检查为通过
         self.align_angle()
-        if f'map_{start}.json' in self.map_list:
+        if f'map_{start}.json' in self.map_info.map_list:
             total_start_time = time.time()
             self.reset_round_count()  # 重置该锄地轮次相关的计数
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
@@ -454,7 +449,7 @@ class Map:
         """
         map_base = map_json.split('.')[0]
         map_data = self.cfg.read_json_file(
-            f"map/{self.map_version}/{map_base}.json")
+            f"map/{self.map_info.map_version}/{map_base}.json")
         map_data_name = map_data['name']
         map_data_author = map_data['author']
         # 白名单模式下，只运行白名单中的地图
@@ -630,7 +625,7 @@ class Map:
         # self.asu.screen = self.img.take_screenshot()[0]
         # self.ang = self.asu.get_now_direc()
         map_data = self.cfg.read_json_file(
-            f"map/{self.map_version}/{map_base}.json")
+            f"map/{self.map_info.map_version}/{map_base}.json")
         map_data_name = map_data['name']
         map_filename = map_base
         self.handle.fighting_count = sum(
@@ -662,7 +657,7 @@ class Map:
                         if press_key == 'F10':
                             pass
                         map_data = self.cfg.read_json_file(
-                            f"map/{self.map_version}/{map_base}.json")  # 重新读取最新地图文件
+                            f"map/{self.map_info.map_version}/{map_base}.json")  # 重新读取最新地图文件
                         break
                 log.info(
                     f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map_value}")
@@ -706,7 +701,7 @@ class Map:
                 else:
                     self.handle.handle_move(value, key, normal_run, last_key)
 
-                if self.map_version == "HuangQuan":
+                if self.map_info.map_version == "HuangQuan":
                     last_key = key
 
                 if self.handle.f_key_error:
@@ -714,7 +709,7 @@ class Map:
                     self.map_statu.map_f_key_error.append(map_data_name)
                     break
 
-            if self.map_version == "HuangQuan":
+            if self.map_info.map_version == "HuangQuan":
                 doubt_result = self.img.scan_screenshot(
                     self.img.doubt_ui, offset=(0, 0, -1630, -800))
                 if doubt_result["max_val"] > 0.92:
@@ -731,7 +726,7 @@ class Map:
                             doubt_result = self.img.scan_screenshot(
                                 self.img.doubt_ui, offset=(0, 0, -1630, -800))
 
-            if self.map_version == "HuangQuan" and last_key == "e":
+            if self.map_info.map_version == "HuangQuan" and last_key == "e":
                 if not self.img.on_main_interface(timeout=0.2):
                     fight_status = self.handle.fight_elapsed()
                     if not fight_status:
