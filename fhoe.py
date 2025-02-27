@@ -14,8 +14,8 @@ from utils.map import Map
 from utils.map_info import MapInfo
 from utils.map_selector import choose_map, choose_map_debug
 from utils.setting import Setting
-from utils.switch_window import switch_window
 from utils.time_utils import TimeUtils
+from utils.window import Window
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
@@ -87,12 +87,12 @@ def main():
         start_in_mid, start = start[1], start[0]
 
     if start:
-        map_instance = Map()
         cfg.config_fix()
         log.info(f"config.json:{cfg.load_config()}")
         log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
         check_mult_screen()
-        switch_window()
+        Window().switch_window()
+        map_instance = Map()
         time.sleep(0.5)
         log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
         log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
