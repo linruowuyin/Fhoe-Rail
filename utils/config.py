@@ -88,15 +88,6 @@ class ConfigurationManager:
                 return None
 
     @staticmethod
-    def get_project_root() -> str:
-        """
-        获取项目根目录
-        """
-        script_path = os.path.abspath(sys.argv[0])
-        project_root = os.path.dirname(script_path)
-        return project_root
-
-    @staticmethod
     def read_json_file(filename: str, path=False) -> tuple[dict, str]:
         """
         说明：
