@@ -35,9 +35,6 @@ class MapInfo(metaclass=SingletonMeta):
         """
         读取地图版本
         """
-
-        project_root = ConfigurationManager.get_project_root()
-        map_dir = os.path.join(project_root, map_dir)
         map_dir = os.path.normpath(map_dir)
 
         if not os.path.exists(map_dir):
@@ -54,10 +51,6 @@ class MapInfo(metaclass=SingletonMeta):
         """
         读取地图文件
         """
-        project_root = ConfigurationManager.get_project_root()
-        map_dir = os.path.join(project_root, map_dir)
-        map_dir = os.path.normpath(map_dir)
-
         map_version_dir = os.path.join(map_dir, map_version)
 
         if not os.path.exists(map_version_dir):

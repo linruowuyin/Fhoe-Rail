@@ -16,7 +16,7 @@ from utils.monthly_pass import MonthlyPass
 from utils.mouse_event import MouseEvent
 from utils.time_utils import TimeUtils
 from utils.pause import Pause
-from utils.switch_window import switch_window
+from utils.window import Window
 
 
 class Map:
@@ -31,6 +31,7 @@ class Map:
         self.blackscreen = BlackScreen()
         self.map_statu = MapStatu()
         self.map_info = MapInfo()
+        self.window = Window()
         self.open_map_btn = "m"
 
         self.now = datetime.datetime.now()
@@ -648,7 +649,7 @@ class Map:
                         pass
                     else:
                         dev_restart = True  # 检测到需要重开
-                        switch_window()
+                        self.window.switch_window()
                         time.sleep(1)
                         if press_key == 'F9':
                             self.mouse_event.click_target(

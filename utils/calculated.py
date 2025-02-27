@@ -16,7 +16,6 @@ from utils.mini_asu import ASU
 from utils.monthly_pass import MonthlyPass
 from utils.mouse_event import MouseEvent
 from utils.pause import Pause
-from utils.switch_window import switch_window
 from utils.window import Window
 
 

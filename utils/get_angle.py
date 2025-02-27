@@ -7,7 +7,7 @@
 import cv2
 import numpy as np
 import pyautogui
-from switch_window import switch_window
+from utils.window import Window
 import time
 
 
@@ -80,7 +80,7 @@ def main():
 	debug = False
 	use_sample_image = False
 	if not use_sample_image:
-		switch_window()
+		Window().switch_window()
 		time.sleep(0.5)
 	get_angle(debug,use_sample_image)
 
