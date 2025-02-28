@@ -6,10 +6,11 @@
             "map": 1
         },
         {
-            "picture\\1floor.png": 2			
+            "picture\\1floor.png": 2	
         },
         {
             "picture\\map_3-6_point_2.png": 1.5
+            "drag": 1
         },
         {
             "picture\\transfer.png": 1.5
