@@ -6,7 +6,7 @@ import pyautogui
 import win32api
 import win32con
 
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.img import Img
 from utils.log import log
 from utils.singleton import SingletonMeta

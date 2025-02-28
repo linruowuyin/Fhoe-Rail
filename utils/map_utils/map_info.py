@@ -1,6 +1,6 @@
 import os
 
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.log import log
 from utils.singleton import SingletonMeta
 

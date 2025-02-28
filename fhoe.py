@@ -8,11 +8,11 @@ import traceback
 import pyuac
 
 from get_width import check_mult_screen
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.log import fetch_php_file_content, log
-from utils.map import Map
-from utils.map_info import MapInfo
-from utils.map_selector import choose_map, choose_map_debug
+from utils.map_utils.map_operations import MapOperations
+from utils.map_utils.map_info import MapInfo
+from utils.map_utils.map_selector import choose_map, choose_map_debug
 from utils.setting import Setting
 from utils.time_utils import TimeUtils
 from utils.window import Window
@@ -92,7 +92,7 @@ def main():
         log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
         check_mult_screen()
         Window().switch_window()
-        map_instance = Map()
+        map_instance = MapOperations()
         time.sleep(0.5)
         log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
         log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")

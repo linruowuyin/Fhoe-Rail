@@ -18,7 +18,7 @@ from pynput import keyboard
 from pynput import mouse
 from pynput.mouse import Controller as mouseController
 
-from config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 
 cfg = ConfigurationManager()
 
