@@ -21,6 +21,7 @@ from utils.time_utils import TimeUtils
 from utils.window import Window
 from utils.monthly_pass import MonthlyPass
 
+
 class MapOperations:
     """
     地图处理主逻辑
@@ -40,7 +41,7 @@ class MapOperations:
         self.monthly_pass = MonthlyPass()
 
         self.now = datetime.datetime.now()
-        
+
         self.retry_cnt_max = 2  # 初始化最高重试次数
 
     def process_map(self, start, start_in_mid: bool = False, dev: bool = False):
@@ -126,9 +127,11 @@ class MapOperations:
         map_data_author = map_data['author']
         # 白名单模式下，只运行白名单中的地图
         if self.map.check_allowlist_maps(map_data_name):
+            self.map_statu.skip_this_map = True
             return
         # 检查是否应该跳过这张地图
         if self.map.check_forbidden_maps(map_data_name):
+            self.map_statu.skip_this_map = True
             return
         self.map_drag = self.map_statu.next_map_drag
         self.map_statu.next_map_drag = False

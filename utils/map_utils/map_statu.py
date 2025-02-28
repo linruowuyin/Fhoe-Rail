@@ -3,7 +3,7 @@ class MapStatu:
         self.total_processing_time = 0  # 总处理时间
         self.teleport_click_count = 0  # 传送点击次数
         self.error_check_point = False  # 筑梦机关错误检查初始化
-        self.skip_this_map = False  # 跳过这张地图，一般用于过期邮包购买
+        self.skip_this_map = False  # 跳过这张地图，默认为否，一般用于过期邮包购买
         self.next_map_drag = False  # 下一张地图拖动
         self.start_map_name = ""  # 开始地图名称
         self.end_map_name = ""  # 结束地图名称
