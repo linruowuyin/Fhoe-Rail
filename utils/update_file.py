@@ -17,7 +17,7 @@ from typing import Dict, Optional, Any, Union, Tuple, List
 from utils.log import log
 from utils.requests import *
 from utils.exceptions import CustomException
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 
 cfg = ConfigurationManager()
 tmp_dir = 'tmp'

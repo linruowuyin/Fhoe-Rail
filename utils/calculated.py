@@ -8,7 +8,7 @@ import pyautogui
 from pynput.keyboard import Controller as KeyboardController
 
 from utils.blackscreen import BlackScreen
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.handle import Handle
 from utils.img import Img
 from utils.log import log

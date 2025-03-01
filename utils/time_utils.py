@@ -1,7 +1,7 @@
 import time
 import datetime
 
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.log import log
 
 

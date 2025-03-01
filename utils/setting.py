@@ -3,9 +3,9 @@ from typing import Literal
 
 import questionary
 
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.log import log
-from utils.map_info import MapInfo
+from utils.map_utils.map_info import MapInfo
 from utils.time_utils import TimeUtils
 from utils.singleton import SingletonMeta
 

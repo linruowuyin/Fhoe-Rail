@@ -5,7 +5,7 @@ from typing import Optional
 import cv2
 
 from utils.log import log
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.img import Img
 from utils.mouse_event import MouseEvent
 

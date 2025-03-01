@@ -19,7 +19,7 @@ from utils.requests import post
 
 
 def get_ver():
-    from utils.config import ConfigurationManager
+    from utils.config.config import ConfigurationManager
     cfg = ConfigurationManager()
     ver = cfg.config_file.get("version", "")
     if ver == "":
@@ -62,7 +62,7 @@ log.add(PATH_LOG,
 
 def webhook_and_log(message):
     log.info(message)
-    from utils.config import ConfigurationManager  # Circular import
+    from utils.config.config import ConfigurationManager  # Circular import
     cfg = ConfigurationManager()
     url = cfg.read_json_file(
         filename=cfg.CONFIG_FILE_NAME, path=False).get("webhook_url")

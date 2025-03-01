@@ -12,7 +12,7 @@ import win32con
 from pynput.keyboard import Controller as KeyboardController
 from pynput.keyboard import Key as KeyboardKey
 
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.exceptions import CustomException
 from utils.img import Img
 from utils.keyboard_event import KeyboardEvent

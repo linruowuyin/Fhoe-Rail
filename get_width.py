@@ -3,7 +3,7 @@ import win32con
 import win32gui
 import win32print
 
-from utils.config import ConfigurationManager
+from utils.config.config import ConfigurationManager
 from utils.log import log
 
 def get_width():
