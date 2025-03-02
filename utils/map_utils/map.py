@@ -24,7 +24,6 @@ class Map:
         self.blackscreen = BlackScreen()
         self.map_info = MapInfo()
         self.open_map_btn = "m"
-        print(MAP_MOVE_NAV_DATA)
 
         self.allowlist_mode = False
         self.map_statu_minimize = False  # 地图最小化
