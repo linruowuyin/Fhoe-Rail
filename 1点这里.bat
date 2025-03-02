@@ -36,7 +36,7 @@ echo   [3] 地图（选择具体地图）
 echo.
 echo   [4] 录制
 echo.
-echo   [5] 测试（测图用,F8暂停）
+echo   [5] 测试（测试代码与地图，F8暂停）
 echo.
 echo   [6] 仅运行白名单地图
 echo.

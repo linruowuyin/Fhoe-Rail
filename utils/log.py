@@ -18,14 +18,32 @@ from loguru import logger
 from utils.requests import post
 
 
-def get_ver():
-    from utils.config.config import ConfigurationManager
-    cfg = ConfigurationManager()
-    ver = cfg.config_file.get("version", "")
-    if ver == "":
+def get_ver() -> str:
+    """获取当前版本号。
+
+    首先尝试从version.txt文件读取版本号，如果读取失败或版本号为空，
+    则根据map文件夹的最后修改时间生成版本号。
+
+    Returns:
+        str: 版本号字符串，格式为MMDDHHMM（月日时分）
+    """
+    try:
+        with open("version.txt", "r", encoding="utf-8") as file:
+            version = file.read().strip()
+            if version:  # 只在version不为空时返回
+                return version
+    except (FileNotFoundError, IOError):
+        pass
+
+    # 如果version.txt不存在或为空，使用map文件夹修改时间作为版本号
+    try:
         month, day, hour, minute = get_folder_modified_time('map')
-        ver = f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
-    return ver
+        if all(x is not None for x in (month, day, hour, minute)):
+            return f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
+    except Exception as e:
+        log.error(f"获取map文件夹修改时间失败: {e}")
+
+    return "00000000"  # 当所有获取版本号的方式都失败时返回默认值
 
 
 log = logger
