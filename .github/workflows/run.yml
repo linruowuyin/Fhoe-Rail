@@ -31,13 +31,19 @@ jobs:
         run: |
           pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries --uac-admin -n "Fhoe-Rail" fhoe.py -y
 
-      - name: Create batch file
+      - name: Create batch files
         run: |
-          $batContent = @"
+          $debugBatContent = @"
           @echo off
           .\Fhoe-Rail.exe --debug
           "@
-          $batContent | Out-File -FilePath "自选地图.bat" -Encoding ASCII
+          $debugBatContent | Out-File -FilePath "自选地图.bat" -Encoding ASCII
+
+          $recordBatContent = @"
+          @echo off
+          .\Fhoe-Rail.exe --record
+          "@
+          $recordBatContent | Out-File -FilePath "录制地图.bat" -Encoding ASCII
 
       - name: Move assets to dist directory
         run: |
@@ -45,6 +51,7 @@ jobs:
           xcopy /E /I /Y .\新图注意事项\ .\dist\Fhoe-Rail\新图注意事项\
           xcopy /E /I /Y .\picture\ .\dist\Fhoe-Rail\picture\
           xcopy /Y .\自选地图.bat .\dist\Fhoe-Rail\
+          xcopy /Y .\录制地图.bat .\dist\Fhoe-Rail\
           xcopy /Y .\README.md .\dist\Fhoe-Rail\
 
       - name: Upload artifact

@@ -4,12 +4,22 @@ import sys
 import time
 
 import orjson
+from utils.singleton import SingletonMeta
+from utils.log import log
 
-
-class ConfigurationManager:
+class ConfigurationManager(metaclass=SingletonMeta):
     CONFIG_FILE_NAME = "config.json"
 
     def __init__(self):
+        try:
+            if ConfigurationManager.normalize_file_path(self.CONFIG_FILE_NAME) is None:
+                log.info("配置文件不存在，正在初始化")
+                ConfigurationManager.init_config_file(0, 0)
+            else:
+                log.info("配置文件已存在")
+        except Exception as e:
+            log.error(f"初始化配置文件时出现错误: {e}")
+
         self._config = None
         self._last_updated = None
 

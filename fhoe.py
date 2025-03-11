@@ -76,6 +76,10 @@ def main():
             cfg.main_start()
             start = choose_map(map_info_instance)
             cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True)  # 启用一次白名单模式
+        elif sys.argv[1] == "--record":
+            from utils.record import record_main
+            record_main()
+            return
         else:
             cfg.main_start()
             start = choose_map(map_info_instance)

@@ -8,6 +8,7 @@ import pyautogui
 
 from utils.calculated import Calculated
 from utils.config.config import ConfigurationManager
+from utils.config.text_window import show_text, tkinter_ready
 from utils.handle import Handle
 from utils.img import Img
 from utils.log import log
@@ -15,11 +16,11 @@ from utils.log import webhook_and_log
 from utils.map_utils.map import Map
 from utils.map_utils.map_info import MapInfo
 from utils.map_utils.map_statu import MapStatu
+from utils.monthly_pass import MonthlyPass
 from utils.mouse_event import MouseEvent
 from utils.pause import Pause
 from utils.time_utils import TimeUtils
 from utils.window import Window
-from utils.monthly_pass import MonthlyPass
 
 
 class MapOperations:
@@ -98,6 +99,14 @@ class MapOperations:
         处理单张地图
         """
         start_time = time.time()
+
+        if dev:
+            tkinter_ready.wait()
+            winrect = self.window.get_rect()
+            log.info({winrect})
+            x, y = winrect[0] + 180, winrect[1] + 1045
+            show_text(map_json, x, y, "nouid")
+
         self.process_single_map_start(index, map_json)
 
         self.map_statu.teleport_click_count = 0  # 在每次地图循环结束后重置计数器
@@ -295,10 +304,10 @@ class MapOperations:
         """
         处理单张地图的详细信息
         """
-        self.pause = Pause(dev=dev)
-        map_base = map_json.split('.')[0]
         # self.asu.screen = self.img.take_screenshot()[0]
         # self.ang = self.asu.get_now_direc()
+        self.pause = Pause(dev=dev)
+        map_base = map_json.split('.')[0]
         map_data = self.cfg.read_json_file(
             f"map/{self.map_info.map_version}/{map_base}.json")
         map_data_name = map_data['name']

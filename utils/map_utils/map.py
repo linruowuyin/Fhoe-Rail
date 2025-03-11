@@ -24,7 +24,6 @@ class Map:
         self.blackscreen = BlackScreen()
         self.map_info = MapInfo()
         self.open_map_btn = "m"
-        print(MAP_MOVE_NAV_DATA)
 
         self.allowlist_mode = False
         self.map_statu_minimize = False  # 地图最小化
@@ -114,8 +113,7 @@ class Map:
         按偏移量移动地图。
         """
         for _ in range(offset[0]):  # 向左+向上
-            self.mouse_event.mouse_drag(*self._directions()["left"])
-            self.mouse_event.mouse_drag(*self._directions()["up"])
+            self.mouse_event.mouse_drag(*self._directions()["up_left"])
         for _ in range(offset[1]):  # 向右
             self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(offset[2]):  # 向下

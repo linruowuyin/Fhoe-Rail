@@ -1,0 +1,78 @@
+{
+  "name": "呓语密林-1",
+  "author": "和月",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\fanhui_1.png": 1.5
+    },
+    {
+      "picture\\map_5-5.png": 1.5,
+      "scene": 1
+    },
+    {
+      "picture\\map_5-5_point_1.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "w": 7.0
+    },
+    {
+      "view_rotate": 270
+    },
+    {
+      "a": 2.0
+    },
+    {
+      "w": 5.0
+    },
+    {
+      "d": 3.5
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "w": 6.0
+    },
+    {
+      "d": 1.5
+    },
+    {
+      "w": 3.2
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "d": 2.5
+    },
+    {
+      "w": 4.0
+    },
+    {
+      "d": 0.1
+    },
+    {
+      "fighting": 1
+    },
+    {
+      "a": 0.5
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "fighting": 2
+    }
+  ]
+}
