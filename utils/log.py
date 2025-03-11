@@ -18,7 +18,7 @@ from utils.requests import post
 # 日志配置
 log = logger
 LOG_DIR = "logs"
-PATH_LOG = os.path.join(LOG_DIR, '日志文件_{time:YYYYMMDD}_{time:HHmmss}.log')
+PATH_LOG = os.path.join(LOG_DIR, '日志文件.log')
 
 def get_folder_modified_time(folder_path):
     """获取文件夹的修改时间
@@ -130,13 +130,13 @@ log = logger.patch(update_extra)
 
 logger.remove()
 log.add(sys.stdout, level='INFO', colorize=True,
-        format="{time:HH:mm:ss} - "
+        format="{time:HH:mm:ss.SSS} - "
         "<cyan>{module}.{function}:{line}</cyan> - "+"<cyan>{VER}</cyan> - "
         "<level>{message}</level>"
         )
 
 log.add(PATH_LOG,
-        format="{time:HH:mm:ss} - "
+        format="{time:HH:mm:ss.SSS} - "
         "{level:<6} \t| "
         "<cyan>{new_module:<40}</cyan> \t- " +
         "<cyan>{VER}</cyan> - "+"{message}",
