@@ -1,0 +1,41 @@
+{
+  "name": "呓语密林-4",
+  "author": "和月",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\map_5-5_point_2.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "s": 7.5
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "d": 0.5
+    },
+    {
+      "s": 3.6
+    },
+    {
+      "a": 2.0
+    },
+    {
+      "fighting": 2
+    },
+    {
+      "s": 1.5
+    },
+    {
+      "fighting": 1
+    }
+  ]
+}
