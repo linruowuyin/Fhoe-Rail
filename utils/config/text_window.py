@@ -24,6 +24,8 @@ class TextWindow:
         self.root.attributes("-alpha", 1.0)  # 设置窗口透明度
         self.root.attributes("-topmost", True)  # 窗口置顶
         self.root.wm_attributes("-disabled", True)  # 禁用窗口交互
+        self.root.wm_attributes("-topmost", True)  # 确保窗口置顶
+        self.root.lower()  # 将窗口置于底层，避免抢占焦点
 
         # 配置窗口的高级属性
         if hasattr(self.root, "attributes"):
