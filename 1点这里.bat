@@ -61,7 +61,7 @@ if errorlevel 6 (
     goto :end
 ) else if errorlevel 4 (
     echo.
-    python -i -X utf8 utils/record.py
+    python -i -X utf8 fhoe.py --record
     echo.
     pause
     goto :end
