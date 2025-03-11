@@ -49,7 +49,8 @@ class Handle(metaclass=SingletonMeta):
         self.multi_config = 1.0
 
         self.running = False
-        self.thread = None
+        self.thread_cancel_sprint = None  # 用于保存取消疾跑任务的线程
+        self.thread_check_sprint = None   # 用于保存检测疾跑任务的线程
 
         self.arrow_0 = cv2.imread("./picture/screenshot_arrow.png")
 
@@ -290,12 +291,14 @@ class Handle(metaclass=SingletonMeta):
                                 time.sleep(0.5)
                                 drag += 1
                         time.sleep(1)
-                    self.mouse_event.click_target("./picture/cancel.png", 0.95, timeout=2)
+                    self.mouse_event.click_target(
+                        "./picture/cancel.png", 0.95, timeout=2)
                     if allow_buy:
                         pyautogui.press('e')
                         time.sleep(0.25)
                 else:
-                    self.mouse_event.click_target("./picture/cancel.png", 0.95, timeout=2)
+                    self.mouse_event.click_target(
+                        "./picture/cancel.png", 0.95, timeout=2)
 
     def back_to_main(self, delay=2.0):
         """
@@ -525,32 +528,40 @@ class Handle(metaclass=SingletonMeta):
 
         self.run_fix_time = 0
         KeyboardController().press(key)
+        # 固定ctrl两次取消疾跑
+        log.info(f"last_step_run: {self.last_step_run}")
+        if self.last_step_run:
+            self.start_cancel_sprint_task()
+            self.stop_cancel_sprint_task()
+
         start_time = time.perf_counter()
         allow_run = self.cfg.config_file.get("auto_run_in_map", False)
         add_time = True
         run_in_road = False
         temp_time = 0
         self.run_fixed = False  # 强制断开初始化为否
+        
+        value_before = value
         while time.perf_counter() - start_time < value:
-            if value > 2 and not run_in_road and allow_run and not normal_run:
+            if value_before > 2 and not run_in_road and allow_run and not normal_run:
                 self.move_run_fix(start_time)
                 if time.perf_counter() - start_time > 1:
                     self.enable_run()
-                    self.start_checking()
+                    self.start_check_sprint_task()
                     run_in_road = True
-                    temp_value = value
-                    value = round((value - 1) / 1.53, 4) + 1
+                    temp_value = value_before
+                    value = round((value_before - 1) / 1.53, 4) + 1
                     self.tatol_save_time += (temp_value - value)
                     self.last_step_run = True
-            elif value <= 1 and allow_run and add_time and self.last_step_run:
-                value = value + 0.07
+            elif value_before <= 1 and allow_run and add_time and self.last_step_run:
+                value = value_before + 0.07
                 self.move_run_fix(start_time)
                 add_time = False
                 self.last_step_run = False
-            elif value <= 2:
+            elif value_before <= 2:
                 self.move_run_fix(start_time)
                 self.last_step_run = False
-        self.stop_checking()
+        self.stop_check_sprint_task()
         temp_time = time.perf_counter() - start_time
         KeyboardController().release(KeyboardKey.shift)
         KeyboardController().release(key)
@@ -583,6 +594,36 @@ class Handle(metaclass=SingletonMeta):
                     KeyboardController().press(key)
                     KeyboardController().release(key)
 
+    async def async_cancel_sprint(self):
+        """异步按下 Ctrl 两次，用于取消疾跑"""
+        loop = asyncio.get_event_loop()
+        for _ in range(2):
+            await asyncio.sleep(0.03)
+            await loop.run_in_executor(None, KeyboardController().tap, KeyboardKey.ctrl)
+            log.info("按下 Ctrl")
+
+    def start_cancel_sprint_task(self):
+        """启动取消疾跑任务"""
+        if self.thread_cancel_sprint and self.thread_cancel_sprint.is_alive():
+            log.warning("取消疾跑任务已在运行，跳过启动")
+            return
+        self.ctrl_press = True
+        self.thread_cancel_sprint = threading.Thread(
+            target=self._run_async_cancel_sprint, daemon=True
+        )
+        self.thread_cancel_sprint.start()
+
+    def stop_cancel_sprint_task(self):
+        """停止取消疾跑任务"""
+        self.ctrl_press = False
+        if self.thread_cancel_sprint and self.thread_cancel_sprint.is_alive():
+            self.thread_cancel_sprint.join()
+            self.thread_cancel_sprint = None
+
+    def _run_async_cancel_sprint(self):
+        """运行异步任务，处理取消疾跑的逻辑"""
+        asyncio.run(self.async_cancel_sprint())
+
     def is_running(self):
         """
         判断是否在疾跑状态
@@ -591,14 +632,16 @@ class Handle(metaclass=SingletonMeta):
             self.img.switch_run, (1720, 930, 0, 0))
         return result['max_val'] > 0.996
 
-    async def check_running_async(self):
+    async def async_check_sprint_status(self):
         """异步检测疾跑状态"""
+        loop = asyncio.get_event_loop()
         count = 0
         while self.running and count < 2:
             await asyncio.sleep(0.12)
-            if not self.is_running():
+            is_running = await loop.run_in_executor(None, self.is_running)
+            if not is_running:
                 log.warning(f"疾跑未能成功开启，再尝试一次，当前{count + 1}次")
-                KeyboardController().press(KeyboardKey.shift)
+                await loop.run_in_executor(None, KeyboardController().press, KeyboardKey.shift)
                 log.info("开启疾跑")
             else:
                 log.info("疾跑已成功开启")
@@ -606,29 +649,28 @@ class Handle(metaclass=SingletonMeta):
             count += 1
         self.running = False
 
-    def start_checking(self):
+    def start_check_sprint_task(self):
         """启动检测疾跑任务"""
-        self.running = True
-        self.thread = threading.Thread(
-            target=self._run_async_task, daemon=True)
-        self.thread.start()
-
-    def stop_checking(self):
-        """停止检测疾跑任务"""
-        if not self.running:
-            # log.warning("检测任务未运行")
+        if self.thread_check_sprint and self.thread_check_sprint.is_alive():
+            log.warning("检测疾跑任务已在运行，跳过启动")
             return
+        self.running = True
+        self.thread_check_sprint = threading.Thread(
+            target=self._run_async_check_sprint, daemon=True
+        )
+        self.thread_check_sprint.start()
+
+    def stop_check_sprint_task(self):
+        """停止检测疾跑任务"""
         self.running = False
-        if self.thread:
-            self.thread.join()
-            self.thread = None
+        if self.thread_check_sprint and self.thread_check_sprint.is_alive():
+            self.thread_check_sprint.join()
+            self.thread_check_sprint = None
         log.info("检测任务已停止")
 
-    def _run_async_task(self):
-        """运行异步任务，处理疾跑状态"""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.check_running_async())
+    def _run_async_check_sprint(self):
+        """运行异步任务，处理检测疾跑的逻辑"""
+        asyncio.run(self.async_check_sprint_status())
 
     def enable_run(self):
         """强制开启疾跑"""
@@ -648,6 +690,8 @@ class Handle(metaclass=SingletonMeta):
         - start_time: 循环开始时间。
         - time_limit: 限制检测逻辑的时间窗口，默认为 0.3 秒。
         '''
+        # 测试
+        return
         if not self.run_fixed:
             current_time = time.perf_counter()
             elapsed_time = current_time - start_time
