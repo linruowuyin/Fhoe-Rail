@@ -113,8 +113,7 @@ class Map:
         按偏移量移动地图。
         """
         for _ in range(offset[0]):  # 向左+向上
-            self.mouse_event.mouse_drag(*self._directions()["left"])
-            self.mouse_event.mouse_drag(*self._directions()["up"])
+            self.mouse_event.mouse_drag(*self._directions()["up_left"])
         for _ in range(offset[1]):  # 向右
             self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(offset[2]):  # 向下
