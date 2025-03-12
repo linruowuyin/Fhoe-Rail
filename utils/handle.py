@@ -295,7 +295,10 @@ class Handle(metaclass=SingletonMeta):
                         "./picture/cancel.png", 0.95, timeout=2)
                     time.sleep(0.1)
                     if allow_buy:
+                        log.info("补E")
+                        time.sleep(0.25)
                         pyautogui.press('e')
+                        log.info("补E结束")
                         time.sleep(0.25)
                 else:
                     self.mouse_event.click_target(
