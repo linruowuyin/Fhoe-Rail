@@ -8,7 +8,11 @@
     {
       "picture\\map_5-2_point_2.png": 1.5,
       "drag": 1,
-      "drag_exact": [7,1,2]
+      "drag_exact": [
+        7,
+        1,
+        2
+      ]
     },
     {
       "picture\\map_5-2_point_3.png": 1.5
@@ -40,7 +44,7 @@
       "await": 2
     },
     {
-      "d": 1
+      "d": 0.8
     },
     {
       "w": 3
