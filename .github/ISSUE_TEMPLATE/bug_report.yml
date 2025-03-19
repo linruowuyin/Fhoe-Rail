@@ -1,51 +1,83 @@
-name: 🐛反馈Bug
-description: 反馈程序bug/设计缺陷
-labels: [bug]
-title: "[Bug] 请在这里简要描述BUG，否则该Issue将直接关闭"
+name: 🐛反馈问题
+description: 反馈你遇到的问题/程序bug/设计缺陷。请详细描述问题，以便我们能更好地帮助你。
+labels: ["bug / 缺陷"]
+title: "[Bug] "
+
 body:
   - type: markdown
     attributes:
       value: |
-        为了使我们更好地帮助你，请提供以下信息。
+        ## 在提交问题之前，请确保：
+        1. 请 **确保** [已有的问题](https://github.com/linruowuyin/Fhoe-Rail/issues?q=is%3Aissue) 中没有相似的问题，如果有，请在原问题中添加你的问题。
+        2. 请 **务必** 给issue填写一个简洁易懂的标题，以便他人快速检索
+        3. 请 **务必** 按照模板规范详细描述问题，否则issue将会被关闭
+
   - type: textarea
     id: desc
     attributes:
       label: 问题描述
-      description: 发生了什么情况？有什么现状？
+      description: |
+        请详细描述你遇到的问题，包括：
+        1. 问题发生的具体场景
+        2. 问题发生的频率（是否必定出现）
+        3. 问题对使用造成的影响
+        4. 问题发生前正在执行的操作
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
       label: 预期行为
-      description: 正常情况下应该发生什么
+      description: 描述在正常情况下，你认为程序应该如何运行或响应
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
       label: 实际行为
-      description: 实际上发生了什么
+      description: 描述程序实际的运行结果或响应，以及与预期行为的差异
     validations:
       required: true
   - type: textarea
     id: media
     attributes:
       label: 截图或录屏
-      description: 问题复现时候的截图或录屏
+      description: |
+        请提供问题发生时的截图或录屏，包括：
+        1. 错误提示或异常界面
+        2. 问题发生前的操作界面
+        3. 如果是连续操作导致的问题，建议提供录屏
       placeholder: 点击文本框下面小长条可以上传文件
+  - type: dropdown
+    attributes:
+      label: 操作系统 / OS
+      options:
+        - Windows
+        - MacOS
+        - Linux
+    validations:
+      required: true
   - type: input
     id: star-ver
     attributes:
       label: 自动锄大地脚本版本
-      placeholder: 2.1.
+      description: |
+        版本号位置：
+        - 默认：\Fhoe-Rail\version.txt中
+        - 三月七用户：\3rdparty\Fhoe-Rail\version.txt中
+        - 如找不到version.txt，请在config.json中的version处找到版本号
+      placeholder: "请输入当前版本号，例如：1.0.0"
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
       label: 日志
-      description: 日志在logs文件夹下。如为三月七请在\3rdparty\Fhoe-Rail\logs下查找
+      description: |
+        请提供问题发生时的完整日志文件：
+        - 默认日志位置：logs文件夹下的日志文件
+        - 三月七用户：\3rdparty\Fhoe-Rail\logs下的日志文件
+        - 如无法提供完整日志，请至少提供问题发生前后至少1分钟的日志内容
       placeholder: 点击文本框下面小长条可以上传文件
     validations:
       required: true
