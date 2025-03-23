@@ -14,11 +14,11 @@ class MapInfo(metaclass=SingletonMeta):
         self._map_version = self.cfg.config_file.get("map_version", "default")
         log.info(f"初始化地图版本：{self._map_version}")
 
-
     @property
     def map_version(self):
         if self.cfg.config_file.get("map_version", "default") != self._map_version:
-            self._map_version = self.cfg.config_file.get("map_version", "default")
+            self._map_version = self.cfg.config_file.get(
+                "map_version", "default")
             log.info(f"地图版本更新为：{self._map_version}")
         return self._map_version
 
@@ -130,4 +130,3 @@ class MapInfo(metaclass=SingletonMeta):
         map_data_first_name = map_data_first_name[:map_data_first_name.index(
             '-')]
         return f"{key1}-{key2_front} {map_data_first_name}"
-

@@ -9,4 +9,7 @@ class MapStatu:
         self.end_map_name = ""  # 结束地图名称
         self.normal_run = False  # 禁止疾跑
         self.map_f_key_error = []  # 存储F键错误的地图列表
+        self.fight_in_map_list = []  # 存储有进入战斗的地图列表
         self.temp_point = ""  # 传送点
+        self.total_time = 0  # 总时间
+        self.total_fight_time = 0  # 总战斗时间

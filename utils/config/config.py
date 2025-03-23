@@ -16,7 +16,8 @@ class ConfigurationManager(metaclass=SingletonMeta):
                 log.info("配置文件不存在，正在初始化")
                 ConfigurationManager.init_config_file(0, 0)
             else:
-                log.info("配置文件已存在")
+                config_path = ConfigurationManager.normalize_file_path(self.CONFIG_FILE_NAME)
+                log.info(f"配置文件已存在，路径：{config_path}")
         except Exception as e:
             log.error(f"初始化配置文件时出现错误: {e}")
 
@@ -80,22 +81,12 @@ class ConfigurationManager(metaclass=SingletonMeta):
     @staticmethod
     def normalize_file_path(filename):
         """
-        寻找文件路径
+        寻找文件路径，仅在当前目录下查找
         """
-        # 尝试在当前目录下读取文件
+        # 在当前目录下读取文件
         current_dir = os.getcwd()
         file_path = os.path.join(current_dir, filename)
-        if os.path.exists(file_path):
-            return file_path
-        else:
-            # 如果当前目录下没有该文件，则尝试在上一级目录中查找
-            parent_dir = os.path.dirname(current_dir)
-            file_path = os.path.join(parent_dir, filename)
-            if os.path.exists(file_path):
-                return file_path
-            else:
-                # 如果上一级目录中也没有该文件，则返回None
-                return None
+        return file_path if os.path.exists(file_path) else None
 
     @staticmethod
     def read_json_file(filename: str, path=False) -> tuple[dict, str]:

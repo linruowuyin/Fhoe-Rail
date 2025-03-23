@@ -19,6 +19,7 @@ from utils.keyboard_event import KeyboardEvent
 from utils.log import log
 from utils.mouse_event import MouseEvent
 from utils.singleton import SingletonMeta
+from utils.window import Window
 
 
 class Handle(metaclass=SingletonMeta):
@@ -26,6 +27,7 @@ class Handle(metaclass=SingletonMeta):
         self.mouse_event = MouseEvent()
         self.img = Img()
         self.cfg = ConfigurationManager()
+        self.window = Window()
 
         self.arrow_begin = None  # 初始箭头
         self.run_fix_time = 0  # 强制断开疾跑时间
@@ -40,6 +42,7 @@ class Handle(metaclass=SingletonMeta):
         self.total_fight_cnt = 0  # 战斗次数计数
         self.total_no_fight_cnt = 0  # 非战斗次数计数
         self.total_fight_time = 0  # 总计战斗时间
+        self.fight_in_map = False  # 地图内意外战斗初始化为否
         self.error_fight_cnt = 0  # 异常战斗<3秒的计数
         self.error_fight_threshold = 3  # 异常战斗为战斗时间<3秒
         self.snack_used = 0  # 奇巧零食使用次数
@@ -77,7 +80,7 @@ class Handle(metaclass=SingletonMeta):
         if remaining_time > 0:
             time.sleep(remaining_time)
 
-    def handle_f(self, value):
+    def handle_f(self, value, allow_skip=True):
         """
         按下f键，等待value秒后进行下一步
         """
@@ -96,8 +99,12 @@ class Handle(metaclass=SingletonMeta):
                 self.img.on_main_interface()
                 time.sleep(2)  # 等待 2 秒加载人物
         else:
-            log.info("检测到非正常'F'情况，不执行并跳过'F'")
-            self.f_key_error = True
+            if allow_skip:
+                log.info("检测到非正常'F'情况，不执行并跳过'F'")
+                self.f_key_error = True
+            else:
+                log.info("检测到非正常'F'情况，继续执行")
+                self.f_key_error = False
 
     def _check_f_img(self, value=15, timeout=5):
         """
@@ -183,6 +190,13 @@ class Handle(metaclass=SingletonMeta):
             allow_press_f = False
 
         return use_absolute_time, delay, allow_press_f
+
+    def handle_allow_skip_f(self, value):
+        """
+        按下f键，等待value秒后进行下一步
+        F异常时不跳过地图
+        """
+        self.handle_f(value, allow_skip=False)
 
     def handle_check(self, value, today_weekday_str):
         """
@@ -530,6 +544,9 @@ class Handle(metaclass=SingletonMeta):
                 fight_status = self.fight_elapsed()
                 if not fight_status:
                     log.info('未进入战斗')
+                else:
+                    log.info('进入战斗')
+                    self.fight_in_map = True
 
         self.run_fix_time = 0
         KeyboardController().press(key)
@@ -545,7 +562,7 @@ class Handle(metaclass=SingletonMeta):
         run_in_road = False
         temp_time = 0
         self.run_fixed = False  # 强制断开初始化为否
-        
+
         value_before = value
         while time.perf_counter() - start_time < value:
             if value_before > 2 and not run_in_road and allow_run and not normal_run:
@@ -603,7 +620,10 @@ class Handle(metaclass=SingletonMeta):
         """异步按下 Ctrl 两次，用于取消疾跑"""
         loop = asyncio.get_event_loop()
         for _ in range(2):
-            await asyncio.sleep(0.03)
+            if self.window.client == "客户端":
+                await asyncio.sleep(0.03)
+            else:
+                await asyncio.sleep(0.08)
             await loop.run_in_executor(None, KeyboardController().tap, KeyboardKey.ctrl)
             log.info("按下 Ctrl")
 
