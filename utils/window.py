@@ -9,27 +9,16 @@ import win32gui
 
 from utils.exceptions import CustomException
 from utils.log import log
+from utils.singleton import SingletonMeta
 
 
-class Window:
-    _instance = None
-    _initialized = False
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__new__(cls)
-            cls._initialized = False
-        return cls._instance
+class Window(metaclass=SingletonMeta):
 
     def __init__(self, max_retries=10):
         """
         初始化窗口对象，确保 hwnd 可用
         :param max_retries: 最大重试次数
         """
-        if self._initialized:
-            return
-        self._initialized = True
-
         self.title = None
         self.hwnd = None
         self.client = None

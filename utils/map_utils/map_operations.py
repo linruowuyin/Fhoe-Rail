@@ -8,7 +8,7 @@ import pyautogui
 
 from utils.calculated import Calculated
 from utils.config.config import ConfigurationManager
-from utils.config.text_window import show_text, tkinter_ready
+from utils.config.text_window import show_text, start_tkinter_thread, TEXT_WINDOWS
 from utils.handle import Handle
 from utils.img import Img
 from utils.log import log
@@ -21,6 +21,7 @@ from utils.mouse_event import MouseEvent
 from utils.pause import Pause
 from utils.time_utils import TimeUtils
 from utils.window import Window
+from utils.report import Report
 
 
 class MapOperations:
@@ -40,10 +41,27 @@ class MapOperations:
         self.window = Window()
         self.calculated = Calculated()
         self.monthly_pass = MonthlyPass()
+        self.report = Report(self.map_statu, self.map_info,
+                             self.handle, self.mouse_event, self.time_mgr)
 
         self.now = datetime.datetime.now()
 
         self.retry_cnt_max = 2  # 初始化最高重试次数
+
+        # 初始化TextWindow实例
+        start_tkinter_thread("map_name")
+        time.sleep(0.1)
+        start_tkinter_thread("key_value")
+        time.sleep(0.1)
+        start_tkinter_thread("map_key_value")
+        time.sleep(0.1)
+
+        # 等待所有窗口准备就绪
+        for window_id in ["map_name", "key_value", "map_key_value"]:
+            if window_id in TEXT_WINDOWS:
+                TEXT_WINDOWS[window_id].ready.wait()
+            else:
+                raise RuntimeError(f"Failed to initialize {window_id} window")
 
     def process_map(self, start, start_in_mid: bool = False, dev: bool = False):
         """
@@ -66,31 +84,12 @@ class MapOperations:
                 if self.map_statu.skip_this_map:
                     continue
 
-            # 最终输出
-            total_time = time.time() - total_start_time
-            total_fight_time = self.handle.total_fight_time
-            log.info(
-                f"结束该阶段的锄地，总计用时 {self.time_mgr.format_time(total_time)}，总计战斗用时 {self.time_mgr.format_time(total_fight_time)}")
-            error_fight_cnt = self.handle.error_fight_cnt
-            log.info(
-                f"异常战斗识别（战斗时间 < {self.handle.error_fight_threshold} 秒）次数：{error_fight_cnt}")
-            if self.map_statu.error_check_point:
-                log.info("筑梦机关检查不通过，请将机关调整到正确的位置上")
-            log.info(
-                f"疾跑节约的时间为 {self.time_mgr.format_time(self.handle.tatol_save_time)}")
-            log.info(f"战斗次数{self.handle.total_fight_cnt}")
-            log.info(f"未战斗次数{self.handle.total_no_fight_cnt}")
-            log.info(
-                "未战斗次数在非黄泉地图首次锄地参考值：70-80，不作为漏怪标准，漏怪具体请在背包中对材料进行溯源查找")
-            log.info(f"系统卡顿次数：{self.handle.time_error_cnt}")
-            log.info(f"奇巧零食使用次数：{self.handle.snack_used}")
-            log.debug(
-                f"匹配值小于0.99的图片：{self.mouse_event.img_search_val_dict}")
-            log.info(
-                f"开始地图：{self.map_statu.start_map_name}，结束地图：{self.map_statu.end_map_name}")
-            log.info(
-                f"异常F键地图：{self.map_statu.map_f_key_error}"
-            )
+            # 计算总时间与总战斗时间
+            self.map_statu.total_time = time.time() - total_start_time
+            self.map_statu.total_fight_time = self.handle.total_fight_time
+
+            # 输出报告
+            self.report.output_report()
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')
 
@@ -100,14 +99,12 @@ class MapOperations:
         """
         start_time = time.time()
 
-        if dev:
-            tkinter_ready.wait()
-            winrect = self.window.get_rect()
-            log.info({winrect})
-            x, y = winrect[0] + 180, winrect[1] + 1045
-            show_text(map_json, x, y, "nouid")
+        self.show_dev_info(dev, map_json, 180, 1045, "map_name")
 
-        self.process_single_map_start(index, map_json)
+        # 初始化地图内意外战斗为未发生
+        self.handle.fight_in_map = False
+
+        self.process_single_map_start(index, map_json, dev)
 
         self.map_statu.teleport_click_count = 0  # 在每次地图循环结束后重置计数器
 
@@ -125,7 +122,7 @@ class MapOperations:
         log.info(
             f"{map_json}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.time_mgr.format_time(self.map_statu.total_processing_time)}』\033[0m")
 
-    def process_single_map_start(self, index, map_json):
+    def process_single_map_start(self, index, map_json, dev: bool = False):
         """
         处理单张地图的开始
         """
@@ -164,6 +161,10 @@ class MapOperations:
                 key = list(start.keys())[0]
                 log.info(key)
                 value = start[key]
+
+                self.show_dev_info(
+                    dev, f'"{key}": {value}', 400, 1045, "key_value")
+
                 self.img.search_img_allow_retry = False
                 self.map.allow_map_drag(start)  # 是否强制允许拖动地图初始化
                 self.map.allow_scene_drag(start)  # 是否强制允许拖动右侧场景初始化
@@ -316,7 +317,11 @@ class MapOperations:
             1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
         self.handle.current_fighting_index = 0
         total_map_count = len(map_data['map'])
+
+        # 1号位相关检测
         self.calculated.first_role_check()  # 1号位为跑图角色
+        # TODO: 黄泉情况下必须为黄泉角色
+
         dev_restart = True  # 初始化开发者重开
         self.handle.handle_view_set(0.1)
         # 开发群657378574，密码hoe2333
@@ -343,10 +348,19 @@ class MapOperations:
                         map_data = self.cfg.read_json_file(
                             f"map/{self.map_info.map_version}/{map_base}.json")  # 重新读取最新地图文件
                         break
-                log.info(
-                    f"执行{map_filename}文件:{map_index + 1}/{total_map_count} {map_value}")
+
+                # 当前地图执行步骤
+                map_progress_info = f"{map_index + 1}/{total_map_count} {map_value}"
+                log.info(f"执行{map_filename}文件:{map_progress_info}")
 
                 key, value = next(iter(map_value.items()))
+
+                # 每一步操作开始前，重置地图内意外战斗为未发生
+                self.handle.fight_in_map = False
+
+                self.show_dev_info(
+                    dev, f'"{key}": {value}', 900, 1045, "map_key_value")
+
                 self.monthly_pass.monthly_pass_check()  # 行进前识别是否接近月卡时间
                 if key == "space":
                     self.handle.handle_space(value, key)
@@ -356,6 +370,8 @@ class MapOperations:
                     self.handle.handle_r(value, key)
                 elif key == "f":
                     self.handle.handle_f(value)
+                elif key == "allow_skip_f":
+                    self.handle.handle_allow_skip_f(value)
                 elif key == "check":
                     self.handle.handle_check(value, self.now.strftime('%A'))
                 elif key == "mouse_move":
@@ -393,25 +409,40 @@ class MapOperations:
                     self.map_statu.map_f_key_error.append(map_data_name)
                     break
 
-            if self.map_info.map_version == "HuangQuan":
-                doubt_result = self.img.scan_screenshot(
-                    self.img.doubt_ui, offset=(0, 0, -1630, -800))
-                if doubt_result["max_val"] > 0.92:
-                    log.info("检测到警告，有可能漏怪，进入黄泉乱砍模式")
-                    start_time = time.time()
-                    while time.time() - start_time < 60 and doubt_result["max_val"] > 0.92:
-                        directions = ["w", "a", "s", "d"]
-                        for index, direction in enumerate(directions):
-                            log.info(f"开砍，{directions[index]}")
-                            for i in range(3):
-                                self.handle.handle_move(
-                                    0.1, direction, False, "")
-                                self.handle.fight_e(value=2)
-                            doubt_result = self.img.scan_screenshot(
-                                self.img.doubt_ui, offset=(0, 0, -1630, -800))
+                if self.handle.fight_in_map and map_data_name not in self.map_statu.fight_in_map_list:
+                    self.map_statu.fight_in_map_list.append(
+                        f"{map_data_name}({map_progress_info})")
+
+            # 黄泉乱砍模式（弃用）
+            # if self.map_info.map_version == "HuangQuan":
+            #     doubt_result = self.img.scan_screenshot(
+            #         self.img.doubt_ui, offset=(0, 0, -1630, -800))
+            #     if doubt_result["max_val"] > 0.92:
+            #         log.info("检测到警告，有可能漏怪，进入黄泉乱砍模式")
+            #         start_time = time.time()
+            #         while time.time() - start_time < 60 and doubt_result["max_val"] > 0.92:
+            #             directions = ["w", "a", "s", "d"]
+            #             for index, direction in enumerate(directions):
+            #                 log.info(f"开砍，{directions[index]}")
+            #                 for i in range(3):
+            #                     self.handle.handle_move(
+            #                         0.1, direction, False, "")
+            #                     self.handle.fight_e(value=2)
+            #                 doubt_result = self.img.scan_screenshot(
+            #                     self.img.doubt_ui, offset=(0, 0, -1630, -800))
 
             if self.map_info.map_version == "HuangQuan" and last_key == "e":
                 if not self.img.on_main_interface(timeout=0.2):
                     fight_status = self.handle.fight_elapsed()
                     if not fight_status:
                         log.info('未进入战斗')
+
+    def show_dev_info(self, dev: bool, text, x_offset: int, y_offset: int, text_mode):
+        """
+        开发者模式下显示文本
+        """
+        if dev:
+            winrect = self.window.get_rect()
+            log.info({winrect})
+            x, y = winrect[0] + x_offset, winrect[1] + y_offset
+            show_text(text, x, y, "nouid", text_mode)

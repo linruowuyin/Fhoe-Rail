@@ -13,6 +13,8 @@ class TextWindow:
     """
 
     def __init__(self):
+        # 初始化ready事件
+        self.ready = threading.Event()
         """初始化TextWindow实例。
 
         创建一个透明的tkinter窗口，配置其属性使其支持点击穿透，
@@ -141,39 +143,48 @@ class TextWindow:
         self.root.geometry(f"+{x}+{y}")
 
 
-# 全局实例
-TEXT_WINDOW = None
-TKINTER_THREAD = None
-tkinter_ready = threading.Event()
+# 全局实例字典，用于存储多个TextWindow实例
+TEXT_WINDOWS = {}
+TKINTER_THREADS = {}
 
 
-def create_tkinter_window() -> None:
+def create_tkinter_window(window_id: str = "default") -> None:
     """创建Tkinter窗口实例。
 
+    Args:
+        window_id: 窗口实例的唯一标识符
+
     创建TextWindow实例并启动主循环。
-    设置tkinter_ready事件，表示窗口初始化完成。
+    设置ready事件，表示窗口初始化完成。
     """
-    global TEXT_WINDOW
-    TEXT_WINDOW = TextWindow()
-    tkinter_ready.set()
-    TEXT_WINDOW.root.mainloop()
+    global TEXT_WINDOWS
+    text_window = TextWindow()
+    TEXT_WINDOWS[window_id] = text_window
+    text_window.ready.set()
+    text_window.root.mainloop()
 
 
-def start_tkinter_thread() -> None:
+def start_tkinter_thread(window_id: str = "default") -> None:
     """启动Tkinter线程。
+
+    Args:
+        window_id: 窗口实例的唯一标识符
 
     创建并启动一个守护线程来运行Tkinter窗口。
     """
-    global TKINTER_THREAD
-    TKINTER_THREAD = threading.Thread(
+    global TKINTER_THREADS
+    thread = threading.Thread(
         target=create_tkinter_window,
+        args=(window_id,),
         daemon=True
     )
-    TKINTER_THREAD.start()
+    TKINTER_THREADS[window_id] = thread
+    thread.start()
 
 
 def show_text(text: Any, x: int = 100, y: int = 100,
-              mode: Literal["nouid", "showuid"] = "nouid") -> None:
+              mode: Literal["nouid", "showuid"] = "nouid",
+              window_id: str = "default") -> None:
     """显示或更新文本。
 
     Args:
@@ -183,17 +194,19 @@ def show_text(text: Any, x: int = 100, y: int = 100,
         mode: 显示模式
             - 'nouid': x坐标左移150像素
             - 'showuid': 保持原坐标
+        window_id: 窗口实例的唯一标识符
     """
     if mode not in ["nouid", "showuid"]:
         mode = "nouid"
 
     adjusted_x = x - 150 if mode == "nouid" else x
 
-    if TEXT_WINDOW:
-        TEXT_WINDOW.queue.put(
-            lambda: TEXT_WINDOW.show_text(text, adjusted_x, y)
+    if window_id in TEXT_WINDOWS:
+        text_window = TEXT_WINDOWS[window_id]
+        text_window.queue.put(
+            lambda: text_window.show_text(text, adjusted_x, y)
         )
 
 
-# 启动Tkinter线程
-start_tkinter_thread()
+# 启动默认Tkinter线程
+start_tkinter_thread("default")
