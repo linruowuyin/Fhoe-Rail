@@ -53,14 +53,7 @@
 
 ### 跑图模型分类
 
-现有模型分类（可能有误，待修正）：
-
-| 模型 | 角色                                          |
-| ---- | --------------------------------------------- |
-| 少女 | 青雀、佩拉、符玄、三月七、艾丝妲              |
-| 成女 | 阮•梅、托帕、黑天鹅、布洛妮娅、驭空、娜塔莎、 |
-| 少年 | 无                                            |
-| 成男 | 丹恒•饮月、瓦尔特                             |
+小部分角色可能因为体型原因莫名卡住
 
 
 ### 地图选择
@@ -183,13 +176,13 @@
 
 ## 相关项目
 
-- 原项目 : StarRailAssistant [https://github.com/Starry-Wind/StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)
+- 原项目 : StarRailAssistant [https://github.com/Starry-Wind/StarRailAssistant](https://github.com/Starry-Wind/StarRailAssistant)【停更】
 
 - 聚合使用 三月七小助手 : March7thAssistant [https://github.com/moesnow/March7thAssistant](https://github.com/moesnow/March7thAssistant)
 
 - 锄大地项目 一条龙 : StarRailAutoProxy [https://github.com/DoctorReid/StarRailAutoProxy](https://github.com/DoctorReid/StarRailAutoProxy)
 
-- 锄大地项目 FastRun : StarRail-FastRun [https://github.com/Souloco/StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)
+- 锄大地项目 FastRun : StarRail-FastRun [https://github.com/Souloco/StarRail-FastRun](https://github.com/Souloco/StarRail-FastRun)【停更】
 
 - 模拟器项目 星铁速溶茶 : StarRailCopilot [https://github.com/LmeSzinc/StarRailCopilot](https://github.com/LmeSzinc/StarRailCopilot)
 
