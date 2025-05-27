@@ -237,6 +237,15 @@ class MapOperations:
                     self.calculated.run_mapload_check()
                     if self.map_statu.temp_point:
                         log.info(f'地图加载前的传送点为 {self.map_statu.temp_point}')
+                elif key == "floor":
+                    arr, target = value
+                    try:
+                        idx = arr.index(target)
+                        log.info(f"floor目标值{target}在数组{arr}中的下标为{idx}")
+                        # 点击对应下标的楼层
+                        self.handle.handle_click_floor(idx)
+                    except Exception as e:
+                        log.info(f"floor处理异常: {e}")
                 else:
                     value = min(value, 0.8)
                     time.sleep(value)

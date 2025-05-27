@@ -946,3 +946,13 @@ class Handle(metaclass=SingletonMeta):
         """
         pyautogui.press('b')
         time.sleep(1)
+
+    def handle_click_floor(self, floor_idx: int):
+        """
+        点击楼层
+        """
+        y_base = 970
+        x_ratio = 3.4
+        # 计算偏移量
+        y_ratio = float((y_base - floor_idx * 86) / 1080 * 100)
+        self.mouse_event.relative_click((x_ratio, y_ratio))
