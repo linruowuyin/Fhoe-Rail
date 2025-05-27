@@ -10,7 +10,8 @@
     },
     {
       "picture\\map_5-7_point_4.png": 1.5,
-      "drag_exact": [7,0,3]
+      "drag": 1,
+      "drag_exact": [7,0,2]
     },
     {
       "picture\\transfer.png": 1.5
