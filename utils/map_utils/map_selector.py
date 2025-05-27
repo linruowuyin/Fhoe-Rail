@@ -14,7 +14,10 @@ def choose_map(map_info: MapInfo):
     main_map = cfg.config_file.get("main_map", None)
     if main_map is None:
         main_map = min(list(map_info.map_list_map.keys()))
-    side_map = list(map_info.map_list_map.get(main_map).keys())[0]
+    main_map_dict = map_info.map_list_map.get(main_map)
+    if main_map_dict is None:
+        raise ValueError(f"main_map '{main_map}' 不存在于 map_list_map，请检查配置或地图初始化逻辑。")
+    side_map = list(main_map_dict.keys())[0]
     return (f"{main_map}-{side_map}", True)
 
 
