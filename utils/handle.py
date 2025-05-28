@@ -550,11 +550,13 @@ class Handle(metaclass=SingletonMeta):
 
         self.run_fix_time = 0
         KeyboardController().press(key)
-        # 固定ctrl两次取消疾跑
-        log.info(f"last_step_run: {self.last_step_run}")
-        if self.last_step_run:
-            self.start_cancel_sprint_task()
-            self.stop_cancel_sprint_task()
+        
+        log.info(f"上一次疾跑状态: {self.last_step_run}")
+        # 疾跑相关逻辑回退2025.2.28版本
+        # # 固定ctrl两次取消疾跑
+        # if self.last_step_run:
+        #     self.start_cancel_sprint_task()
+        #     self.stop_cancel_sprint_task()
 
         start_time = time.perf_counter()
         allow_run = self.cfg.config_file.get("auto_run_in_map", False)
@@ -616,38 +618,42 @@ class Handle(metaclass=SingletonMeta):
                     KeyboardController().press(key)
                     KeyboardController().release(key)
 
-    async def async_cancel_sprint(self):
-        """异步按下 Ctrl 两次，用于取消疾跑"""
-        loop = asyncio.get_event_loop()
-        for _ in range(2):
-            if self.window.client == "客户端":
-                await asyncio.sleep(0.03)
-            else:
-                await asyncio.sleep(0.08)
-            await loop.run_in_executor(None, KeyboardController().tap, KeyboardKey.ctrl)
-            log.info("按下 Ctrl")
+    # 机器配置不高时，sleep时间过短，会导致误判
+    # async def async_cancel_sprint(self):
+    #     """异步按下 Ctrl 两次，用于取消疾跑"""
+    #     loop = asyncio.get_event_loop()
+    #     for _ in range(2):
+    #         if self.window.client == "客户端":
+    #             await asyncio.sleep(0.03)
+    #         else:
+    #             await asyncio.sleep(0.08)
+    #         await loop.run_in_executor(None, KeyboardController().tap, KeyboardKey.ctrl)
+    #         log.info("按下 Ctrl")
 
-    def start_cancel_sprint_task(self):
-        """启动取消疾跑任务"""
-        if self.thread_cancel_sprint and self.thread_cancel_sprint.is_alive():
-            log.warning("取消疾跑任务已在运行，跳过启动")
-            return
-        self.ctrl_press = True
-        self.thread_cancel_sprint = threading.Thread(
-            target=self._run_async_cancel_sprint, daemon=True
-        )
-        self.thread_cancel_sprint.start()
+    # 疾跑相关逻辑回退2025.2.28版本
+    # def start_cancel_sprint_task(self):
+    #     """启动取消疾跑任务"""
+    #     if self.thread_cancel_sprint and self.thread_cancel_sprint.is_alive():
+    #         log.warning("取消疾跑任务已在运行，跳过启动")
+    #         return
+    #     self.ctrl_press = True
+    #     self.thread_cancel_sprint = threading.Thread(
+    #         target=self._run_async_cancel_sprint, daemon=True
+    #     )
+    #     self.thread_cancel_sprint.start()
 
-    def stop_cancel_sprint_task(self):
-        """停止取消疾跑任务"""
-        self.ctrl_press = False
-        if self.thread_cancel_sprint and self.thread_cancel_sprint.is_alive():
-            self.thread_cancel_sprint.join()
-            self.thread_cancel_sprint = None
+    # 疾跑相关逻辑回退2025.2.28版本
+    # def stop_cancel_sprint_task(self):
+    #     """停止取消疾跑任务"""
+    #     self.ctrl_press = False
+    #     if self.thread_cancel_sprint and self.thread_cancel_sprint.is_alive():
+    #         self.thread_cancel_sprint.join()
+    #         self.thread_cancel_sprint = None
 
-    def _run_async_cancel_sprint(self):
-        """运行异步任务，处理取消疾跑的逻辑"""
-        asyncio.run(self.async_cancel_sprint())
+    # 疾跑相关逻辑回退2025.2.28版本
+    # def _run_async_cancel_sprint(self):
+    #     """运行异步任务，处理取消疾跑的逻辑"""
+    #     asyncio.run(self.async_cancel_sprint())
 
     def is_running(self):
         """
@@ -940,3 +946,13 @@ class Handle(metaclass=SingletonMeta):
         """
         pyautogui.press('b')
         time.sleep(1)
+
+    def handle_click_floor(self, floor_idx: int):
+        """
+        点击楼层
+        """
+        y_base = 970
+        x_ratio = 3.4
+        # 计算偏移量
+        y_ratio = float((y_base - floor_idx * 86) / 1080 * 100)
+        self.mouse_event.relative_click((x_ratio, y_ratio))

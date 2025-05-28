@@ -1,0 +1,34 @@
+{
+  "name": "无晖祈堂-5",
+  "author": "smjes3",
+  "start": [
+    {
+      "map": 1
+    },
+    {
+      "picture\\fanhui_1.png": 1.5
+    },
+    {
+      "picture\\map_5-6_point_3.png": 1.5,
+      "drag": 1,
+      "drag_exact": [7,0,4]
+    },
+    {
+      "picture\\transfer.png": 1.5
+    }
+  ],
+  "map": [
+    {
+      "s": 12.19
+    },
+    {
+      "d": 0.43
+    },
+    {
+      "e": 2
+    },
+    {
+      "e": 2
+    }
+  ]
+}

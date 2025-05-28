@@ -48,16 +48,11 @@ class MapOperations:
 
         self.retry_cnt_max = 2  # 初始化最高重试次数
 
-        # 初始化TextWindow实例
-        start_tkinter_thread("map_name")
-        time.sleep(0.1)
-        start_tkinter_thread("key_value")
-        time.sleep(0.1)
-        start_tkinter_thread("map_key_value")
-        time.sleep(0.1)
-
-        # 等待所有窗口准备就绪
+        # 初始化TextWindow实例，并确保每个窗口初始化完成后再进行下一个
         for window_id in ["map_name", "key_value", "map_key_value"]:
+            start_tkinter_thread(window_id)
+            time.sleep(1)  # 等待1秒以确保线程初始化完成
+            # 等待窗口实例ready，确保线程初始化完成
             if window_id in TEXT_WINDOWS:
                 TEXT_WINDOWS[window_id].ready.wait()
             else:
@@ -242,6 +237,15 @@ class MapOperations:
                     self.calculated.run_mapload_check()
                     if self.map_statu.temp_point:
                         log.info(f'地图加载前的传送点为 {self.map_statu.temp_point}')
+                elif key == "floor":
+                    arr, target = value
+                    try:
+                        idx = arr.index(target)
+                        log.info(f"floor目标值{target}在数组{arr}中的下标为{idx}")
+                        # 点击对应下标的楼层
+                        self.handle.handle_click_floor(idx)
+                    except Exception as e:
+                        log.info(f"floor处理异常: {e}")
                 else:
                     value = min(value, 0.8)
                     time.sleep(value)
@@ -274,7 +278,7 @@ class MapOperations:
                     else:
                         if self.map.allow_drap_map_switch or self.map_drag:
                             self.map.find_transfer_point(
-                                key, threshold=0.975, offset=self.map.drag_exact)
+                                key, threshold=0.975, exact=self.map.drag_exact, offset=self.map.drag_offset)
                         if self.map.allow_scene_drag_switch:
                             self.map.find_scene(key, threshold=0.990)
                         if self.img.on_main_interface(timeout=0.5, allow_log=False):

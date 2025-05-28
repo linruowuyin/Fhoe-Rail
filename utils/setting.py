@@ -250,6 +250,16 @@ class Setting(metaclass=SingletonMeta):
                 "config_key": "allowlist_mode",
             },
             {
+                "title": "锄大地结束超过0点时，等待4点刷新后继续锄大地（三月七用户不建议开启）",
+                "choices": {"否": False, "是": True},
+                "config_key": "allow_run_next_day",
+            },
+            {
+                "title": "!!!疾跑模式（漏怪严重时建议选否禁用疾跑）",
+                "choices": {"否": False, "是": True},
+                "config_key": "auto_run_in_map",
+            },
+            {
                 "title": "[仅该次运行有效]运行前重新校准视角",
                 "choices": {"否": True, "是": False},
                 "config_key": "angle_set",

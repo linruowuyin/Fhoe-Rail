@@ -56,7 +56,7 @@ class Map:
                 attempts += 1
                 self.handle.back_to_main()  # 确保返回主界面以重试
 
-    def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60, offset=None):
+    def find_transfer_point(self, key, threshold=0.99, min_threshold=0.93, timeout=60, exact=None, offset=None):
         """
         说明:
             寻找传送点
@@ -65,6 +65,7 @@ class Map:
             :param threshold: 图片查找阈值
             :param min_threshold: 最低图片查找阈值
             :param timeout: 超时时间（秒）
+            :param exact: 精确查找，None 时使用默认移动逻辑
             :param offset: 查找偏移，None 时使用默认移动逻辑
         """
         start_time = time.time()
@@ -75,10 +76,14 @@ class Map:
                 log.info(f"传送点已找到，匹配度：{threshold:.2f}")
                 return
 
-            if offset is None:
+            if offset is not None:
+                self._move_with_offset(offset)
+                offset = None
+
+            if exact is None:
                 self._move_default(target, threshold)
             else:
-                self._move_with_offset(offset)
+                self._move_with_exact(exact)
 
             threshold = max(min_threshold, threshold - 0.01)
 
@@ -112,11 +117,24 @@ class Map:
         """
         按偏移量移动地图。
         """
-        for _ in range(offset[0]):  # 向左+向上
-            self.mouse_event.mouse_drag(*self._directions()["up_left"])
-        for _ in range(offset[1]):  # 向右
+        for _ in range(offset[0]):  # 向左
+            self.mouse_event.mouse_drag(*self._directions()["left"])
+        for _ in range(offset[1]):  # 向上
+            self.mouse_event.mouse_drag(*self._directions()["up"])
+        for _ in range(offset[2]):  # 向右
             self.mouse_event.mouse_drag(*self._directions()["right"])
-        for _ in range(offset[2]):  # 向下
+        for _ in range(offset[3]):  # 向下
+            self.mouse_event.mouse_drag(*self._directions()["down"])
+
+    def _move_with_exact(self, exact):
+        """
+        按精确移动逻辑移动地图。
+        """
+        for _ in range(exact[0]):  # 向左+向上
+            self.mouse_event.mouse_drag(*self._directions()["up_left"])
+        for _ in range(exact[1]):  # 向右
+            self.mouse_event.mouse_drag(*self._directions()["right"])
+        for _ in range(exact[2]):  # 向下
             self.mouse_event.mouse_drag(*self._directions()["down"])
 
     def find_scene(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
@@ -173,9 +191,12 @@ class Map:
     def allow_map_drag(self, start):
         self.allow_drap_map_switch = bool(start.get("drag", False))  # 默认禁止拖动地图
         self.drag_exact = None
+        self.drag_offset = None
 
         if self.allow_drap_map_switch and "drag_exact" in start:
             self.drag_exact = start["drag_exact"]
+        if self.allow_drap_map_switch and "drag_offset" in start:  # 允许先相对移动地图
+            self.drag_offset = start["drag_offset"]
 
     def allow_scene_drag(self, start):
         self.allow_scene_drag_switch = bool(
