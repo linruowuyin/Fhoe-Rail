@@ -278,7 +278,7 @@ class MapOperations:
                     else:
                         if self.map.allow_drap_map_switch or self.map_drag:
                             self.map.find_transfer_point(
-                                key, threshold=0.975, offset=self.map.drag_exact)
+                                key, threshold=0.975, exact=self.map.drag_exact, offset=self.map.drag_offset)
                         if self.map.allow_scene_drag_switch:
                             self.map.find_scene(key, threshold=0.990)
                         if self.img.on_main_interface(timeout=0.5, allow_log=False):
