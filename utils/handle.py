@@ -1,16 +1,17 @@
 import asyncio
+from datetime import datetime
+from functools import partial
 import random
 import threading
 import time
-from datetime import datetime
 
 import cv2
 import numpy as np
 import pyautogui
-import win32api
-import win32con
 from pynput.keyboard import Controller as KeyboardController
 from pynput.keyboard import Key as KeyboardKey
+import win32api
+import win32con
 
 from utils.config.config import ConfigurationManager
 from utils.exceptions import CustomException
@@ -562,6 +563,7 @@ class Handle(metaclass=SingletonMeta):
         allow_run = self.cfg.config_file.get("auto_run_in_map", False)
         add_time = True
         run_in_road = False
+        walk_in_road = False
         temp_time = 0
         self.run_fixed = False  # 强制断开初始化为否
 
@@ -571,7 +573,7 @@ class Handle(metaclass=SingletonMeta):
                 self.move_run_fix(start_time)
                 if time.perf_counter() - start_time > 1:
                     self.enable_run()
-                    self.start_check_sprint_task()
+                    self.start_check_sprint_task(need_run=True)
                     run_in_road = True
                     temp_value = value_before
                     value = round((value_before - 1) / 1.53, 4) + 1
@@ -580,10 +582,13 @@ class Handle(metaclass=SingletonMeta):
             elif value_before <= 1 and allow_run and add_time and self.last_step_run:
                 value = value_before + 0.07
                 self.move_run_fix(start_time)
+                self.start_check_sprint_task(need_run=False)
                 add_time = False
                 self.last_step_run = False
-            elif value_before <= 2:
+            elif value_before <= 2 and not walk_in_road:
                 self.move_run_fix(start_time)
+                self.start_check_sprint_task(need_run=False)
+                walk_in_road = True
                 self.last_step_run = False
         self.stop_check_sprint_task()
         temp_time = time.perf_counter() - start_time
@@ -663,31 +668,38 @@ class Handle(metaclass=SingletonMeta):
             self.img.switch_run, (1720, 930, 0, 0))
         return result['max_val'] > 0.996
 
-    async def async_check_sprint_status(self):
-        """异步检测疾跑状态"""
+    async def async_check_sprint_status(self, need_run=True):
+        """异步检测疾跑状态
+        :param need_run: True=需要开启疾跑, False=需要关闭疾跑
+        """
         loop = asyncio.get_event_loop()
-        count = 0
-        while self.running and count < 2:
+        action = "开启" if need_run else "关闭"
+
+        for count in range(2):
+            if not self.running:
+                break
+
             await asyncio.sleep(0.12)
             is_running = await loop.run_in_executor(None, self.is_running)
-            if not is_running:
-                log.warning(f"疾跑未能成功开启，再尝试一次，当前{count + 1}次")
-                await loop.run_in_executor(None, KeyboardController().press, KeyboardKey.shift)
-                log.info("开启疾跑")
-            else:
-                log.info("疾跑已成功开启")
+
+            should_act = (need_run and not is_running) or (not need_run and is_running)
+            if not should_act:
+                log.info(f"当前已{action}疾跑")
                 break
-            count += 1
+
+            await loop.run_in_executor(None, KeyboardController().press, KeyboardKey.shift)
+            log.info(f"{action}疾跑" + (f"，第{count+1}次尝试" if count else ""))
+
         self.running = False
 
-    def start_check_sprint_task(self):
+    def start_check_sprint_task(self, need_run=True):
         """启动检测疾跑任务"""
         if self.thread_check_sprint and self.thread_check_sprint.is_alive():
             log.warning("检测疾跑任务已在运行，跳过启动")
             return
         self.running = True
         self.thread_check_sprint = threading.Thread(
-            target=self._run_async_check_sprint, daemon=True
+            target=partial(self._run_async_check_sprint, need_run=need_run), daemon=True
         )
         self.thread_check_sprint.start()
 
@@ -699,9 +711,9 @@ class Handle(metaclass=SingletonMeta):
             self.thread_check_sprint = None
         log.info("检测任务已停止")
 
-    def _run_async_check_sprint(self):
+    def _run_async_check_sprint(self, need_run=True):
         """运行异步任务，处理检测疾跑的逻辑"""
-        asyncio.run(self.async_check_sprint_status())
+        asyncio.run(self.async_check_sprint_status(need_run=need_run))
 
     def enable_run(self):
         """强制开启疾跑"""
