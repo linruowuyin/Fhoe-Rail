@@ -238,6 +238,7 @@ class MapOperations:
                     if self.map_statu.temp_point:
                         log.info(f'地图加载前的传送点为 {self.map_statu.temp_point}')
                 elif key == "floor":
+                    time.sleep(0.8)
                     arr, target = value
                     try:
                         idx = arr.index(target)
