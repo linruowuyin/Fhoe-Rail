@@ -117,24 +117,33 @@ class Map:
         """
         按偏移量移动地图。
         """
+        log.info("开始按照设置相对移动地图")
         for _ in range(offset[0]):  # 向左
+            log.info("地图左移")
             self.mouse_event.mouse_drag(*self._directions()["left"])
         for _ in range(offset[1]):  # 向上
+            log.info("地图上移")
             self.mouse_event.mouse_drag(*self._directions()["up"])
         for _ in range(offset[2]):  # 向右
+            log.info("地图右移")
             self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(offset[3]):  # 向下
+            log.info("地图下移")
             self.mouse_event.mouse_drag(*self._directions()["down"])
 
     def _move_with_exact(self, exact):
         """
         按精确移动逻辑移动地图。
         """
+        log.info("开始按照设置精确移动地图，先定位到地图左上角后移动到目标位置")
         for _ in range(exact[0]):  # 向左+向上
+            log.info("地图左上移")
             self.mouse_event.mouse_drag(*self._directions()["up_left"])
         for _ in range(exact[1]):  # 向右
+            log.info("地图右移")
             self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(exact[2]):  # 向下
+            log.info("地图下移")
             self.mouse_event.mouse_drag(*self._directions()["down"])
 
     def find_scene(self, key, threshold=0.99, min_threshold=0.93, timeout=60):
@@ -294,7 +303,7 @@ class Map:
         if self.check_planet(key):
             return
         else:
-            self.find_transfer_point(key, threshold=0.975)
+            self.find_transfer_point(key, threshold=0.975, offset=self.drag_offset, exact=self.drag_exact)
             if self.mouse_event.click_target(key, 0.93, delay=0.1):
                 time.sleep(5)
                 img = cv.imread("./picture/kaituoli_1.png")
