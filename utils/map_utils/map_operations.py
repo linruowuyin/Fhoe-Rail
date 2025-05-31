@@ -238,6 +238,7 @@ class MapOperations:
                     if self.map_statu.temp_point:
                         log.info(f'地图加载前的传送点为 {self.map_statu.temp_point}')
                 elif key == "floor":
+                    time.sleep(0.8)
                     arr, target = value
                     try:
                         idx = arr.index(target)
@@ -255,7 +256,7 @@ class MapOperations:
                     elif key in ["picture\\fanhui_1.png", "picture\\fanhui_2.png"]:
                         self.map.handle_back(key)
                     elif key.startswith("picture\\check_4-1_point"):
-                        self.map.find_transfer_point(key, threshold=0.992)
+                        self.map.find_transfer_point(key, threshold=0.992, exact=self.map.drag_exact, offset=self.map.drag_offset)
                         if self.mouse_event.click_target(key, 0.992, retry_in_map=False):
                             log.info("筑梦机关检查通过")
                         else:
@@ -263,13 +264,13 @@ class MapOperations:
                             self.map_statu.error_check_point = True
                         time.sleep(1)
                     elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
-                        self.map.find_transfer_point(key, threshold=0.975)
+                        self.map.find_transfer_point(key, threshold=0.975, exact=self.map.drag_exact, offset=self.map.drag_offset)
                         self.mouse_event.click_target(key, 0.95)
                         self.map_statu.temp_point = key
                     elif key == "picture\\orientation_1.png":
                         self.map.handle_orientation(key, map_data)
                     elif key.startswith("picture\\map_4-3_point"):
-                        self.map.find_transfer_point(key, threshold=0.975)
+                        self.map.find_transfer_point(key, threshold=0.975, exact=self.map.drag_exact, offset=self.map.drag_offset)
                         self.mouse_event.click_target(key, 0.93)
                         self.map_statu.temp_point = key
                         time.sleep(1.7)
