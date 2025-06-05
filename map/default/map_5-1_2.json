@@ -6,11 +6,25 @@
       "map": 1
     },
     {
-      "picture\\2floor.png": 1.5
+      "floor": [
+        [
+          -1,
+          1,
+          2,
+          3
+        ],
+        2
+      ]
     },
     {
       "picture\\map_5-1_point_1.png": 1.5,
-      "drag": 1
+      "drag": 1,
+      "drag_offset": [
+        0,
+        1,
+        1,
+        0
+      ]
     },
     {
       "picture\\transfer.png": 1.5
