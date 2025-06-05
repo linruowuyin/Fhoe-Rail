@@ -570,15 +570,17 @@ class Handle(metaclass=SingletonMeta):
 
         value_before = value
         while time.perf_counter() - start_time < value:
-            if not is_normal_run:
-                # self.start_check_sprint_task(need_run=False, delay=0.03)
-                self.disable_run()
-                is_normal_run = True
-            elif value_before > 2 and not run_in_road and allow_run and not normal_run:
+            # if not is_normal_run and self.last_step_run:
+            #     # self.start_check_sprint_task(need_run=False, delay=0.03)
+            #     self.disable_run()
+            #     is_normal_run = True
+            # else:
+            #     is_normal_run = True
+            if value_before > 2 and not run_in_road and allow_run and not normal_run:
                 self.move_run_fix(start_time)
                 if time.perf_counter() - start_time > 1:
                     self.enable_run()
-                    # self.start_check_sprint_task(need_run=True)
+                    self.start_check_sprint_task(need_run=True)
                     run_in_road = True
                     temp_value = value_before
                     value = round((value_before - 1) / 1.53, 4) + 1
@@ -594,7 +596,7 @@ class Handle(metaclass=SingletonMeta):
                 walk_in_road = True
                 self.last_step_run = False
         temp_time = time.perf_counter() - start_time
-        # self.stop_check_sprint_task()
+        self.stop_check_sprint_task()
         KeyboardController().release(KeyboardKey.shift)
         KeyboardController().release(key)
         if allow_run:
@@ -691,6 +693,9 @@ class Handle(metaclass=SingletonMeta):
                 break
 
             await loop.run_in_executor(None, KeyboardController().press, KeyboardKey.shift)
+            if not need_run:
+                await asyncio.sleep(0.03)
+                await loop.run_in_executor(None, KeyboardController().release, KeyboardKey.shift)
             log.info(f"{action}疾跑" + (f"，第{count+1}次尝试" if count else ""))
 
         self.running = False
@@ -717,14 +722,20 @@ class Handle(metaclass=SingletonMeta):
     def _run_async_check_sprint(self, need_run=True, delay=0.12):
         """运行异步任务，处理检测疾跑的逻辑"""
         asyncio.run(self.async_check_sprint_status(need_run=need_run, delay=delay))
-
-    def disable_run(self):
-        """强制关闭疾跑"""
-        log.info("调用disable_run")
-        KeyboardController().press(KeyboardKey.shift)
-        time.sleep(0.03)  # 等待0.03s，防止误判
-        KeyboardController().release(KeyboardKey.shift)
-        log.info("关闭疾跑")
+    
+    # 2025.6.5 疾跑依然有严重问题
+    # def disable_run(self):
+    #     """强制关闭疾跑"""
+    #     log.info("调用disable_run")
+    #     time.sleep(0.01)
+    #     KeyboardController().press(KeyboardKey.shift)
+    #     time.sleep(0.03)
+    #     KeyboardController().release(KeyboardKey.shift)
+    #     log.info("关闭疾跑")
+    #     if self.is_key_pressed(0x10):
+    #         log.info("当前 Shift 键状态：按下")
+    #     else:
+    #         log.info("当前 Shift 键状态：释放")
 
     def enable_run(self):
         """强制开启疾跑"""
@@ -745,7 +756,8 @@ class Handle(metaclass=SingletonMeta):
         - time_limit: 限制检测逻辑的时间窗口，默认为 0.3 秒。
         '''
         # 测试
-        return
+        # return
+        # 回退至2025.2.28版本
         if not self.run_fixed:
             current_time = time.perf_counter()
             elapsed_time = current_time - start_time
