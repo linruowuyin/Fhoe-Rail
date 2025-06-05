@@ -9,15 +9,24 @@
       "picture\\fanhui_2.png": 1.5
     },
     {
-      "picture\\1floor.png": 1.5
+      "floor": [
+        [
+          -1,
+          1,
+          2,
+          3
+        ],
+        1
+      ]
     },
     {
       "picture\\map_5-1_point_2.png": 1.5,
       "drag": 1,
-      "drag_exact": [
-        4,
+      "drag_offset": [
+        0,
         1,
-        1
+        0,
+        0
       ]
     },
     {

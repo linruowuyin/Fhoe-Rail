@@ -6,10 +6,14 @@
       "map": 1
     },
     {
-      "picture\\1floor.png": 1.5
-    },
-    {
-      "picture\\map_5-2_point_6.png": 1.5
+      "picture\\map_5-2_point_6.png": 1.5,
+      "drag": 1,
+      "drag_offset": [
+        0,
+        0,
+        1,
+        1
+      ]
     },
     {
       "picture\\transfer.png": 1.5
@@ -182,7 +186,10 @@
       "s": 6.0
     },
     {
-      "w": 1.0
+      "await": 2.0
+    },
+    {
+      "w": 0.8
     },
     {
       "d": 0.1
