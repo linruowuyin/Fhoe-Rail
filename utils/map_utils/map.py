@@ -167,9 +167,9 @@ class Map:
             for index, direction in enumerate(directions):
                 log.info(
                     f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}")
-                for i in range(1):
+                for _ in range(2):
                     if not self.img.have_screenshot(target_list, (0, 0, 0, 0), threshold):
-                        self.mouse_event.mouse_drag(*direction)
+                        self.mouse_event.mouse_drag(*direction, press_time=1)
                     else:
                         return
             threshold -= 0.02
