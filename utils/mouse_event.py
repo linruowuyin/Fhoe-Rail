@@ -63,15 +63,31 @@ class MouseEvent(metaclass=SingletonMeta):
         time.sleep(0.01)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
-    def mouse_drag(self, x, y, end_x, end_y):
+    def mouse_drag(self, x, y, end_x, end_y, press_time: float = 0):
         """
         说明：
-            鼠标按下后拖动
+            在窗口内执行鼠标拖拽操作
+            
+        参数：
+            :param x: 起始点x坐标(相对于窗口)
+            :param y: 起始点y坐标(相对于窗口)
+            :param end_x: 终点x坐标(相对于窗口)
+            :param end_y: 终点y坐标(相对于窗口)
+            :param press_time: 鼠标拖动到终点后的停留时间(秒)，默认为0
+            
+        返回：
+            None
+            
+        示例：
+            mouse_drag(100, 100, 300, 300)  # 从(100,100)拖拽到(300,300)
+            mouse_drag(100, 100, 300, 300, 0.5)  # 拖拽到终点后停留0.5秒
         """
         left, top, right, bottom = self.window.get_rect()
         pyautogui.moveTo(left + x, top + y)
         pyautogui.mouseDown()
         pyautogui.moveTo(left + end_x, top + end_y, duration=0.2)
+        if press_time:
+            time.sleep(press_time)
         pyautogui.mouseUp()
         time.sleep(1)
 
