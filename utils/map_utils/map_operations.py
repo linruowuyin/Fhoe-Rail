@@ -48,20 +48,23 @@ class MapOperations:
 
         self.retry_cnt_max = 2  # 初始化最高重试次数
 
-        # 初始化TextWindow实例，并确保每个窗口初始化完成后再进行下一个
+    def init_dev_windows(self):
+        """初始化开发者模式窗口"""
         for window_id in ["map_name", "key_value", "map_key_value"]:
             start_tkinter_thread(window_id)
-            time.sleep(1)  # 等待1秒以确保线程初始化完成
+            # 持续检查直到窗口初始化完成
+            while window_id not in TEXT_WINDOWS:
+                time.sleep(1)
+                log.info(f"等待窗口 {window_id} 初始化完成")
             # 等待窗口实例ready，确保线程初始化完成
-            if window_id in TEXT_WINDOWS:
-                TEXT_WINDOWS[window_id].ready.wait()
-            else:
-                raise RuntimeError(f"Failed to initialize {window_id} window")
+            TEXT_WINDOWS[window_id].ready.wait()
 
     def process_map(self, start, start_in_mid: bool = False, dev: bool = False):
         """
         处理地图
         """
+        if dev:
+            self.init_dev_windows()
         self.map_statu.total_processing_time = 0
         self.map_statu.teleport_click_count = 0
         self.map_statu.error_check_point = False  # 初始化筑梦机关检查为通过

@@ -49,6 +49,7 @@ def _h_main_map(map_info: MapInfo):
         "3 仙舟「罗浮」": "3",
         "4 匹诺康尼": "4",
         "5 翁法罗斯": "5",
+        "6 二相乐园": "6",
         "优先星球": "first_map",
         "仅此次运行白名单地图": "allowlist",
         "[设置]": "option",
@@ -80,6 +81,7 @@ def _h_priority(map_info: MapInfo):
         "3 仙舟「罗浮」": "3",
         "4 匹诺康尼": "4",
         "5 翁法罗斯": "5",
+        "6 二相乐园": "6",
         "【返回】": "back",
     }
     choice = questionary.select(title, list(opts.keys())).ask()
