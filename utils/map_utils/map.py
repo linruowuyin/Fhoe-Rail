@@ -29,7 +29,7 @@ class Map:
         self.map_statu_minimize = False  # 地图最小化
         self.planet = None  # 当前星球初始化
         self.planet_png_lst = ["picture\\orientation_2.png", "picture\\orientation_3.png",
-                               "picture\\orientation_4.png", "picture\\orientation_5.png", "picture\\orientation_6.png"]
+                               "picture\\orientation_4.png", "picture\\orientation_5.png", "picture\\orientation_6.png", "picture\\orientation_7.png"]
 
     def open_map(self):
         """
