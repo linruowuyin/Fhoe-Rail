@@ -2,7 +2,10 @@ import time
 
 import cv2
 import numpy as np
-from PIL import ImageGrab
+from PIL import Image, ImageGrab
+import win32con
+import win32gui
+import win32ui
 
 from utils.log import log
 from utils.window import Window
@@ -120,6 +123,59 @@ class Img:
                 log.debug(f'图片匹配值未达到阈值，当前值：{max_val:.3f}')
         return False
 
+    @staticmethod
+    def capture_window_background(hwnd, region, crop_region=None):
+        """
+        后台截取指定窗口客户区，尽量避免被其他窗口遮挡影响。
+        """
+        left, top, width, height = region
+
+        hwnd_dc = win32gui.GetWindowDC(hwnd)
+        mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
+        save_dc = mfc_dc.CreateCompatibleDC()
+
+        save_bitmap = win32ui.CreateBitmap()
+        save_bitmap.CreateCompatibleBitmap(mfc_dc, width, height)
+        save_dc.SelectObject(save_bitmap)
+
+        try:
+            win32gui.SendMessage(hwnd, win32con.WM_PAINT, 0, 0)
+            import ctypes
+
+            # 3: 强制渲染 + 仅客户区
+            result = ctypes.windll.user32.PrintWindow(hwnd, save_dc.GetSafeHdc(), 3)
+            if result != 1:
+                return None
+
+            bmp_info = save_bitmap.GetInfo()
+            bmp_str = save_bitmap.GetBitmapBits(True)
+            picture = Image.frombuffer(
+                'RGB',
+                (bmp_info['bmWidth'], bmp_info['bmHeight']),
+                bmp_str,
+                'raw',
+                'BGRX',
+                0,
+                1,
+            )
+
+            if crop_region is not None:
+                crop_left, crop_top, crop_right, crop_bottom = crop_region
+                rel_left = max(0, crop_left - left)
+                rel_top = max(0, crop_top - top)
+                rel_right = min(width, crop_right - left)
+                rel_bottom = min(height, crop_bottom - top)
+                if rel_left >= rel_right or rel_top >= rel_bottom:
+                    return None
+                picture = picture.crop((rel_left, rel_top, rel_right, rel_bottom))
+
+            return picture
+        finally:
+            win32gui.DeleteObject(save_bitmap.GetHandle())
+            save_dc.DeleteDC()
+            mfc_dc.DeleteDC()
+            win32gui.ReleaseDC(hwnd, hwnd_dc)
+
     def take_screenshot(self, offset=(0, 0, 0, 0), max_retries=50, retry_interval=2):
         """
         说明：
@@ -131,7 +187,8 @@ class Img:
             :param retry_interval: 重试间隔（秒）
         """
         if self.window.check_window_visibility():
-            screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = self.cal_screenshot()
+            base_left, base_top, base_right, base_bottom = self.cal_screenshot()
+            screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = base_left, base_top, base_right, base_bottom
 
             # 计算偏移截图范围
             new_left = screenshot_left + offset[0]
@@ -147,9 +204,24 @@ class Img:
 
             retries = 0
             while retries <= max_retries:
+                picture = None
                 try:
-                    picture = ImageGrab.grab(
-                        (screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
+                    # 优先后台截图，失败后再回退到前台截图
+                    base_width = base_right - base_left
+                    base_height = base_bottom - base_top
+                    if self.window.hwnd and base_width > 0 and base_height > 0:
+                        picture = self.capture_window_background(
+                            self.window.hwnd,
+                            (base_left, base_top, base_width, base_height),
+                            (screenshot_left, screenshot_top, screenshot_right, screenshot_bottom),
+                        )
+                        if picture is None:
+                            log.debug("后台截图失败，回退到前台截图")
+
+                    if picture is None:
+                        picture = ImageGrab.grab(
+                            (screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
+
                     # 保存截图到本地，测试用
                     # picture.save("test.png")
                     screenshot = np.array(picture)
