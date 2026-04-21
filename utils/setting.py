@@ -130,6 +130,23 @@ class Setting(metaclass=SingletonMeta):
         match = re.match(r'^([^\s\-—–]+.*?)(?=\s*[-—–]|$)', cleaned)
         return match.group(1).strip() if match else cleaned.strip()
 
+    def get_main_map_choices(self, config, _map_info) -> dict:
+        planet_names = {
+            "1": "空间站",
+            "2": "雅利洛",
+            "3": "仙舟",
+            "4": "匹诺康尼",
+            "5": "翁法罗斯",
+            "6": "二相乐园",
+        }
+        map_version = config.get("map_version", "default")
+        available_main_maps = MapInfo.read_maps(map_version)[1].keys()
+        sorted_main_maps = sorted(available_main_maps, key=int)
+        return {
+            planet_names.get(main_map, f"未知星球{main_map}"): main_map
+            for main_map in sorted_main_maps
+        }
+
     def get_questions_for_slot(self, slot: str) -> list:
         """获取配置问题"""
         map_versions = MapInfo.read_maps_versions()
@@ -155,13 +172,7 @@ class Setting(metaclass=SingletonMeta):
             },
             {
                 "title": "优先星球",
-                "choices": {
-                    "空间站": "1",
-                    "雅利洛": "2",
-                    "仙舟": "3",
-                    "匹诺康尼": "4",
-                    "翁法罗斯": "5",
-                },
+                "choices": self.get_main_map_choices,
                 "config_key": "main_map",
             },
             {

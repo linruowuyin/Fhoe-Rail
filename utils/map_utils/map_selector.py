@@ -8,15 +8,45 @@ from utils.setting import Setting
 cfg = ConfigurationManager()
 setting = Setting()
 
+PLANET_LABELS = {
+    "1": "空间站「黑塔」",
+    "2": "雅利洛-VI",
+    "3": "仙舟「罗浮」",
+    "4": "匹诺康尼",
+    "5": "翁法罗斯",
+    "6": "二相乐园",
+}
+
+
+def _build_main_map_opts(map_info: MapInfo) -> dict:
+    keys = sorted(map_info.map_list_map.keys(), key=int)
+    return {
+        f"{key} {PLANET_LABELS.get(key, '未知星球')}": key
+        for key in keys
+    }
+
 def choose_map(map_info: MapInfo):
     map_version = cfg.config_file.get("map_version", "default")
     MapInfo.read_maps(map_version=map_version)
     main_map = cfg.config_file.get("main_map", None)
     if main_map is None:
         main_map = min(list(map_info.map_list_map.keys()))
+    else:
+        main_map = str(main_map)
     main_map_dict = map_info.map_list_map.get(main_map)
     if main_map_dict is None:
-        raise ValueError(f"main_map '{main_map}' 不存在于 map_list_map，请检查配置或地图初始化逻辑。")
+        fallback_main_map = min(list(map_info.map_list_map.keys()), key=int)
+        log.warning(
+            f"main_map '{main_map}' 在地图版本 '{map_version}' 不可用，"
+            f"自动回退为 '{fallback_main_map}'。"
+        )
+        main_map = fallback_main_map
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
+        main_map_dict = map_info.map_list_map.get(main_map)
+        if main_map_dict is None:
+            raise ValueError(
+                f"main_map '{main_map}' 不存在于 map_list_map，请检查配置或地图初始化逻辑。"
+            )
     side_map = list(main_map_dict.keys())[0]
     return (f"{main_map}-{side_map}", True)
 
@@ -44,12 +74,7 @@ def choose_map_debug(map_info: MapInfo):
 def _h_main_map(map_info: MapInfo):
     title = "请选择起始星球："
     opts = {
-        "1 空间站「黑塔」": "1",
-        "2 雅利洛-VI": "2",
-        "3 仙舟「罗浮」": "3",
-        "4 匹诺康尼": "4",
-        "5 翁法罗斯": "5",
-        "6 二相乐园": "6",
+        **_build_main_map_opts(map_info),
         "优先星球": "first_map",
         "仅此次运行白名单地图": "allowlist",
         "[设置]": "option",
@@ -76,12 +101,7 @@ def _h_main_map(map_info: MapInfo):
 def _h_priority(map_info: MapInfo):
     title = "优先星球选择"
     opts = {
-        "1 空间站「黑塔」": "1",
-        "2 雅利洛-VI": "2",
-        "3 仙舟「罗浮」": "3",
-        "4 匹诺康尼": "4",
-        "5 翁法罗斯": "5",
-        "6 二相乐园": "6",
+        **_build_main_map_opts(map_info),
         "【返回】": "back",
     }
     choice = questionary.select(title, list(opts.keys())).ask()
