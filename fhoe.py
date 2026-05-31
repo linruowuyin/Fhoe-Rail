@@ -84,9 +84,9 @@ def main():
             # 测试模式：单独测试某个功能
             cfg.main_start()
             Window().switch_window()
-            # 测试对应模块的功能
-            # map_instance = MapOperations()
-            # map_instance.auto_use_technique_consumable()
+            # from utils.handle import Handle
+            # handle = Handle()
+            # handle.auto_use_technique_consumable()
             return
         else:
             cfg.main_start()
