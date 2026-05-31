@@ -177,3 +177,5 @@ pyrightconfig.json
 
 # Fhoe-Rail
 /config.json
+/.claude/
+test.bat
