@@ -156,7 +156,7 @@ class Setting(metaclass=SingletonMeta):
             log.error(f"地图数据加载失败: {e}")
         default_questions = [
             {
-                "title": "选择地图版本，default：疾跑，HuangQuan：黄泉专用",
+                "title": "选择地图版本，default疾跑，HuangQuan黄泉专用，SilverWolfLv999银狼LV.999专用",
                 "choices": {version: version for version in map_versions},
                 "config_key": "map_version",
             },
@@ -169,6 +169,11 @@ class Setting(metaclass=SingletonMeta):
                 "title": "地图最后一击自动秘技（不建议龙丹、驭空开启",
                 "choices": {"关闭": False, "开启": True},
                 "config_key": "auto_final_fight_e",
+            },
+            {
+                "title": "自动使用秘技消耗品",
+                "choices": {"不自动使用": False, "自动使用": True},
+                "config_key": "auto_use_technique_consumable",
             },
             {
                 "title": "优先星球",

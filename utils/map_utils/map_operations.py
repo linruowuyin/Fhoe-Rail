@@ -63,6 +63,13 @@ class MapOperations:
         """
         处理地图
         """
+        # 检查是否自动使用秘技消耗品
+        config = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False)
+        if config.get('auto_use_technique_consumable', False):
+            result = self.handle.auto_use_technique_consumable()
+            if not result:
+                log.warning("自动使用秘技消耗品设置失败，继续执行地图流程")
+
         if dev:
             self.init_dev_windows()
         self.map_statu.total_processing_time = 0

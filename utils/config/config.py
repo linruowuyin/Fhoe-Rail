@@ -261,6 +261,10 @@ class ConfigurationManager(metaclass=SingletonMeta):
     def config_fix(cls):
         """运行前检查并修复配置"""
         config = cls.load_config()
+        # HuangQuan 地图版本强制开启购买战斗E道具
         if config["map_version"] == "HuangQuan":
             config["allow_fight_e_buy_prop"] = True
+        # SilverWolfLv999 地图版本强制开启自动使用秘技消耗品
+        if config["map_version"] == "SilverWolfLv999":
+            config["auto_use_technique_consumable"] = True
         cls.save_config(config)

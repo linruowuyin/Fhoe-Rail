@@ -345,6 +345,59 @@ class Handle(metaclass=SingletonMeta):
         else:
             raise CustomException("map数据错误, esc参数只能为1")
 
+    def auto_use_technique_consumable(self):
+        """
+        自动使用秘技消耗品（游戏内设置）
+        Returns:
+            bool: 是否成功设置
+        """
+        log.info("开始设置自动使用秘技消耗品")
+        try:
+            # 先返回主界面
+            self.back_to_main()
+            time.sleep(0.5)
+
+            # 按下ESC打开菜单
+            pyautogui.press('esc')
+            time.sleep(2)
+
+            # 通过识图，选择设置
+            if not self.mouse_event.click_target("picture\\setting_icon.png", 0.98):
+                log.warning("未找到设置图标")
+                return False
+            time.sleep(1)
+
+            # 通过识图，选择其他设置
+            if not self.mouse_event.click_target("picture\\setting_other.png", 0.98):
+                log.warning("未找到其他设置选项")
+                return False
+            time.sleep(0.5)
+
+            # 向下滚动到秘技点不足时自动使用消耗品选项
+            self.mouse_event.mouse_drag(1920/2, 1080/2, 1920/2, 1080/4, press_time=1)
+
+            # 点击自动使用消耗品开关
+            if not self.mouse_event.click_target("picture\\auto_use_technique_consumable.png", 0.98):
+                log.warning("未找到自动使用消耗品选项")
+                return False
+            time.sleep(1)
+
+            # 通过识图，选择"是"确认
+            if not self.mouse_event.click_target("picture\\setting_yes.png", 0.99):
+                log.warning("未找到确认按钮")
+                return False
+            time.sleep(0.5)
+
+            log.info("自动使用秘技消耗品设置成功")
+            # 返回主界面
+            self.back_to_main()
+            time.sleep(0.5)
+            return True
+
+        except Exception as e:
+            log.error(f"设置自动使用秘技消耗品失败: {e}")
+            return False
+
     def handle_num(self, value, key):
         """
         按下数字键，等待value秒后抬起
