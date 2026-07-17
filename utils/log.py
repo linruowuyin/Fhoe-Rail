@@ -11,6 +11,16 @@ Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
 import os
 import sys
 import datetime
+
+# 防止cp932等非中文编码导致UnicodeEncodeError
+os.environ["PYTHONIOENCODING"] = "utf-8"
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name)
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 import requests
 from loguru import logger
 from utils.requests import post
