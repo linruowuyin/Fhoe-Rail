@@ -81,13 +81,12 @@ class MapOperations:
             self.map.reset_round_count()  # 重置该锄地轮次相关的计数
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
             map_list = self.map.get_map_list(start, start_in_mid)
-            max_index = max(index for index, _ in enumerate(map_list))
             self.map_statu.next_map_drag = False  # 初始化下一张图拖动为否
 
             for index, map_json in enumerate(map_list):
                 self.process_single_map(index, map_json, dev)
                 if self.map_statu.skip_this_map:
-                    continue
+                    continue  # process_single_map 内部已 return，此处为防御性保留
 
             # 计算总时间与总战斗时间
             self.map_statu.total_time = time.time() - total_start_time
@@ -458,6 +457,6 @@ class MapOperations:
         """
         if dev:
             winrect = self.window.get_rect()
-            log.info({winrect})
+            log.info(winrect)
             x, y = winrect[0] + x_offset, winrect[1] + y_offset
             show_text(text, x, y, "nouid", text_mode)

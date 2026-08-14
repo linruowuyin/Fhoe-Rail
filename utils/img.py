@@ -1,3 +1,4 @@
+import os
 import time
 
 import cv2
@@ -12,6 +13,9 @@ from utils.window import Window
 
 
 class Img:
+    # 图片加载缓存：{(路径): (文件mtime, ndarray)}，文件更新后自动失效
+    _IMG_CACHE = {}
+
     def __init__(self, image_paths: dict = None):
         self.window = Window()
         self.temp_screenshot = (0, 0, 0, 0, 0)  # 初始化临时截图
@@ -40,14 +44,25 @@ class Img:
     @staticmethod
     def get_img(img_path):
         """
-        获取图片
+        获取图片（带 mtime 缓存，避免多实例重复 imread）
         :param img_path: 图片路径
         :return: 图片数据（numpy 数组），如果加载失败返回 None
         """
         try:
+            mtime = os.path.getmtime(img_path)
+        except OSError:
+            log.error(f"加载图片时发生错误: 路径不存在或文件损坏: {img_path}")
+            return None
+
+        cached = Img._IMG_CACHE.get(img_path)
+        if cached is not None and cached[0] == mtime:
+            return cached[1]
+
+        try:
             img = cv2.imread(img_path)
             if img is None:
                 raise FileNotFoundError(f"图片加载失败，路径不存在或文件损坏: {img_path}")
+            Img._IMG_CACHE[img_path] = (mtime, img)
             return img
         except Exception as e:
             log.error(f"加载图片时发生错误: {e}")
@@ -255,7 +270,9 @@ class Img:
         参数：
             :param prepared: 比对图片地址
         """
-        if not self.temp_screenshot:
+        # 修复：temp_screenshot 初始化值为 (0,0,0,0,0)，truthy，原判断永远不成立；
+        # 改为判断是否真正保存过截图数据
+        if not isinstance(self.temp_screenshot, tuple) or len(self.temp_screenshot) != 5 or self.temp_screenshot[0] == 0:
             self.take_screenshot()
 
         try:

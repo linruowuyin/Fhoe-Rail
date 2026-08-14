@@ -12,12 +12,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: 'false'
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11.5'
           cache: 'pip'
@@ -29,7 +29,10 @@ jobs:
 
       - name: Generate program
         run: |
-          pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries --uac-admin -n "Fhoe-Rail" fhoe.py -y
+          pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries -n "Fhoe-Rail" fhoe.py -y
+          pyinstaller -D --distpath .\dist\webui\ -i .\logo.ico --contents-directory libraries -n "webui-server" webui\server.py -y --hidden-import onepush --hidden-import winotify --hidden-import PIL --hidden-import utils.notify --hidden-import utils.config.config --hidden-import utils.log
+          # WebUI 启动器 exe(替代 Start-WebUI.bat;launcher_libraries 避免与主程序 libraries 重名)
+          pyinstaller -D --distpath .\dist\launcher\ -i .\logo.ico --contents-directory launcher_libraries -n "Start-WebUI" webui\start_webui.py -y
 
       - name: Create batch files
         run: |
@@ -45,13 +48,60 @@ jobs:
           "@
           $recordBatContent | Out-File -FilePath "录制地图.bat" -Encoding ASCII
 
+          # 发布包主菜单(调用 exe,中文菜单来自 menu.txt)
+          $menuBat = @"
+          @echo off
+          chcp 65001 >nul
+          cd /d "%~dp0"
+          type menu.txt
+          echo.
+          choice /C 123456 /T 30 /D 2 /N >nul
+          if errorlevel 6 (
+              Fhoe-Rail.exe --white
+              echo.
+              pause
+              goto :end
+          ) else if errorlevel 5 (
+              Fhoe-Rail.exe --dev
+              echo.
+              pause
+              goto :end
+          ) else if errorlevel 4 (
+              Fhoe-Rail.exe --record
+              echo.
+              pause
+              goto :end
+          ) else if errorlevel 3 (
+              Fhoe-Rail.exe --debug
+              echo.
+              pause
+              goto :end
+          ) else if errorlevel 2 (
+              Fhoe-Rail.exe
+              echo.
+              pause
+              goto :end
+          ) else (
+              Fhoe-Rail.exe --debug
+              echo.
+              pause
+          )
+          :end
+          "@
+          $menuBat | Out-File -FilePath "Fhoe-Rail.bat" -Encoding ASCII
+
       - name: Move assets to dist directory
         run: |
           xcopy /E /I /Y .\map\ .\dist\Fhoe-Rail\map\
           xcopy /E /I /Y .\新图注意事项\ .\dist\Fhoe-Rail\新图注意事项\
           xcopy /E /I /Y .\picture\ .\dist\Fhoe-Rail\picture\
+          xcopy /E /I /Y .\webui\ .\dist\Fhoe-Rail\webui\
+          xcopy /E /I /Y .\dist\webui\ .\dist\Fhoe-Rail\webui\
           xcopy /Y .\自选地图.bat .\dist\Fhoe-Rail\
           xcopy /Y .\录制地图.bat .\dist\Fhoe-Rail\
+          xcopy /Y .\Fhoe-Rail.bat .\dist\Fhoe-Rail\
+          xcopy /E /I /Y .\dist\launcher\Start-WebUI\ .\dist\Fhoe-Rail\
+          xcopy /Y .\menu.txt .\dist\Fhoe-Rail\
           xcopy /Y .\README.md .\dist\Fhoe-Rail\
 
       - name: Upload artifact
@@ -70,10 +120,9 @@ jobs:
 
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
 #          name: Fhoe-Rail
           files: |
            ./dist/Fhoe-Rail.zip
 #          prerelease: true
-

@@ -53,6 +53,11 @@ class MonthlyPass:
         self.refresh_hour = self.cfg.config_file.get("refresh_hour", 4)
         self.refresh_minute = self.cfg.config_file.get("refresh_minute", 0)
 
+        # 修复：首次运行（next_check_time 为 None）且临近刷新时间时，
+        # _wait_until_refresh_time 会因 None 比较而崩溃，这里先初始化下次检查时间
+        if self.next_check_time is None:
+            self.monthly_update_check_time()
+
         if self._need_wait_before_check(current_time):
             self._wait_until_refresh_time()
             current_time = datetime.now()

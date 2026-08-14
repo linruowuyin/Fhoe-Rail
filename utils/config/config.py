@@ -72,10 +72,10 @@ class ConfigurationManager(metaclass=SingletonMeta):
         except FileNotFoundError:
             return {}
         except json.JSONDecodeError as e:
-            print(f"配置文件格式有误，请检查 JSON 格式是否正确: {e}")
+            log.error(f"配置文件格式有误，请检查 JSON 格式是否正确: {e}")
             return {}
         except Exception as e:
-            print(f"读取配置文件时出现未知错误: {e}")
+            log.error(f"读取配置文件时出现未知错误: {e}")
             return {}
 
     @staticmethod
@@ -166,7 +166,15 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "allowlist_mode_once": False,
             "allowlist_map": [],
             "angle": "1.0",
-            "angle_set": False
+            "angle_set": False,
+            "notify_enabled": False,
+            "notify_channel": "windows",
+            "notify_key": "",
+            "notify_chat_id": "",
+            "notify_params": "",
+            "notify_on_start": False,
+            "notify_on_end": True,
+            "notify_on_error": True
         }
 
         return config_keys
@@ -204,7 +212,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
         写入未找到配置的默认值
         """
         if not cls.config_issubset():
-            print("配置文件不完整，正在写入默认配置")
+            log.info("配置文件不完整，正在写入默认配置")
             all_keys = cls.config_all_keys()
             existing_keys = ConfigurationManager.read_json_file(
                 cls.CONFIG_FILE_NAME, False).keys()

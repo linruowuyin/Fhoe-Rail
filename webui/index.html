@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fhoe-Rail WebUI</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
+<!--
+  Fhoe-Rail WebUI
+  主题颜色改 :root 里的变量;页面是 section#page-xxx,注册在 PAGES 数组;
+  配置项在 CONFIG_DEFS;后端接口在 server.py;通知渠道在 utils/notify.py
+-->
+<style>
+  /* ============================================================
+     设计令牌（Design Tokens）—— 全局换肤只改这里
+     审美基准: Linear / Vercel 暗色 Dashboard（Zinc 中性色 + 克制强调色）
+     ============================================================ */
+  :root {
+    /* 背景层（纯净中性深色） */
+    --bg-0: #09090b;            /* Zinc-950 页面底色 */
+    --bg-1: #18181b;            /* Zinc-900 面板/卡片底色 */
+    --bg-2: #1f1f23;            /* Zinc-800 悬浮层/输入框 */
+    --bg-hover: #26262b;        /* Zinc-750 悬停态 */
+    /* 边框（硬边框分离，替代玻璃拟态） */
+    --border: #27272a;          /* Zinc-800 */
+    --border-strong: #3f3f46;   /* Zinc-700 hover */
+    /* 品牌强调色（克制使用） */
+    --violet: #8b7bff;
+    --cyan: #22d3ee;
+    --pink: #f472b6;
+    --green: #34d399;
+    --gold: #fbbf24;
+    --red: #fb7185;
+    /* RGB 三值（粒子动画用，仅氛围特效模式） */
+    --violet-rgb: 139, 123, 255;
+    --cyan-rgb: 34, 211, 238;
+    /* 氛围特效配色（仅 body.ambient 时使用） */
+    --glow-a: rgba(139, 123, 255, 0.16);
+    --glow-b: rgba(34, 211, 238, 0.1);
+    --glow-c: rgba(244, 114, 182, 0.08);
+    --galaxy-a: rgba(139, 123, 255, 0.22);
+    --galaxy-b: rgba(34, 211, 238, 0.16);
+    --aurora-a: rgba(139, 123, 255, 0.5);
+    --aurora-b: rgba(244, 114, 182, 0.35);
+    /* 文字（Zinc 色阶） */
+    --txt: #fafafa;
+    --txt-dim: #a1a1aa;
+    --txt-faint: #71717a;
+    /* 发光：默认无（主流审美） */
+    --glow-violet: none;
+    --glow-cyan: none;
+    /* 字体/圆角/阴影 */
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    --font-mono: Consolas, "Cascadia Mono", "JetBrains Mono", monospace;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ============================================================
+     主题色系（body[data-theme] 切换，localStorage 记忆）
+     只覆盖强调色与氛围特效色，背景保持中性
+     ============================================================ */
+  body[data-theme="crimson"] {
+    --violet: #ff6b6b; --cyan: #ffa94d; --pink: #ff8787;
+    --violet-rgb: 255, 107, 107; --cyan-rgb: 255, 169, 77;
+    --glow-a: rgba(255, 107, 107, 0.2); --glow-b: rgba(255, 169, 77, 0.13); --glow-c: rgba(255, 135, 135, 0.08);
+    --galaxy-a: rgba(255, 107, 107, 0.26); --galaxy-b: rgba(255, 169, 77, 0.18);
+    --aurora-a: rgba(255, 107, 107, 0.5); --aurora-b: rgba(255, 87, 34, 0.35);
+  }
+  body[data-theme="jade"] {
+    --violet: #34d399; --cyan: #22d3ee; --pink: #6ee7b7;
+    --violet-rgb: 52, 211, 153; --cyan-rgb: 34, 211, 238;
+    --glow-a: rgba(52, 211, 153, 0.18); --glow-b: rgba(34, 211, 238, 0.13); --glow-c: rgba(110, 231, 183, 0.08);
+    --galaxy-a: rgba(52, 211, 153, 0.24); --galaxy-b: rgba(34, 211, 238, 0.18);
+    --aurora-a: rgba(52, 211, 153, 0.5); --aurora-b: rgba(16, 185, 129, 0.35);
+  }
+  body[data-theme="amber"] {
+    --violet: #f59e0b; --cyan: #fbbf24; --pink: #fb7185;
+    --violet-rgb: 245, 158, 11; --cyan-rgb: 251, 191, 36;
+    --glow-a: rgba(245, 158, 11, 0.2); --glow-b: rgba(251, 191, 36, 0.12); --glow-c: rgba(251, 113, 133, 0.08);
+    --galaxy-a: rgba(245, 158, 11, 0.26); --galaxy-b: rgba(251, 191, 36, 0.18);
+    --aurora-a: rgba(245, 158, 11, 0.5); --aurora-b: rgba(255, 87, 34, 0.35);
+  }
+  body[data-theme="ice"] {
+    --violet: #60a5fa; --cyan: #93c5fd; --pink: #a5b4fc;
+    --violet-rgb: 96, 165, 250; --cyan-rgb: 147, 197, 253;
+    --glow-a: rgba(96, 165, 250, 0.18); --glow-b: rgba(147, 197, 253, 0.12); --glow-c: rgba(165, 180, 252, 0.08);
+    --galaxy-a: rgba(96, 165, 250, 0.24); --galaxy-b: rgba(147, 197, 253, 0.18);
+    --aurora-a: rgba(96, 165, 250, 0.5); --aurora-b: rgba(186, 230, 253, 0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--txt);
+    background-color: var(--bg-0);
+    /* 极微弱的顶部光晕（主流做法：纯色 + 一个 subtle vignette） */
+    background-image: radial-gradient(1200px 500px at 50% -8%, rgba(255, 255, 255, 0.035), transparent 70%);
+    background-attachment: fixed;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ============================================================
+     氛围特效层（银河/极光/星点/粒子）
+     默认隐藏（主流审美），侧边栏开关 body.ambient 时启用
+     ============================================================ */
+  .stars, .stars::before, .stars::after,
+  .galaxy, .aurora, #particle-bg { display: none; }
+  body.ambient .stars, body.ambient .galaxy, body.ambient .aurora,
+  body.ambient #particle-bg { display: block; }
+
+  /* 粒子画布：必须 fixed 全屏背景，否则会占据文档流把 UI 挤到视口外 */
+  #particle-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+  .stars, .stars::before, .stars::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+  .stars {
+    background-image:
+      radial-gradient(1.5px 1.5px at 25px 35px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 120px 90px, #cfe0ff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 220px 180px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 340px 60px, #ffd7ee 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 460px 220px, #d6e4ff 45%, transparent 50%),
+      radial-gradient(1px 1px at 560px 120px, #fff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 680px 40px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 760px 260px, #b9c8ff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 880px 150px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 980px 60px, #ffe0f0 45%, transparent 50%);
+    background-size: 1000px 320px;
+    animation: twinkle 6s ease-in-out infinite alternate;
+    opacity: 0.6;
+  }
+  .stars::before {
+    background-image:
+      radial-gradient(1px 1px at 60px 140px, #fff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 180px 60px, #e8f0ff 45%, transparent 50%),
+      radial-gradient(1px 1px at 300px 210px, #fff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 420px 110px, #ffd9ec 45%, transparent 50%),
+      radial-gradient(1px 1px at 540px 250px, #dce7ff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 660px 90px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 780px 200px, #fff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 900px 40px, #cfe0ff 45%, transparent 50%);
+    background-size: 960px 300px;
+    animation: twinkle 8s ease-in-out infinite alternate-reverse;
+    opacity: 0.45;
+  }
+  .stars::after {
+    background-image:
+      radial-gradient(1px 1px at 90px 40px, #ffd9a8 45%, transparent 50%),
+      radial-gradient(1px 1px at 260px 180px, #d6e4ff 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 380px 70px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 500px 190px, #fff 45%, transparent 50%),
+      radial-gradient(1px 1px at 620px 30px, #ffd7ee 45%, transparent 50%),
+      radial-gradient(1.5px 1.5px at 840px 230px, #fff 45%, transparent 50%);
+    background-size: 900px 280px;
+    animation: twinkle 5s ease-in-out infinite alternate;
+    opacity: 0.35;
+  }
+  @keyframes twinkle { from { opacity: 0.3; } to { opacity: 0.85; } }
+
+  .galaxy {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 65% 42% at 18% 28%, var(--galaxy-a), transparent 72%),
+      radial-gradient(ellipse 55% 38% at 82% 68%, var(--galaxy-b), transparent 72%);
+    opacity: 0.65;
+  }
+  .aurora {
+    position: fixed; inset: -25%; pointer-events: none; z-index: 0;
+    filter: blur(80px);
+    opacity: 0.4;
+    animation: aurora-drift 20s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  .aurora::before, .aurora::after {
+    content: ""; position: absolute; border-radius: 50%;
+  }
+  .aurora::before { width: 45%; height: 45%; left: 5%; top: 12%; background: var(--aurora-a); }
+  .aurora::after { width: 38%; height: 38%; right: 3%; bottom: 8%; background: var(--aurora-b); }
+  @keyframes aurora-drift {
+    from { transform: translate3d(-3%, -2%, 0) rotate(-1.5deg); }
+    to { transform: translate3d(3%, 2.5%, 0) rotate(1.5deg); }
+  }
+
+  /* ============================================================
+     布局
+     ============================================================ */
+  .layout { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 216px; flex-shrink: 0;
+    background: var(--bg-0);
+    border-right: 1px solid var(--border);
+    padding: 16px 10px;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column;
+    z-index: 5;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 14px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+  .brand-logo {
+    width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border: 1px solid var(--border-strong);
+  }
+  .brand-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .brand-name { font-size: 14px; font-weight: 700; letter-spacing: .3px; color: var(--txt); }
+  .brand-sub { font-size: 11px; color: var(--txt-faint); margin-top: 1px; }
+
+  .nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    color: var(--txt-dim); font-size: 13.5px; font-weight: 500;
+    border: 1px solid transparent; transition: all .15s; user-select: none;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--bg-1); color: var(--txt); }
+  .nav-item.active {
+    background: var(--bg-1); color: var(--txt); font-weight: 600;
+  }
+  /* 选中态：左侧强调竖线（主流做法，替代发光背景块） */
+  .nav-item.active::before {
+    content: ""; position: absolute; left: -10px; top: 20%; bottom: 20%; width: 2px;
+    background: var(--violet); border-radius: 2px;
+  }
+  .nav-item .ico { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; }
+  .nav-item.active .ico { opacity: 1; color: var(--violet); }
+  .sidebar-foot { font-size: 11px; color: var(--txt-faint); text-align: center; padding-top: 10px; border-top: 1px solid var(--border); line-height: 1.7; }
+
+  /* 主题切换器 + 氛围开关 */
+  .theme-switcher { padding: 10px 8px 2px; border-top: 1px solid var(--border); margin-top: 6px; }
+  .theme-label { font-size: 11px; color: var(--txt-faint); margin-bottom: 7px; letter-spacing: .5px; }
+  .theme-dots { display: flex; gap: 6px; align-items: center; }
+  .theme-dot {
+    width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+    border: 1.5px solid var(--border-strong); transition: all .15s;
+    padding: 0; position: relative;
+  }
+  .theme-dot:hover { transform: scale(1.12); border-color: var(--txt-dim); }
+  .theme-dot.active { border-color: var(--txt); }
+  .theme-dot .tt {
+    position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--txt);
+    font-size: 11px; padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 20;
+  }
+  .theme-dot:hover .tt { opacity: 1; }
+  .ambient-toggle {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    margin-top: 8px; padding: 6px 8px; border-radius: 8px;
+    background: none; border: 1px solid var(--border); color: var(--txt-dim);
+    font-size: 12px; font-family: var(--font); cursor: pointer; transition: all .15s;
+  }
+  .ambient-toggle:hover { color: var(--txt); border-color: var(--border-strong); }
+  .ambient-toggle.on { color: var(--violet); border-color: var(--violet); }
+  /* 布局切换按钮（与氛围开关同款样式） */
+  #layout-toggle { margin-top: 6px; }
+
+  .main { flex: 1; padding: 28px 32px 60px; max-width: 1280px; min-width: 0; }
+  /* 布局模式：默认居中（宽屏下内容区在剩余空间居中）；可切回靠左 */
+  .main { margin-left: auto; margin-right: auto; }
+  body[data-layout="left"] .main { margin-left: 0; margin-right: auto; }
+  .page-title { font-size: 20px; font-weight: 700; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  .page-title .spark { color: var(--violet); font-size: 16px; }
+  .page-desc { color: var(--txt-dim); font-size: 13px; margin: 4px 0 20px; }
+
+  /* ============================================================
+     卡片（硬边框分离，无投影无渐变线）
+     ============================================================ */
+  .glass {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    transition: border-color .15s;
+  }
+  .glass:hover { border-color: var(--border-strong); }
+  .card-title { font-size: 13.5px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--txt); }
+  .card-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .grid { display: grid; gap: 14px; }
+  .g-stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .g-2 { grid-template-columns: 1fr 1fr; }
+  .g-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  @media (max-width: 960px) { .g-2 { grid-template-columns: 1fr; } }
+
+  /* 指标卡 */
+  .stat-num {
+    font-size: 28px; font-weight: 700; line-height: 1.25; color: var(--txt);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label { font-size: 12px; color: var(--txt-dim); margin-top: 4px; }
+  .stat-sub { font-size: 11px; color: var(--txt-faint); margin-top: 2px; }
+  .stat-empty { font-size: 15px; color: var(--txt-faint); font-weight: 500; letter-spacing: 1px; }
+
+  /* 配置速览：两列键值 */
+  .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 28px; }
+  @media (max-width: 720px) { .cfg-grid { grid-template-columns: 1fr; } }
+  .cfg-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border-soft);
+  }
+  .cfg-row:last-child { border-bottom: none; }
+  .cfg-row .k { color: var(--txt-dim); flex-shrink: 0; }
+  .cfg-row .v { color: var(--txt); font-weight: 500; text-align: right; }
+
+  /* ============================================================
+     组件：徽章 / 按钮 / 开关 / 表单 / 页签 / 地图卡 / 日志
+     ============================================================ */
+  .badge {
+    display: inline-block; padding: 1px 8px; border-radius: 6px;
+    font-size: 11px; font-weight: 500; letter-spacing: .2px;
+    background: transparent; border: 1px solid;
+  }
+  .b-violet { color: #b9adff; border-color: rgba(139,123,255,.45); }
+  .b-cyan { color: #7dd3fc; border-color: rgba(34,211,238,.4); }
+  .b-pink { color: #f9a8d4; border-color: rgba(244,114,182,.4); }
+  .b-green { color: #6ee7b7; border-color: rgba(52,211,153,.4); }
+  .b-red { color: #fda4af; border-color: rgba(251,113,133,.4); }
+  .b-gold { color: #fcd34d; border-color: rgba(251,191,36,.4); }
+  .b-dim { color: var(--txt-faint); border-color: var(--border-strong); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--bg-1); color: var(--txt);
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s;
+    font-family: var(--font);
+  }
+  .btn:hover { background: var(--bg-hover); border-color: var(--txt-faint); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--violet); border-color: var(--violet); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.1); background: var(--violet); }
+  .btn.ghost { background: transparent; border-color: var(--border); color: var(--txt-dim); }
+  .btn.ghost:hover { color: var(--txt); border-color: var(--border-strong); background: var(--bg-1); }
+  .btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.danger:hover { filter: brightness(1.1); background: var(--red); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; filter: none; transform: none; }
+  .btn.active { border-color: var(--violet); color: var(--violet); background: rgba(139,123,255,.08); }
+  .btn:focus-visible, .tab:focus-visible, .nav-item:focus-visible, .map-item:focus-visible,
+  .modal-close:focus-visible, .switch input:focus-visible + .track, .ambient-toggle:focus-visible {
+    outline: 2px solid var(--violet); outline-offset: 2px;
+  }
+
+  .switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track {
+    position: absolute; inset: 0; border-radius: 20px; cursor: pointer;
+    background: var(--bg-hover); border: 1px solid var(--border-strong); transition: all .2s;
+  }
+  .switch .track::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--txt-dim); transition: all .2s;
+  }
+  .switch input:checked + .track { background: var(--violet); border-color: var(--violet); }
+  .switch input:checked + .track::after { left: 18px; background: #fff; }
+
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
+  .field:last-child { border-bottom: none; }
+  .field label { font-size: 13px; color: var(--txt); }
+  .field .hint { font-size: 11px; color: var(--txt-faint); display: block; margin-top: 2px; max-width: 420px; }
+  .field input[type="text"], .field input[type="number"], .field select, textarea {
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--txt);
+    border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; outline: none; min-width: 120px;
+    font-family: var(--font);
+  }
+  .field input:focus, .field select:focus, textarea:focus { border-color: var(--violet); }
+  .field select option { background: var(--bg-2); color: var(--txt); }
+  .field input[type="number"] { width: 88px; }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab {
+    padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500;
+    background: transparent; color: var(--txt-dim); border: 1px solid var(--border); transition: all .15s;
+    font-family: var(--font);
+  }
+  .tab:hover { color: var(--txt); border-color: var(--border-strong); }
+  .tab.active { background: var(--violet); border-color: var(--violet); color: #fff; }
+
+  .planet-block { margin-bottom: 16px; }
+  .planet-head { font-size: 13.5px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .planet-head:hover { color: var(--txt); }
+  .planet-head .fold { margin-left: auto; color: var(--txt-faint); font-size: 11px; transition: transform .15s; }
+  .planet-block.collapsed .fold { transform: rotate(-90deg); }
+  .planet-block.collapsed .map-list { display: none; }
+  .planet-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--violet); }
+  .map-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+  .map-item {
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 10px 12px; cursor: pointer; transition: all .15s;
+  }
+  .map-item:hover { border-color: var(--border-strong); background: var(--bg-2); }
+  .map-item .m-name { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .map-item .m-id { font-size: 11px; color: var(--txt-faint); font-family: var(--font-mono); }
+  .map-item .m-author { font-size: 11px; color: var(--txt-faint); margin-top: 3px; }
+
+  .log-box {
+    background: var(--bg-0); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 12px 14px; height: 520px; overflow-y: auto; font-family: var(--font-mono);
+    font-size: 12px; line-height: 1.75; white-space: pre-wrap; word-break: break-all;
+  }
+
+  /* 自定义细滚动条（Linear 风格） */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--txt-faint); }
+  .log-line-info { color: #a1a1aa; }
+  .log-line-warning, .log-line-WARNING { color: var(--gold); }
+  .log-line-error, .log-line-ERROR, .log-line-critical { color: var(--red); }
+  .log-line-debug { color: var(--txt-faint); }
+  .log-time { color: var(--txt-faint); }
+  .log-meta { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+
+  /* 新图注意：图片网格 */
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .note-item {
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden; cursor: zoom-in; transition: border-color .15s;
+  }
+  .note-item:hover { border-color: var(--border-strong); }
+  .note-item img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
+  .note-item .note-name {
+    font-size: 12px; color: var(--txt-dim); padding: 8px 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ============================================================
+     Modal / Toast / 状态
+     ============================================================ */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+    z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-mask.open { display: flex; }
+  .modal {
+    background: var(--bg-1); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); max-width: 780px; width: 100%; max-height: 84vh; overflow-y: auto;
+    padding: 20px 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;
+  }
+  .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  .modal-head h3 { font-size: 16px; font-weight: 600; }
+  .modal-close { cursor: pointer; font-size: 18px; color: var(--txt-dim); background: none; border: none; padding: 4px 8px; border-radius: 8px; }
+  .modal-close:hover { color: var(--txt); background: var(--bg-2); }
+  .steps { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+  .step-row {
+    display: flex; gap: 10px; font-size: 12px; font-family: var(--font-mono);
+    background: var(--bg-2); border-radius: 6px; padding: 5px 9px;
+    color: var(--txt-dim); word-break: break-all;
+  }
+  .step-row .k { color: var(--cyan); flex-shrink: 0; }
+  .step-row .v { color: var(--pink); }
+
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(16px);
+    background: var(--bg-2); border: 1px solid var(--border-strong); color: var(--txt);
+    padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); opacity: 0; pointer-events: none;
+    transition: all .22s; z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { border-color: var(--red); color: var(--red); }
+
+  .loading { color: var(--txt-faint); font-size: 13px; padding: 30px; text-align: center; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+  .empty { color: var(--txt-faint); font-size: 13px; padding: 30px; text-align: center; }
+  .error-box {
+    background: rgba(251,113,133,.08); border: 1px solid rgba(251,113,133,.35); color: #fda4af;
+    padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; line-height: 1.8;
+  }
+
+  .kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; background: var(--bg-2); border: 1px solid var(--border-strong); font-size: 11px; font-family: var(--font-mono); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ============================================================
+     移动端适配
+     ============================================================ */
+  @media (max-width: 860px) {
+    .layout { flex-direction: column; }
+    .sidebar {
+      width: 100%; height: auto; position: static; flex-direction: row; align-items: center;
+      padding: 8px 12px; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border);
+    }
+    .brand { border-bottom: none; margin-bottom: 0; padding: 0 10px 0 0; border-right: 1px solid var(--border); }
+    .brand-name, .brand-sub { display: none; }
+    .nav { flex-direction: row; gap: 2px; }
+    .nav-item { padding: 7px 9px; font-size: 13px; }
+    .nav-item.active::before { display: none; }  /* 移动端去掉左侧竖线 */
+    .nav-item .lbl { display: none; }
+    .nav-item .ico { width: 18px; }
+    .sidebar-foot { display: none; }
+    /* 主题切换器在移动端隐藏（低频操作） */
+    .theme-switcher { display: none; }
+    .main { padding: 16px 14px 48px; }
+    .page-title { font-size: 18px; }
+    .g-stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stars, .stars::before, .stars::after, .aurora { animation: none; }
+    #particle-bg { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<script>window.LOGO_FALLBACK="data:image/svg+xml;charset=utf-8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='14' fill='#18181b'/><text x='32' y='43' font-family='Segoe UI,Arial,sans-serif' font-size='30' font-weight='700' fill='#a78bfa' text-anchor='middle'>F</text><circle cx='46' cy='18' r='6' fill='#22d3ee'/></svg>");</script>
+<div class="stars"></div>
+<div class="galaxy"></div>
+<div class="aurora"></div>
+<canvas id="particle-bg"></canvas>
+
+<div class="layout">
+  <!-- ===================== 侧边导航 ===================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo"><img src="/logo.png" alt="Fhoe-Rail logo" onerror="this.onerror=null;this.src=window.LOGO_FALLBACK"></div>
+      <div>
+        <div class="brand-name">Fhoe-Rail</div>
+        <div class="brand-sub">星穹锄地指挥舱</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-page="dashboard"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="12" x2="16.5" y2="7.5"/></svg><span class="lbl">指挥台</span></div>
+      <div class="nav-item" data-page="run"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="10,8.5 15.5,12 10,15.5"/></svg><span class="lbl">运行控制</span></div>
+      <div class="nav-item" data-page="maps"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg><span class="lbl">地图图鉴</span></div>
+      <div class="nav-item" data-page="config"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.2"/></svg><span class="lbl">参数设置</span></div>
+      <div class="nav-item" data-page="logs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="lbl">航行日志</span></div>
+      <div class="nav-item" data-page="notes"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="lbl">新图注意</span></div>
+      <div class="nav-item" data-page="about"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12,3.5 14.4,9 20.2,9.6 15.9,13.4 17.2,19 12,16 6.8,19 8.1,13.4 3.8,9.6 9.6,9"/></svg><span class="lbl">关于</span></div>
+    </nav>
+    <!-- 主题切换器 + 氛围特效开关：色点 = 一套主题色；氛围 = 银河/极光/粒子特效 -->
+    <div class="theme-switcher">
+      <div class="theme-label">✦ 主题色</div>
+      <div class="theme-dots" id="theme-dots"></div>
+      <button class="ambient-toggle" id="ambient-toggle" title="开启后显示银河/极光/粒子背景特效">🌌 氛围特效</button>
+      <button class="ambient-toggle" id="layout-toggle" title="切换内容区居中或靠左">⇔ 布局：居中</button>
+    </div>
+    <div class="sidebar-foot">
+      Fhoe-Rail WebUI<br>本地服务 · 仅供学习交流
+    </div>
+  </aside>
+
+  <!-- ===================== 主内容区 ===================== -->
+  <main class="main">
+
+    <!-- 指挥台 -->
+    <section id="page-dashboard">
+      <h1 class="page-title"><span class="spark">✦</span> 指挥台</h1>
+      <p class="page-desc">列车组运行状态一览 · 数据来自本地 config.json 与运行日志</p>
+      <div id="dashboard-content"><div class="loading">正在连接指挥舱…</div></div>
+    </section>
+
+    <!-- 运行控制 -->
+    <section id="page-run" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 运行控制</h1>
+      <p class="page-desc">从浏览器启动 / 停止锄地程序,实时查看运行输出</p>
+      <div id="run-content"><div class="loading">正在连接…</div></div>
+    </section>
+
+    <!-- 地图图鉴 -->
+    <section id="page-maps" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 地图图鉴</h1>
+      <p class="page-desc">浏览全部锄地路线 · 点击任意地图查看路线详情</p>
+      <div class="tabs" id="map-tabs"></div>
+      <div style="margin-bottom:14px"><input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;outline:none"></div>
+      <div id="maps-content"><div class="loading">正在装载星图…</div></div>
+    </section>
+
+    <!-- 参数设置 -->
+    <section id="page-config" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 参数设置</h1>
+      <p class="page-desc">可视化编辑 config.json · 保存后立即生效（下次锄地读取）</p>
+      <div id="config-content"><div class="loading">正在读取配置…</div></div>
+    </section>
+
+    <!-- 航行日志 -->
+    <section id="page-logs" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 航行日志</h1>
+      <p class="page-desc">实时读取 logs/日志文件.log · 每 3 秒自动刷新</p>
+      <div class="log-meta">
+        <span class="badge b-cyan" id="log-live">● LIVE</span>
+        <span class="badge b-violet" id="log-count">0 行</span>
+        <div style="flex:1"></div>
+        <button class="btn ghost" id="log-filter-info">只看 INFO</button>
+        <button class="btn ghost" id="log-filter-warn">只看 WARN/ERROR</button>
+        <button class="btn ghost" id="log-filter-all">全部</button>
+        <button class="btn ghost" id="log-clear-filter">清屏显示</button>
+      </div>
+      <div class="log-box" id="log-box"><div class="loading">正在读取日志…</div></div>
+    </section>
+
+    <!-- 新图注意 -->
+    <section id="page-notes" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 新图注意</h1>
+      <p class="page-desc">新地图的机关 / 路线注意事项图片 · 点击任意图片放大查看</p>
+      <div class="notes-grid" id="notes-content"><div class="loading">正在加载…</div></div>
+    </section>
+
+    <!-- 关于 -->
+    <section id="page-about" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 关于</h1>
+      <p class="page-desc">Fhoe-Rail 与 WebUI 的信息</p>
+      <div class="grid g-2">
+        <div class="glass">
+          <div class="card-title"><img src="/logo.png" alt="Fhoe-Rail logo" onerror="this.onerror=null;this.src=window.LOGO_FALLBACK" style="width:20px;height:20px;border-radius:5px;vertical-align:-4px"> Fhoe-Rail</div>
+          <div style="font-size:12px;color:var(--txt-dim);margin-bottom:10px">当前版本：<span class="badge b-cyan" id="about-version">加载中…</span></div>
+          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+            崩坏：星穹铁道锄大地自动化脚本，StarRailAssistant 轻量化分支。
+            基于图片识别 + 键鼠模拟，全自动完成每日锄地、传送、战斗与购买流程。
+          </p>
+          <hr class="divider">
+          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+            开源协议：GPL-3.0<br>
+            项目地址：<a href="https://github.com/linruowuyin/Fhoe-Rail" target="_blank">github.com/linruowuyin/Fhoe-Rail</a><br>
+            上游项目：<a href="https://github.com/Starry-Wind/StarRailAssistant" target="_blank">StarRailAssistant</a>（已停更）
+          </p>
+        </div>
+        <div class="glass">
+          <div class="card-title">🖥️ WebUI</div>
+          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+            本面板为零依赖本地服务（Python 标准库 + onepush 通知引擎），仅监听 <span class="kbd">127.0.0.1:8666</span>，
+            不联网、不上传数据。修改配置会直接写入项目根目录的 <span class="kbd">config.json</span>。
+          </p>
+          <hr class="divider">
+          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+            启动：<span class="kbd">Start-WebUI.bat</span>（自动管理员权限）<br>
+            停止：关闭启动窗口 / <span class="kbd">Ctrl+C</span>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 地图详情弹窗 -->
+<div class="modal-mask" id="modal-mask">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="modal-title">地图详情</h3>
+        <div style="margin-top:6px"><span class="badge b-violet" id="modal-id"></span> <span class="badge b-pink" id="modal-author"></span></div>
+      </div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div id="modal-body"><div class="loading">…</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+ * Fhoe-Rail WebUI 前端逻辑
+ * 模块划分（按页面）：
+ *   utils      —— 通用工具（$ / esc / api / toast）
+ *   pages      —— switchPage 路由 + 各页面加载器
+ *   dashboard  —— 指挥台
+ *   run        —— 运行控制
+ *   maps       —— 地图图鉴
+ *   config     —— 参数设置
+ *   logs       —— 航行日志
+ *   particles  —— 粒子背景动画
+ * ============================================================ */
+
+/* ---------------- utils ---------------- */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let toastTimer = null;
+function toast(msg, isErr = false) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = "toast", 2600);
+}
+
+async function api(path, opts) {
+  // file:// 协议下浏览器禁止 fetch 本地 API，直接给出明确指引
+  if (location.protocol === "file:") {
+    throw new Error("你是直接双击打开的页面文件。请先运行 Start-WebUI.bat，再访问 http://127.0.0.1:8666");
+  }
+  const res = await fetch(path, opts);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+/* ---------------- 页面路由 ---------------- */
+const PAGES = ["dashboard", "run", "maps", "config", "logs", "notes", "about"];
+function switchPage(name) {
+  PAGES.forEach(p => { $("#page-" + p).style.display = (p === name) ? "" : "none"; });
+  $$(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.page === name));
+  if (name !== "logs") stopLogs();          // 离开日志页停止轮询，避免后台请求
+  if (name === "dashboard") loadDashboard();
+  if (name === "run") loadRun();
+  if (name === "maps") loadMaps();
+  if (name === "config") loadConfig();
+  if (name === "logs") startLogs();
+  if (name === "notes") loadNotes();
+  if (name === "about") loadAbout();
+  window.scrollTo(0, 0);
+}
+
+/* ---------------- 关于页：读取并显示版本号 ---------------- */
+async function loadAbout() {
+  const el = $("#about-version");
+  if (!el) return;
+  try {
+    const cfg = await api("/api/config");
+    el.textContent = cfg.version || "未知";
+  } catch (e) {
+    el.textContent = "未知";
+  }
+}
+$$(".nav-item").forEach(n => n.addEventListener("click", () => switchPage(n.dataset.page)));
+
+/* ---------------- 新图注意 ---------------- */
+async function loadNotes() {
+  const el = $("#notes-content");
+  el.innerHTML = '<div class="loading">正在加载…</div>';
+  try {
+    const files = await api("/api/notes");
+    if (!files.length) {
+      el.innerHTML = '<div class="empty">暂无注意事项图片</div>';
+      return;
+    }
+    el.innerHTML = files.map(f => `
+      <div class="note-item" data-name="${esc(f)}">
+        <img loading="lazy" src="/notes-img?name=${encodeURIComponent(f)}" alt="${esc(f)}">
+        <div class="note-name">${esc(f)}</div>
+      </div>`).join("");
+    $$("#notes-content .note-item").forEach(item => {
+      item.addEventListener("click", () => showNoteImage(item.dataset.name));
+    });
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">加载失败：${esc(e.message)}</div>`;
+  }
+}
+function showNoteImage(name) {
+  $("#modal-mask").classList.add("open");
+  $("#modal-title").textContent = "新图注意";
+  $("#modal-id").textContent = name;
+  $("#modal-author").textContent = "";
+  $("#modal-body").innerHTML =
+    `<img src="/notes-img?name=${encodeURIComponent(name)}" style="max-width:100%;border-radius:10px;display:block;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.5)">`;
+}
+
+/* ---------------- 指挥台 ---------------- */
+async function loadDashboard() {
+  const el = $("#dashboard-content");
+  el.innerHTML = '<div class="loading">正在连接指挥舱…</div>';
+  try {
+    const data = await api("/api/stats");
+    const cfg = data.config || {};
+    const stats = data.log_stats || {};
+    const verMap = data.map_versions || {};
+    const verBadges = Object.entries(verMap)
+      .map(([v, n]) => `<span class="badge b-cyan">${esc(v)} · ${n}图</span>`).join(" ");
+    el.innerHTML = `
+      <div class="grid g-stats" style="margin-bottom:16px">
+        <div class="glass"><div class="stat-num">${data.map_total ?? "—"}</div><div class="stat-label">地图总数（4个版本）</div></div>
+        <div class="glass"><div class="stat-num">${statVal(stats.fight_cnt)}</div><div class="stat-label">累计战斗次数（日志）</div></div>
+        <div class="glass"><div class="stat-num">${statVal(stats.total_time)}</div><div class="stat-label">最近一次总计用时</div></div>
+        <div class="glass"><div class="stat-num">${statVal(stats.save_time)}</div><div class="stat-label">疾跑节约时间</div></div>
+        <div class="glass"><div class="stat-num">${statVal(stats.stuck_cnt)}</div><div class="stat-label">系统卡顿次数</div></div>
+        <div class="glass"><div class="stat-num">${statVal(stats.snack_used)}</div><div class="stat-label">奇巧零食使用次数</div></div>
+      </div>
+      <div class="grid g-2">
+        <div class="glass">
+          <div class="card-title">🎛️ 当前配置</div>
+          <div class="cfg-grid">
+            <div class="cfg-row"><span class="k">地图版本</span><span class="v">${esc(cfg.map_version ?? "default")}</span></div>
+            <div class="cfg-row"><span class="k">优先星球</span><span class="v">${esc(cfg.main_map ?? "1")}</span></div>
+            <div class="cfg-row"><span class="k">疾跑模式</span><span class="v">${fmtVal(cfg.auto_run_in_map)}</span></div>
+            <div class="cfg-row"><span class="k">最后一击秘技</span><span class="v">${fmtVal(cfg.auto_final_fight_e)}</span></div>
+            <div class="cfg-row"><span class="k">自动秘技消耗品</span><span class="v">${fmtVal(cfg.auto_use_technique_consumable)}</span></div>
+            <div class="cfg-row"><span class="k">锄后系统设置</span><span class="v"><span class="badge b-dim">${({0:"无操作",1:"关机",2:"注销",3:"关闭指定进程"})[cfg.auto_shutdown] ?? esc(cfg.auto_shutdown)}</span></span></div>
+            <div class="cfg-row"><span class="k">连锄两次</span><span class="v">${fmtVal(cfg.allow_run_again)}</span></div>
+            <div class="cfg-row"><span class="k">跨日重锄</span><span class="v">${fmtVal(cfg.allow_run_next_day)}</span></div>
+            <div class="cfg-row"><span class="k">通知推送</span><span class="v">${fmtVal(cfg.notify_enabled)}</span></div>
+            <div class="cfg-row"><span class="k">通知渠道</span><span class="v">${esc(NOTIFY_CHANNEL_NAMES[cfg.notify_channel] || cfg.notify_channel || "webhook")}</span></div>
+          </div>
+        </div>
+        <div class="glass">
+          <div class="card-title">🗂️ 地图版本分布</div>
+          <div style="font-size:13px;line-height:2.2">${verBadges || "暂无数据"}</div>
+          <hr class="divider">
+          <div style="font-size:13px;color:var(--txt-dim);line-height:2">
+            ${(stats.recent_maps || []).length ? "最近锄过的地图：" : "日志中还没有锄地记录"}
+            ${(stats.recent_maps || []).map(m => `<div style="color:var(--cyan)">· ${esc(m)}</div>`).join("")}
+          </div>
+        </div>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">加载失败：${esc(e.message)}。<br><br>可能原因与解决：<br>① 直接双击了 index.html → 请改用 <span class="kbd">Start-WebUI.bat</span> 或先运行 <span class="kbd">python webui/server.py</span> 再访问 <span class="kbd">http://127.0.0.1:8666</span><br>② 服务未启动或端口被占用 → 在项目根目录执行 <span class="kbd">python webui/server.py</span>，看到启动提示后刷新本页</div>`;
+  }
+}
+
+function fmtVal(v) {
+  if (v === true) return '<span class="badge b-green">开</span>';
+  if (v === false) return '<span class="badge b-red">关</span>';
+  if (v === null || v === undefined || v === "") return '<span class="badge b-dim">未设置</span>';
+  return esc(v);
+}
+
+/* 统计卡片空态：不显示孤零零的破折号 */
+const statVal = (v) => (v === null || v === undefined || v === "") ? '<span class="stat-empty">暂无</span>' : esc(v);
+
+/* ---------------- 运行控制 ---------------- */
+let runTimer = null;
+async function loadRun() {
+  const el = $("#run-content");
+  el.innerHTML = `
+    <div class="grid g-2" style="margin-bottom:16px">
+      <div class="glass">
+        <div class="card-title">🎮 启动锄地</div>
+        <div class="field"><label>运行模式<span class="hint" id="run-mode-hint">按 config.json 的优先星球开始</span></label>
+          <select id="run-mode">
+            <option value="normal">默认锄地（免交互）</option>
+            <option value="white">白名单锄地（--white）</option>
+            <option value="map">选图运行（--map）</option>
+            <option value="devmap">开发者选图运行（--dev）</option>
+            <option value="record">录制地图（--record）</option>
+            <option value="install">安装/检查依赖</option>
+          </select></div>
+        <div class="field" id="map-picker" style="display:none"><label>选择地图<span class="hint">版本 → 星球 → 地图</span></label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="pick-version" style="min-width:100px"></select>
+            <select id="pick-planet" style="min-width:130px"></select>
+            <select id="pick-map" style="min-width:160px"></select>
+          </div></div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn primary" id="run-start">🚀 启动</button>
+          <button class="btn danger" id="run-stop" disabled>⏹ 停止</button>
+        </div>
+        <div style="font-size:11px;color:var(--txt-faint);margin-top:12px;line-height:1.9">
+          ⚠️ 启动前请先到「参数设置」保存好配置；启动会自动保存当前配置。<br>
+          💡 录制地图：启动后 3 秒开始录制，请在游戏里操作，按 <span class="kbd">F9</span> 保存（本机键盘直接操作即可）。<br>
+          🔒 锄地会接管键鼠，请勿在运行中操作电脑。
+        </div>
+      </div>
+      <div class="glass">
+        <div class="card-title">📡 运行状态</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span class="badge b-gold" id="run-state">未知</span>
+          <span style="font-size:12px;color:var(--txt-dim)" id="run-meta"></span>
+        </div>
+        <div style="font-size:13px;color:var(--txt-dim);line-height:1.9" id="run-info">等待启动…</div>
+      </div>
+    </div>
+    <div class="glass">
+      <div class="card-title">🖥️ 实时输出 <span style="font-size:11px;color:var(--txt-faint);font-weight:400">（每 1.5 秒刷新，最多保留 500 行）</span></div>
+      <div class="log-box" id="run-output" style="height:340px"><div class="loading">等待运行…</div></div>
+    </div>`;
+
+  const startBtn = $("#run-start");
+  const stopBtn = $("#run-stop");
+  const modeSel = $("#run-mode");
+  const picker = $("#map-picker");
+  const pickVer = $("#pick-version");
+  const pickPlanet = $("#pick-planet");
+  const pickMap = $("#pick-map");
+
+  // 星球名称（与 server.py PLANET_NAMES 一致）
+  const PLANET_LABELS = {"1":"空间站「黑塔」","2":"雅利洛-VI","3":"仙舟「罗浮」","4":"匹诺康尼","5":"翁法罗斯","6":"二相乐园"};
+
+  // 选图模式：版本 → 星球 → 地图 三级联动
+  const MODE_HINTS = {
+    normal: "按 config.json 的优先星球开始",
+    white: "仅运行 allowlist_map 中的地图",
+    map: "选择一张起始地图，跑完该图后停止（非交互）",
+    devmap: "开发者模式：选图 + 调试窗口（F8暂停/F7继续/F9重传）",
+    record: "录制地图：F9 保存，生成 output(时间).json",
+    install: "pip 安装/检查 requirements.txt 依赖",
+  };
+  async function fillMapPicker() {
+    if (!mapData) {
+      try { mapData = await api("/api/maps"); } catch (e) { return; }
+    }
+    const versions = Object.keys(mapData);
+    const v = versions.includes("default") ? "default" : versions[0];
+    pickVer.innerHTML = versions.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+    pickVer.value = v;
+    fillPlanetList(v);
+  }
+  function fillPlanetList(version) {
+    const planets = mapData[version] || {};
+    const keys = Object.keys(planets).sort((a, b) => a - b);
+    pickPlanet.innerHTML = keys.map(k =>
+      `<option value="${esc(k)}">${PLANET_EMOJI[k] || "🌍"} ${esc(k)}号星球 ${esc(PLANET_LABELS[k] || "")}</option>`).join("");
+    fillMapList(version, keys[0]);
+  }
+  function fillMapList(version, planet) {
+    const maps = (mapData[version] || {})[planet] || [];
+    pickMap.innerHTML = maps.map(m =>
+      `<option value="${esc(m.id)}">${esc(m.label)} ${esc(m.name || "")}</option>`).join("");
+  }
+  pickVer.addEventListener("change", () => fillPlanetList(pickVer.value));
+  pickPlanet.addEventListener("change", () => fillMapList(pickVer.value, pickPlanet.value));
+  modeSel.addEventListener("change", () => {
+    const mode = modeSel.value;
+    picker.style.display = (mode === "map" || mode === "devmap") ? "" : "none";
+    $("#run-mode-hint").textContent = MODE_HINTS[mode] || "";
+    if (picker.style.display !== "none") fillMapPicker();
+  });
+
+  startBtn.addEventListener("click", async () => {
+    startBtn.disabled = true; startBtn.textContent = "⏳ 启动中…";
+    try {
+      if (configData) {
+        try { await api("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(configData) }); } catch (e) { /* 忽略 */ }
+      }
+      const mode = modeSel.value;
+      const body = { mode };
+      if (mode === "map" || mode === "devmap") body.map = pickMap.value;
+      const res = await api("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) { toast("🚀 进程已启动 (PID " + res.pid + ")"); pollRun(); }
+      else toast("启动失败：" + (res.error || "未知错误"), true);
+    } catch (e) { toast("启动失败：" + e.message, true); }
+    startBtn.disabled = false; startBtn.textContent = "🚀 启动";
+  });
+  stopBtn.addEventListener("click", async () => {
+    stopBtn.disabled = true;
+    try {
+      const res = await api("/api/run/stop", { method: "POST" });
+      toast(res.ok ? "⏹ 已发送停止信号" : "停止失败：" + (res.error || ""), !res.ok);
+    } catch (e) { toast("停止失败：" + e.message, true); }
+    stopBtn.disabled = false;
+    pollRun();
+  });
+  pollRun();
+}
+
+async function pollRun() {
+  if (runTimer) { clearInterval(runTimer); runTimer = null; }
+  const tick = async () => {
+    try {
+      const st = await api("/api/run");
+      const stateEl = $("#run-state"), metaEl = $("#run-meta"), infoEl = $("#run-info"), outEl = $("#run-output"), stopBtn = $("#run-stop");
+      if (!stateEl) return;
+      const autoScroll = outEl.scrollHeight - outEl.scrollTop - outEl.clientHeight < 80;
+      if (st.running) {
+        stateEl.textContent = "● 运行中";
+        stateEl.className = "badge b-green";
+        metaEl.textContent = "PID " + st.pid + " · " + (st.mode || "") + " · 已运行 " + (st.uptime ?? "?") + " 秒";
+        infoEl.textContent = "正在锄地中，请勿操作键鼠。";
+        stopBtn.disabled = false;
+      } else {
+        stateEl.textContent = st.exit_code === null ? "○ 未启动" : (st.exit_code === 0 ? "✔ 已结束(正常)" : "✘ 已结束(退出码 " + st.exit_code + ")");
+        stateEl.className = st.exit_code === 0 ? "badge b-cyan" : (st.exit_code === null ? "badge b-gold" : "badge b-red");
+        metaEl.textContent = st.pid ? ("PID " + st.pid + " · " + (st.mode || "")) : "";
+        infoEl.textContent = st.exit_code === null ? "尚未启动任何锄地进程。" : "进程已退出。可在下方输出中查看结果，或到「航行日志」查看完整日志。";
+        stopBtn.disabled = true;
+      }
+      const lines = (st.output || []);
+      // 双保险：渲染前再清洗一次 ANSI 颜色码
+      const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, "");
+      outEl.innerHTML = lines.length
+        ? lines.map(l => `<div class="log-line-info">${esc(stripAnsi(l))}</div>`).join("")
+        : '<div class="empty">暂无输出</div>';
+      if (autoScroll) outEl.scrollTop = outEl.scrollHeight;
+    } catch (e) { /* 服务暂不可用，静默 */ }
+  };
+  await tick();
+  runTimer = setInterval(tick, 1500);
+}
+
+/* ---------------- 地图图鉴 ---------------- */
+let mapData = null, currentVersion = null;
+async function loadMaps() {
+  if (!mapData) {
+    $("#maps-content").innerHTML = '<div class="loading">正在装载星图…</div>';
+    try {
+      mapData = await api("/api/maps");
+    } catch (e) {
+      $("#maps-content").innerHTML = `<div class="error-box">加载失败：${esc(e.message)}。<br>请用 <span class="kbd">Start-WebUI.bat</span> 或 <span class="kbd">python webui/server.py</span> 启动服务后访问。</div>`;
+      return;
+    }
+  }
+  const versions = Object.keys(mapData);
+  if (!currentVersion) currentVersion = versions.includes("default") ? "default" : versions[0];
+  $("#map-tabs").innerHTML = versions.map(v =>
+    `<div class="tab${v === currentVersion ? " active" : ""}" data-v="${esc(v)}">${esc(v)} <span style="opacity:.6">(${Object.values(mapData[v]).reduce((a,b)=>a+b.length,0)})</span></div>`
+  ).join("");
+  $$("#map-tabs .tab").forEach(t => t.addEventListener("click", () => {
+    currentVersion = t.dataset.v;
+    // 修复：切换版本时同步更新页签高亮（原来只更新内容，active 始终停在 default）
+    $$("#map-tabs .tab").forEach(x => x.classList.toggle("active", x === t));
+    renderMaps();
+  }));
+  renderMaps();
+}
+
+const PLANET_EMOJI = {"1":"🛰️","2":"❄️","3":"🚢","4":"🌙","5":"🏛️","6":"🎡"};
+function renderMaps() {
+  const planets = mapData[currentVersion] || {};
+  const keys = Object.keys(planets).sort((a, b) => a - b);
+  if (!keys.length) { $("#maps-content").innerHTML = '<div class="empty">该版本没有地图数据</div>'; return; }
+  const q = ($("#map-search")?.value || "").trim().toLowerCase();
+  let shown = 0;
+  $("#maps-content").innerHTML = keys.map(main => {
+    const maps = planets[main].filter(m => {
+      if (!q) return true;
+      return (m.name || "").toLowerCase().includes(q)
+        || m.id.toLowerCase().includes(q)
+        || m.label.toLowerCase().includes(q)
+        || (m.author || "").toLowerCase().includes(q);  // 支持按作者搜索
+    });
+    if (!maps.length) return "";
+    shown += maps.length;
+    return `
+      <div class="planet-block" data-planet="${main}">
+        <div class="planet-head"><span class="dot"></span> ${PLANET_EMOJI[main] || "🌍"} ${esc(main)}号星球 · ${maps.length} 张路线 <span class="fold">▾</span></div>
+        <div class="map-list">${maps.map(m => `
+          <div class="map-item" data-file="${esc(m.file)}" data-version="${esc(currentVersion)}">
+            <div class="m-name"><span>${esc(m.name || "未命名路线")}</span><span class="m-id">${esc(m.id)}</span></div>
+            <div class="m-author">路线作者：${esc(m.author || "未知")}</div>
+          </div>`).join("")}
+        </div>
+      </div>`;
+  }).join("") || (q ? '<div class="empty">没有匹配「' + esc(q) + '」的地图</div>' : '<div class="empty">该版本没有地图数据</div>');
+  if (q) {
+    const total = Object.values(planets).reduce((a, b) => a + b.length, 0);
+    $("#maps-content").insertAdjacentHTML("afterbegin", `<div style="font-size:12px;color:var(--txt-faint);margin-bottom:10px">搜索「${esc(q)}」：命中 ${shown} / ${total} 张</div>`);
+  }
+  // 星球折叠/展开（点击标题栏切换）
+  $$("#maps-content .planet-head").forEach(head => {
+    head.addEventListener("click", () => head.parentElement.classList.toggle("collapsed"));
+  });
+  $$("#maps-content .map-item").forEach(item => item.addEventListener("click", () => showMapDetail(item.dataset.file, item.dataset.version)));
+}
+$("#map-search")?.addEventListener("input", renderMaps);
+
+async function showMapDetail(file, version) {
+  $("#modal-mask").classList.add("open");
+  $("#modal-title").textContent = "地图详情";
+  $("#modal-id").textContent = version + " / " + file;
+  $("#modal-author").textContent = "加载中…";
+  $("#modal-body").innerHTML = '<div class="loading">正在读取路线…</div>';
+  try {
+    const data = await api("/api/map?file=" + encodeURIComponent(file) + "&version=" + encodeURIComponent(version));
+    $("#modal-title").textContent = data.name || file;
+    $("#modal-author").textContent = "作者：" + (data.author || "未知");
+    const startSteps = (data.start || []).map(s => {
+      const k = Object.keys(s)[0], v = s[k];
+      return `<div class="step-row"><span class="k">${esc(k)}</span><span class="v">${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span></div>`;
+    }).join("");
+    const totalSteps = (data.map || []).length;
+    const stepRow = s => {
+      const k = Object.keys(s)[0], v = s[k];
+      const tag = k === "fighting" ? '<span class="badge b-red" style="margin-left:6px">战斗</span>'
+        : k === "f" ? '<span class="badge b-cyan" style="margin-left:6px">交互</span>'
+        : k === "e" ? '<span class="badge b-pink" style="margin-left:6px">秘技</span>' : "";
+      return `<div class="step-row"><span class="k">${esc(k)}</span><span class="v">${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>${tag}</div>`;
+    };
+    const PREVIEW = 60;
+    const previewSteps = (data.map || []).slice(0, PREVIEW).map(stepRow).join("");
+    const extraSteps = (data.map || []).slice(PREVIEW);
+    $("#modal-body").innerHTML = `
+      <div style="font-size:12px;color:var(--txt-faint);margin-bottom:6px">📦 起始步骤（${(data.start||[]).length}）</div>
+      <div class="steps">${startSteps || '<div class="empty">无</div>'}</div>
+      <div style="font-size:12px;color:var(--txt-faint);margin:14px 0 6px">🚶 行进步骤（共 ${totalSteps}）</div>
+      <div class="steps">${previewSteps || '<div class="empty">无</div>'}</div>
+      ${totalSteps > PREVIEW ? `<div style="text-align:center;margin-top:10px"><button class="btn ghost" id="modal-expand">展开全部 ${extraSteps.length} 条步骤 ▾</button></div>
+      <div class="steps" id="modal-extra" style="display:none">${extraSteps.map(stepRow).join("")}</div>` : ""}`;
+    const expandBtn = $("#modal-expand");
+    if (expandBtn) expandBtn.addEventListener("click", () => {
+      const extra = $("#modal-extra");
+      const hidden = extra.style.display === "none";
+      extra.style.display = hidden ? "" : "none";
+      expandBtn.textContent = hidden ? "收起多余步骤 ▴" : `展开全部 ${extraSteps.length} 条步骤 ▾`;
+    });
+  } catch (e) {
+    $("#modal-body").innerHTML = `<div class="error-box">读取失败：${esc(e.message)}</div>`;
+  }
+}
+$("#modal-close").addEventListener("click", () => $("#modal-mask").classList.remove("open"));
+$("#modal-mask").addEventListener("click", (e) => { if (e.target === e.currentTarget) $("#modal-mask").classList.remove("open"); });
+
+/* ---------------- 参数设置 ---------------- */
+let configData = null;
+/* 配置表单定义：新增配置项只需在此数组加一项 */
+const CONFIG_DEFS = [
+  { group: "🌍 基础", items: [
+    { key: "map_version", label: "地图版本", hint: "default 疾跑 / HuangQuan 黄泉专用 / SilverWolfLv999 银狼专用", type: "select-version" },
+    { key: "main_map", label: "优先星球", hint: "1 黑塔 / 2 雅利洛 / 3 罗浮 / 4 匹诺康尼 / 5 翁法罗斯", type: "select-main" },
+    { key: "auto_shutdown", label: "锄后系统设置", hint: "0 无操作 / 1 关机 / 2 注销 / 3 关闭指定进程", type: "select", options: {"0":"无操作","1":"关机","2":"注销","3":"关闭指定进程"} },
+    { key: "taskkill_name", label: "关闭的进程名", hint: "auto_shutdown=3 时生效", type: "text" },
+    { key: "allowlist_mode_once", label: "仅此次运行白名单地图", hint: "勾选保存后，下次启动只跑白名单；启动后自动重置", type: "bool" },
+  ]},
+  { group: "⚔️ 战斗", items: [
+    { key: "auto_final_fight_e", label: "地图最后一击自动秘技", hint: "不建议龙丹、驭空开启", type: "bool" },
+    { key: "auto_final_fight_e_cnt", label: "最后一击秘技上限次数", type: "number" },
+    { key: "detect_fight_status_time", label: "进入战斗识别时间（秒）", type: "number" },
+    { key: "auto_use_technique_consumable", label: "自动使用秘技消耗品", type: "bool" },
+    { key: "allow_fight_e_buy_prop", label: "允许自动吃秘技零食", type: "bool" },
+  ]},
+  { group: "🗺️ 地图行为", items: [
+    { key: "auto_run_in_map", label: "疾跑模式", hint: "漏怪严重时建议关闭", type: "bool" },
+    { key: "allow_run_again", label: "每次运行连锄 2 次", hint: "避免漏怪", type: "bool" },
+    { key: "allow_run_next_day", label: "跨日重锄", hint: "等待 4 点刷新后继续", type: "bool" },
+    { key: "allowlist_mode", label: "仅运行白名单地图", type: "bool" },
+    { key: "forbid_map", label: "禁用地图（逗号分隔）", hint: "如：1-1,2-1", type: "text-arr" },
+    { key: "allowlist_map", label: "白名单地图（逗号分隔）", type: "text-arr" },
+  ]},
+  { group: "🛒 购买与代币", items: [
+    { key: "allow_map_buy", label: "购买代币与过期邮包", type: "bool" },
+    { key: "allow_snack_buy", label: "购买秘技零食并合成", type: "bool" },
+    { key: "allow_memory_token", label: "获得翁法罗斯记忆代币", type: "bool" },
+  ]},
+  { group: "⏰ 时间", items: [
+    { key: "refresh_hour", label: "月卡刷新小时（0-23）", type: "number", min: 0, max: 23 },
+    { key: "refresh_minute", label: "月卡刷新分钟", type: "select", options: {"0":"0 分","15":"15 分","30":"30 分","45":"45 分"} },
+  ]},
+  { group: "🔔 通知推送", items: [
+    { key: "notify_enabled", label: "启用通知推送", hint: "总开关，关闭时所有通知不发送", type: "bool" },
+    { key: "notify_channel", label: "推送渠道（19 种）", type: "select", options: {"windows":"Windows 桌面通知（零配置）","pushplus":"PushPlus（微信）","serverchan":"Server酱（微信）","serverchanturbo":"Server酱³ Turbo（微信）","dingtalk":"钉钉机器人","wechatworkbot":"企业微信机器人","telegram":"Telegram","qmsg":"Qmsg酱（QQ）","pushdeer":"PushDeer","gotify":"Gotify","ntfy":"Ntfy","bark":"Bark（iOS）","wechatworkapp":"企业微信应用","lark":"飞书 / Lark","discord":"Discord","smtp":"邮件 (SMTP)","gocqhttp":"QQ 机器人 (OneBot)","custom":"自定义请求","webhook":"通用 Webhook"} },
+    { key: "notify_key", label: "渠道密钥", hint: "SENDKEY / token / key（webhook 渠道用 webhook_url；lark、discord 填机器人 webhook 地址）", type: "text" },
+    { key: "notify_chat_id", label: "目标参数", hint: "telegram 的 chat_id、qmsg 的 qq 等", type: "text" },
+    { key: "notify_params", label: "高级参数 (JSON)", hint: "smtp/企业微信应用/自定义等渠道的参数，会覆盖默认映射", type: "text" },
+    { key: "notify_on_start", label: "开始时通知", type: "bool" },
+    { key: "notify_on_end", label: "结束时通知（含统计）", type: "bool" },
+    { key: "notify_on_error", label: "出错时通知", type: "bool" },
+  ]},
+  { group: "🔧 高级", items: [
+    { key: "webhook_url", label: "Webhook 通知地址", type: "text" },
+    { key: "angle", label: "视角旋转参数", hint: "校准后自动写入", type: "text" },
+    { key: "open_map", label: "打开地图按键", type: "text" },
+  ]},
+];
+
+/* 通知渠道中文名（与参数配置页下拉框同一来源，概览页展示用） */
+const NOTIFY_CHANNEL_NAMES = (() => {
+  for (const g of CONFIG_DEFS) for (const d of g.items || []) if (d.key === "notify_channel") return d.options || {};
+  return {};
+})();
+
+/* 开发者选项：单独渲染在参数设置页最底部 */
+const DEV_DEFS = [
+  { key: "script_debug", label: "脚本调试模式", hint: "仅开发调试时开启", type: "bool" },
+  { key: "github_proxy", label: "GitHub 代理前缀", hint: "资源更新用，留空直连", type: "text" },
+  { key: "rawgithub_proxy", label: "raw.githubusercontent 代理前缀", hint: "资源更新用，留空直连", type: "text" },
+];
+
+async function loadConfig() {
+  const el = $("#config-content");
+  el.innerHTML = '<div class="loading">正在读取配置…</div>';
+  try {
+    if (!mapData) {
+      try { mapData = await api("/api/maps"); } catch (e) { /* 地图数据加载失败不阻塞配置编辑 */ }
+    }
+    configData = await api("/api/config");
+    renderConfigForm();
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">加载失败：${esc(e.message)}</div>`;
+  }
+}
+
+function renderConfigForm() {
+  const el = $("#config-content");
+  const html = CONFIG_DEFS.map(g => `
+    <div class="glass" style="margin-bottom:16px">
+      <div class="card-title">${g.group}</div>
+      ${g.items.map(item => fieldHtml(item)).join("")}
+      ${g.group.includes("通知推送") ? `
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft)">
+        <button class="btn" id="notify-test">📨 发送测试通知</button>
+        <span id="notify-test-result" style="font-size:12px;color:var(--txt-dim);margin-left:10px"></span>
+      </div>` : ""}
+    </div>`).join("") + `
+    <div class="glass" style="margin-bottom:16px">
+      <div class="card-title">🛠️ 开发者选项</div>
+      <div style="font-size:11px;color:var(--txt-faint);margin-bottom:4px">以下选项面向开发者/维护者，普通用户无需修改。</div>
+      ${DEV_DEFS.map(item => fieldHtml(item)).join("")}
+    </div>
+    <div class="glass" style="margin-bottom:16px">
+      <div class="card-title">🧭 视角校准</div>
+      <div style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+        当前视角参数：<span class="kbd">${esc(configData.angle ?? "1.0")}</span> · 校准状态：${configData.angle_set ? '<span class="badge b-green">已校准</span>' : '<span class="badge b-gold">未校准（下次运行会自动校准）</span>'}
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn ghost" id="calibrate-angle">🔧 标记：下次运行前重新校准视角</button>
+      </div>
+      <div style="font-size:11px;color:var(--txt-faint);margin-top:8px">点击后设置 angle_set=false，下次锄地启动时会自动执行视角校准（需进入游戏）。</div>
+    </div>
+    <div class="glass" style="margin-bottom:16px">
+      <div class="card-title">📋 只读信息</div>
+      <div style="font-size:12px;color:var(--txt-dim);line-height:2;font-family:var(--font-mono)">
+        version: ${esc(configData.version ?? "—")} · picture_version: ${esc(configData.picture_version ?? "—")} · star_version: ${esc(configData.star_version ?? "—")}<br>
+        real_width: ${esc(configData.real_width ?? "—")} · real_height: ${esc(configData.real_height ?? "—")} · map_debug: ${esc(configData.map_debug ?? "—")} · start: ${esc(configData.start ?? "—")}
+      </div>
+      <div style="font-size:11px;color:var(--txt-faint);margin-top:6px">这些字段由程序自动维护，如需修改请在下方原始 JSON 中编辑。</div>
+    </div>
+    <div class="glass" style="margin-bottom:16px">
+      <div class="card-title">🧾 原始 JSON</div>
+      <textarea id="raw-json" rows="10" style="width:100%;font-family:var(--font-mono);font-size:12px;line-height:1.6;background:rgba(4,6,14,.7);color:var(--txt);border:1px solid var(--glass-border);border-radius:10px;padding:12px">${esc(JSON.stringify(configData, null, 2))}</textarea>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn primary" id="save-config">💾 保存全部修改</button>
+        <button class="btn ghost" id="copy-config">📋 复制 JSON</button>
+        <button class="btn ghost" id="download-config">⬇️ 下载 config.json</button>
+        <button class="btn ghost" id="reload-config">🔄 重新读取</button>
+      </div>
+      <div style="font-size:11px;color:var(--txt-faint);margin-top:10px">⚠️ 保存会直接写入项目根目录 config.json；数组字段用逗号分隔（如 1-1,2-1）。</div>
+    </div>`;
+  el.innerHTML = html;
+
+  /* 开关直接绑定点击（不依赖 label 默认转发，任何浏览器可切换） */
+  $$("#config-content .switch").forEach(s => {
+    s.addEventListener("click", (e) => {
+      e.preventDefault();
+      const key = s.dataset.switch;
+      const input = s.querySelector("input");
+      if (!key || !input) return;
+      input.checked = !input.checked;
+      configData[key] = input.checked;
+      syncRawJson();
+      if (key === "map_version") renderConfigForm();
+    });
+  });
+
+  /* 表单控件事件（.cfg-field 与 fieldHtml 输出一致） */
+  $$("#config-content .cfg-field").forEach(f => {
+    const key = f.dataset.key;
+    const input = f.querySelector("input, select");
+    if (!input) return;
+    const apply = () => {
+      let v;
+      if (input.type === "checkbox") v = input.checked;
+      else if (input.type === "number") v = input.value === "" ? null : Number(input.value);
+      else if (input.dataset.arr === "1") v = input.value.split(",").map(s => s.trim()).filter(Boolean);
+      else v = input.value;
+      configData[key] = v;
+      syncRawJson();
+      if (key === "map_version") renderConfigForm();  // 地图版本变更后刷新星球选项
+    };
+    input.addEventListener("input", apply);
+    input.addEventListener("change", apply);
+  });
+
+  $("#calibrate-angle").addEventListener("click", () => {
+    configData.angle_set = false;
+    syncRawJson();
+    toast("✅ 已标记：下次运行前将重新校准视角（记得点保存）");
+  });
+  $("#notify-test").addEventListener("click", async () => {
+    const btn = $("#notify-test"), res = $("#notify-test-result");
+    btn.disabled = true; res.textContent = "发送中…";
+    try {
+      if (configData) {
+        await api("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(configData) });
+      }
+      const r = await api("/api/notify/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      res.textContent = r.note || (r.ok ? "已发送，请检查手机/客户端" : "发送失败");
+    } catch (e) { res.textContent = "发送失败：" + e.message; }
+    btn.disabled = false;
+  });
+  $("#save-config").addEventListener("click", saveConfig);
+  $("#copy-config").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(configData, null, 2)); toast("已复制到剪贴板"); }
+    catch { toast("复制失败，请手动选择复制", true); }
+  });
+  $("#download-config").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(configData, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "config.json"; a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $("#reload-config").addEventListener("click", loadConfig);
+  $("#raw-json").addEventListener("change", () => {
+    try { configData = JSON.parse($("#raw-json").value); toast("JSON 解析成功"); }
+    catch (e) { toast("JSON 格式错误：" + e.message, true); }
+  });
+}
+
+function fieldHtml(item) {
+  const v = configData[item.key];
+  const base = `data-key="${esc(item.key)}"`;
+  if (item.type === "bool") {
+    return `<div class="field cfg-field" ${base}>
+      <label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label>
+      <label class="switch" data-switch="${esc(item.key)}"><input type="checkbox" ${v ? "checked" : ""}><span class="track"></span></label>
+    </div>`;
+  }
+  if (item.type === "select-version") {
+    // 地图版本：选项动态来自实际存在的版本目录
+    const versions = mapData ? Object.keys(mapData) : [];
+    const opts = versions.map(val =>
+      `<option value="${esc(val)}" ${String(v) === String(val) ? "selected" : ""}>${esc(val)}</option>`).join("");
+    return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><select>${opts}</select></div>`;
+  }
+  if (item.type === "select") {
+    const opts = (item.options ? Object.entries(item.options) : []).map(([val, lbl]) =>
+      `<option value="${esc(val)}" ${String(v) === String(val) ? "selected" : ""}>${esc(lbl)}</option>`).join("");
+    return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><select>${opts}</select></div>`;
+  }
+  if (item.type === "select-main") {
+    const mains = mapData ? Object.keys(mapData[configData.map_version || "default"] || {}).sort((a,b)=>a-b) : ["1","2","3","4","5","6"];
+    const opts = mains.map(m => `<option value="${esc(m)}" ${String(v) === String(m) ? "selected" : ""}>${esc(m)} 号星球</option>`).join("");
+    return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><select>${opts}</select></div>`;
+  }
+  if (item.type === "text-arr") {
+    const arr = Array.isArray(v) ? v.join(",") : (v ?? "");
+    return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><input type="text" value="${esc(arr)}" data-arr="1"></div>`;
+  }
+  if (item.type === "number") {
+    return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><input type="number" value="${esc(v ?? "")}" ${item.min !== undefined ? `min="${item.min}"` : ""} ${item.max !== undefined ? `max="${item.max}"` : ""}></div>`;
+  }
+  return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><input type="text" value="${esc(v ?? "")}"></div>`;
+}
+
+function syncRawJson() {
+  const ta = $("#raw-json");
+  if (ta) ta.value = JSON.stringify(configData, null, 2);
+}
+
+async function saveConfig() {
+  const btn = $("#save-config");
+  btn.disabled = true; btn.textContent = "⏳ 保存中…";
+  try {
+    const res = await api("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(configData),
+    });
+    if (res.ok) { toast("✅ 配置已保存到 config.json"); }
+    else { toast("保存失败：" + (res.error || "未知错误"), true); }
+  } catch (e) {
+    toast("保存失败：" + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = "💾 保存全部修改";
+  }
+}
+
+/* ---------------- 航行日志 ---------------- */
+let logTimer = null, logFilter = "all", logCleared = false;
+function stopLogs() {
+  if (logTimer) { clearInterval(logTimer); logTimer = null; }
+}
+async function fetchLogs() {
+  try {
+    const data = await api("/api/logs?lines=300");
+    return Array.isArray(data) ? data : [];
+  } catch { return null; }
+}
+function renderLogs(lines) {
+  const box = $("#log-box");
+  const autoScroll = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  const html = lines.filter(l => {
+    if (logCleared) return false;
+    if (logFilter === "info") return /INFO/.test(l) || /SUCCESS/.test(l);
+    if (logFilter === "warn") return /WARNING|WARN|ERROR|CRITICAL/.test(l);
+    return true;
+  }).map(l => {
+    let cls = "log-line-info";
+    if (/WARNING|WARN/.test(l)) cls = "log-line-warning";
+    else if (/ERROR|CRITICAL/.test(l)) cls = "log-line-error";
+    else if (/DEBUG/.test(l)) cls = "log-line-debug";
+    // 先转义再高亮时间戳（修复：日志中的 <module> 等文本被浏览器解析成 HTML 元素的问题）
+    const colored = esc(l).replace(/^\d{2}:\d{2}:\d{2}(?:\.\d+)?/, t => `<span class="log-time">${t}</span>`);
+    return `<div class="${cls}">${colored}</div>`;
+  }).join("");
+  box.innerHTML = html || '<div class="empty">暂无日志（清屏状态或日志为空）</div>';
+  if (autoScroll) box.scrollTop = box.scrollHeight;
+}
+async function startLogs() {
+  stopLogs();
+  const data = await fetchLogs();
+  if (data === null) {
+    $("#log-box").innerHTML = '<div class="error-box">无法读取日志。请确认项目根目录存在 logs/日志文件.log（运行过一次锄地后生成）。</div>';
+    return;
+  }
+  renderLogs(data);
+  $("#log-count").textContent = data.length + " 行";
+  logTimer = setInterval(async () => {
+    const d = await fetchLogs();
+    if (d) { renderLogs(d); $("#log-count").textContent = d.length + " 行"; }
+  }, 3000);
+}
+function setLogFilter(f) {
+  logFilter = f; logCleared = false;
+  $$("#page-logs .log-meta .btn").forEach(b => b.classList.remove("active"));
+  const map = { info: "#log-filter-info", warn: "#log-filter-warn", all: "#log-filter-all" };
+  const btn = $(map[f]);
+  if (btn) btn.classList.add("active");
+  fetchLogs().then(renderLogs);
+}
+$("#log-filter-info").addEventListener("click", () => setLogFilter("info"));
+$("#log-filter-warn").addEventListener("click", () => setLogFilter("warn"));
+$("#log-filter-all").addEventListener("click", () => setLogFilter("all"));
+$("#log-clear-filter").addEventListener("click", () => { logCleared = true; renderLogs([]); });
+
+/* ---------------- 粒子背景（轻量 Canvas，无外部依赖，颜色跟随主题） ---------------- */
+(function ParticleField() {
+  const canvas = document.getElementById("particle-bg");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  let W = 0, H = 0, particles = [];
+  const COUNT = 70;
+
+  // 从 CSS 设计令牌读取粒子颜色（主题切换时更新）
+  function readColorPool() {
+    const cs = getComputedStyle(document.body);
+    return [cs.getPropertyValue("--violet-rgb").trim(), cs.getPropertyValue("--cyan-rgb").trim()];
+  }
+  let colorPool = readColorPool();
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  function spawn() {
+    colorPool = readColorPool();
+    particles = Array.from({ length: COUNT }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.6 + 0.4,
+      vx: (Math.random() - 0.5) * 0.22,
+      vy: (Math.random() - 0.5) * 0.22,
+      hue: colorPool[Math.random() < 0.5 ? 0 : 1],
+      a: Math.random() * 0.5 + 0.2,
+      tw: Math.random() * 0.02 + 0.005,
+    }));
+  }
+  function tick() {
+    // 氛围特效关闭时（canvas 隐藏）跳过绘制，省 CPU
+    if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+      requestAnimationFrame(tick);
+      return;
+    }
+    ctx.clearRect(0, 0, W, H);
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+      p.a += p.tw;
+      if (p.a > 0.9 || p.a < 0.1) p.tw *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.hue},${p.a})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener("resize", resize);
+  resize(); spawn(); tick();
+
+  // 暴露给主题切换：仅更新颜色，保留粒子位置
+  window.ParticleField = {
+    updateColors() {
+      colorPool = readColorPool();
+      for (const p of particles) p.hue = colorPool[Math.random() < 0.5 ? 0 : 1];
+    }
+  };
+})();
+
+/* ---------------- 主题切换（localStorage 记忆，粒子联动） ---------------- */
+/* 新增主题：CSS 加一套 body[data-theme] 覆盖块 + 这里加一项 */
+const THEMES = [
+  { name: "default", label: "星穹紫", c1: "#8b7bff", c2: "#22d3ee" },
+  { name: "crimson", label: "绯红脉冲", c1: "#ff6b6b", c2: "#ffa94d" },
+  { name: "jade", label: "翡翠极光", c1: "#34d399", c2: "#22d3ee" },
+  { name: "amber", label: "琥珀黄昏", c1: "#f59e0b", c2: "#fbbf24" },
+  { name: "ice", label: "冰晶蓝", c1: "#60a5fa", c2: "#93c5fd" },
+];
+function applyTheme(name) {
+  document.body.dataset.theme = name;
+  try { localStorage.setItem("fhoe-theme", name); } catch (e) { /* file:// 下可能不可用 */ }
+  $$("#theme-dots .theme-dot").forEach(d => d.classList.toggle("active", d.dataset.theme === name));
+  if (window.ParticleField) window.ParticleField.updateColors();
+}
+/* 布局切换（居中/靠左，localStorage 记忆，默认居中） */
+function applyLayout(mode) {
+  document.body.dataset.layout = mode;
+  try { localStorage.setItem("fhoe-layout", mode); } catch (e) { /* 忽略 */ }
+  const btn = $("#layout-toggle");
+  if (btn) btn.textContent = mode === "center" ? "⇔ 布局：居中" : "⇐ 布局：靠左";
+}
+(function initLayout() {
+  let mode = "center";
+  try { mode = localStorage.getItem("fhoe-layout") || "center"; } catch (e) { /* 忽略 */ }
+  if (mode !== "left") mode = "center";
+  applyLayout(mode);
+  $("#layout-toggle").addEventListener("click", () =>
+    applyLayout(document.body.dataset.layout === "center" ? "left" : "center"));
+})();
+function applyAmbient(on) {
+  document.body.classList.toggle("ambient", on);
+  try { localStorage.setItem("fhoe-ambient", on ? "1" : "0"); } catch (e) { /* 忽略 */ }
+  const btn = $("#ambient-toggle");
+  if (btn) { btn.classList.toggle("on", on); btn.textContent = on ? "🌌 氛围特效 · 开" : "🌌 氛围特效"; }
+  if (on && window.ParticleField) window.ParticleField.updateColors();
+}
+(function initTheme() {
+  let saved = "default";
+  try { saved = localStorage.getItem("fhoe-theme") || "default"; } catch (e) { /* 忽略 */ }
+  if (!THEMES.some(t => t.name === saved)) saved = "default";
+  document.body.dataset.theme = saved;
+  $("#theme-dots").innerHTML = THEMES.map(t =>
+    `<button class="theme-dot${t.name === saved ? " active" : ""}" data-theme="${t.name}" style="background:linear-gradient(135deg,${t.c1},${t.c2})"><span class="tt">${t.label}</span></button>`
+  ).join("");
+  $$("#theme-dots .theme-dot").forEach(d => d.addEventListener("click", () => applyTheme(d.dataset.theme)));
+  // 氛围特效：默认开启（localStorage 记忆；未设置过则开，用户显式关闭后保持关闭）
+  let ambient = true;
+  try { ambient = localStorage.getItem("fhoe-ambient") !== "0"; } catch (e) { /* 忽略 */ }
+  applyAmbient(ambient);
+  $("#ambient-toggle").addEventListener("click", () => applyAmbient(!document.body.classList.contains("ambient")));
+})();
+
+/* ---------------- 启动 ---------------- */
+// 检测是否直接双击打开了 HTML（file:// 协议下无法访问本地 API）
+if (location.protocol === "file:") {
+  document.body.insertAdjacentHTML("afterbegin", `
+    <div style="position:fixed;inset:0;z-index:999;background:rgba(4,5,13,.97);display:flex;align-items:center;justify-content:center;padding:20px">
+      <div class="glass" style="max-width:540px;padding:28px 30px">
+        <div class="card-title">🚨 打开方式不对</div>
+        <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+          你直接双击打开了页面文件,浏览器禁止 <span class="kbd">file://</span> 页面访问本地数据,所以界面无法加载。<br><br>
+          <b style="color:var(--txt)">正确打开方式(二选一):</b><br>
+          ① 双击项目根目录的 <span class="kbd">Start-WebUI.bat</span> —— 自动启动服务并打开页面<br>
+          ② 在项目根目录打开终端执行 <span class="kbd">python webui/server.py</span>,然后访问 <span class="kbd">http://127.0.0.1:8666</span><br><br>
+          关闭本窗口后,本页将无法使用,请按上面方式重新打开。
+        </p>
+        <div style="margin-top:16px"><button class="btn" onclick="location.href='http://127.0.0.1:8666'">如果服务已启动,点我跳转</button></div>
+      </div>
+    </div>`);
+} else {
+  switchPage("dashboard");
+}
+</script>
+</body>
+</html>

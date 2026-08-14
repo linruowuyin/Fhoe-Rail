@@ -1,8 +1,18 @@
 # utils/config/text_window.py
 import queue
 import threading
-import tkinter as tk
 from typing import Any, Literal
+
+# tkinter 缺失回退：embeddable Python 等环境没有 tkinter 时，
+# 开发者调试窗口自动降级（非 dev 模式完全无感），保证主流程可运行。
+try:
+    import tkinter as tk
+    TK_AVAILABLE = True
+except ImportError:
+    tk = None
+    TK_AVAILABLE = False
+
+from utils.log import log
 
 
 class TextWindow:
@@ -20,6 +30,8 @@ class TextWindow:
         创建一个透明的tkinter窗口，配置其属性使其支持点击穿透，
         并设置Canvas用于显示带描边效果的文本。
         """
+        if not TK_AVAILABLE:
+            raise RuntimeError("当前环境没有 tkinter，无法创建调试窗口")
         # 创建并配置主窗口
         self.root = tk.Tk()
         self.root.overrideredirect(True)  # 移除窗口边框
@@ -158,6 +170,9 @@ def create_tkinter_window(window_id: str = "default") -> None:
     设置ready事件，表示窗口初始化完成。
     """
     global TEXT_WINDOWS
+    if not TK_AVAILABLE:
+        log.warning(f"当前环境没有 tkinter，调试窗口 {window_id} 不可用（已降级）")
+        return
     text_window = TextWindow()
     TEXT_WINDOWS[window_id] = text_window
     text_window.ready.set()
@@ -173,6 +188,8 @@ def start_tkinter_thread(window_id: str = "default") -> None:
     创建并启动一个守护线程来运行Tkinter窗口。
     """
     global TKINTER_THREADS
+    if not TK_AVAILABLE:
+        return  # 无 tkinter 时静默跳过，不阻塞主流程
     thread = threading.Thread(
         target=create_tkinter_window,
         args=(window_id,),
@@ -196,6 +213,8 @@ def show_text(text: Any, x: int = 100, y: int = 100,
             - 'showuid': 保持原坐标
         window_id: 窗口实例的唯一标识符
     """
+    if not TK_AVAILABLE:
+        return  # 无 tkinter 时静默降级
     if mode not in ["nouid", "showuid"]:
         mode = "nouid"
 

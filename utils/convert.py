@@ -1,5 +1,13 @@
 import os
 import json
+import sys
+
+# 系统语言兼容（issue #428 同类问题）：日文系统 cp932 代码页下中文 print 会崩溃
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError, OSError):
+        pass
 
 def find_json_files_with_character(directory, character):
     json_files = []

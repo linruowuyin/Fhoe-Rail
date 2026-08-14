@@ -6,6 +6,9 @@ from utils.singleton import SingletonMeta
 
 
 class MapInfo(metaclass=SingletonMeta):
+    # 缓存：{(map_dir, map_version): (目录mtime, 结果tuple)}，目录变化时自动失效
+    _maps_cache = {}
+
     def __init__(self):
         self.cfg = ConfigurationManager()
 
@@ -49,13 +52,23 @@ class MapInfo(metaclass=SingletonMeta):
     @staticmethod
     def read_maps(map_version: str, map_dir: str = 'map') -> tuple:
         """
-        读取地图文件
+        读取地图文件（带缓存：目录 mtime 未变化时直接返回上次结果，避免每次重复读盘解析 600+ JSON）
         """
         map_version_dir = os.path.join(map_dir, map_version)
 
         if not os.path.exists(map_version_dir):
             log.error(f"地图文件目录不存在：{map_version_dir}")
             raise FileNotFoundError(f"地图文件目录不存在：{map_version_dir}")
+
+        # 缓存命中（目录 mtime 未变）
+        cache_key = (map_dir, map_version)
+        try:
+            dir_mtime = os.path.getmtime(map_version_dir)
+        except OSError:
+            dir_mtime = None
+        cached = MapInfo._maps_cache.get(cache_key)
+        if cached is not None and cached[0] == dir_mtime:
+            return cached[1]
 
         try:
             json_files = MapInfo.get_json_files(map_version_dir)
@@ -70,7 +83,9 @@ class MapInfo(metaclass=SingletonMeta):
             log.error(f"处理地图文件失败：{e}")
             raise
 
-        return json_files, map_list_map, map_version
+        result = (json_files, map_list_map, map_version)
+        MapInfo._maps_cache[cache_key] = (dir_mtime, result)
+        return result
 
     @staticmethod
     def get_json_files(map_version_dir: str) -> list:

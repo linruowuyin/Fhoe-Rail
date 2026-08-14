@@ -323,8 +323,13 @@ class Handle(metaclass=SingletonMeta):
     def back_to_main(self, delay=2.0):
         """
         检测并回到主界面
+        增加总超时保护：长时间检测不到主界面时强制继续，避免游戏异常时无限按esc死循环
         """
+        start_time = time.time()
         while not self.img.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
+            if time.time() - start_time > 120:
+                log.error("回到主界面超时（120秒），强制继续执行下一步")
+                break
             pyautogui.press('esc')
             time.sleep(delay)
             if self.img.on_interface(check_list=[self.img.battle_esc_check], timeout=0.0, threshold=0.97, offset=(0, 0, -1800, -970), allow_log=True):
@@ -338,9 +343,11 @@ class Handle(metaclass=SingletonMeta):
         """
         if value == 1:
             win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0)
-            time.sleep(random.uniform(0.09, 0.15))
-            win32api.keybd_event(win32con.VK_ESCAPE, 0,
-                                 win32con.KEYEVENTF_KEYUP, 0)
+            try:
+                time.sleep(random.uniform(0.09, 0.15))
+            finally:
+                win32api.keybd_event(win32con.VK_ESCAPE, 0,
+                                     win32con.KEYEVENTF_KEYUP, 0)
             time.sleep(3)
         else:
             raise CustomException("map数据错误, esc参数只能为1")
@@ -403,9 +410,12 @@ class Handle(metaclass=SingletonMeta):
         按下数字键，等待value秒后抬起
         """
         time.sleep(value)
-        KeyboardController().press(key)
-        time.sleep(0.3)
-        KeyboardController().release(key)
+        controller = KeyboardController()
+        try:
+            controller.press(key)
+            time.sleep(0.3)
+        finally:
+            controller.release(key)
 
     def handle_main(self, value):
         """
@@ -589,6 +599,7 @@ class Handle(metaclass=SingletonMeta):
     def handle_move(self, value, key, normal_run=False, last_key: str = ""):
         """
         移动，并处理疾跑
+        使用 try/finally 保证方向键与 Shift 一定会被释放，避免异常时键盘卡住
         """
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
@@ -604,82 +615,94 @@ class Handle(metaclass=SingletonMeta):
 
         self.run_fix_time = 0
         KeyboardController().press(key)
-        
-        log.info(f"上一次疾跑状态: {self.last_step_run}")
-        # 疾跑相关逻辑回退2025.2.28版本
-        # # 固定ctrl两次取消疾跑
-        # if self.last_step_run:
-        #     self.start_cancel_sprint_task()
-        #     self.stop_cancel_sprint_task()
 
-        start_time = time.perf_counter()
-        allow_run = self.cfg.config_file.get("auto_run_in_map", False)
-        add_time = True
-        run_in_road = False
-        walk_in_road = False
-        is_normal_run = False  # 普通跑步状态
-        temp_time = 0
-        self.run_fixed = False  # 强制断开初始化为否
+        try:
+            log.info(f"上一次疾跑状态: {self.last_step_run}")
+            # 疾跑相关逻辑回退2025.2.28版本
+            # # 固定ctrl两次取消疾跑
+            # if self.last_step_run:
+            #     self.start_cancel_sprint_task()
+            #     self.stop_cancel_sprint_task()
 
-        value_before = value
-        while time.perf_counter() - start_time < value:
-            # if not is_normal_run and self.last_step_run:
-            #     # self.start_check_sprint_task(need_run=False, delay=0.03)
-            #     self.disable_run()
-            #     is_normal_run = True
-            # else:
-            #     is_normal_run = True
-            if value_before > 2 and not run_in_road and allow_run and not normal_run:
-                self.move_run_fix(start_time)
-                if time.perf_counter() - start_time > 1:
-                    self.enable_run()
-                    self.start_check_sprint_task(need_run=True)
-                    run_in_road = True
-                    temp_value = value_before
-                    value = round((value_before - 1) / 1.53, 4) + 1
-                    self.tatol_save_time += (temp_value - value)
-                    self.last_step_run = True
-            elif value_before <= 1 and allow_run and add_time and self.last_step_run:
-                value = value_before + 0.07
-                self.move_run_fix(start_time)
-                add_time = False
-                self.last_step_run = False
-            elif value_before <= 2 and not walk_in_road:
-                self.move_run_fix(start_time)
-                walk_in_road = True
-                self.last_step_run = False
-        temp_time = time.perf_counter() - start_time
-        self.stop_check_sprint_task()
-        KeyboardController().release(KeyboardKey.shift)
-        KeyboardController().release(key)
+            start_time = time.perf_counter()
+            allow_run = self.cfg.config_file.get("auto_run_in_map", False)
+            add_time = True
+            run_in_road = False
+            walk_in_road = False
+            is_normal_run = False  # 普通跑步状态
+            temp_time = 0
+            self.run_fixed = False  # 强制断开初始化为否
+
+            value_before = value
+            while time.perf_counter() - start_time < value:
+                # if not is_normal_run and self.last_step_run:
+                #     # self.start_check_sprint_task(need_run=False, delay=0.03)
+                #     self.disable_run()
+                #     is_normal_run = True
+                # else:
+                #     is_normal_run = True
+                if value_before > 2 and not run_in_road and allow_run and not normal_run:
+                    self.move_run_fix(start_time)
+                    if time.perf_counter() - start_time > 1:
+                        self.enable_run()
+                        self.start_check_sprint_task(need_run=True)
+                        run_in_road = True
+                        temp_value = value_before
+                        value = round((value_before - 1) / 1.53, 4) + 1
+                        self.tatol_save_time += (temp_value - value)
+                        self.last_step_run = True
+                elif value_before <= 1 and allow_run and add_time and self.last_step_run:
+                    value = value_before + 0.07
+                    self.move_run_fix(start_time)
+                    add_time = False
+                    self.last_step_run = False
+                elif value_before <= 2 and not walk_in_road:
+                    self.move_run_fix(start_time)
+                    walk_in_road = True
+                    self.last_step_run = False
+            temp_time = time.perf_counter() - start_time
+
+            # 系统卡顿识别
+            time_error_check = True
+            if time_error_check and value >= 0.2:
+                extra_time = temp_time - value
+                if extra_time > 0.05:
+                    log.info(f"警告，此处出现系统卡顿，实际多移动{extra_time:.4f}秒，可能造成路线错误")
+                    self.time_error_cnt += 1
+
+            # 暂不启用
+            extra_fix = False
+            if extra_fix:
+                extra_time = temp_time - value
+                extra_time = extra_time if not run_in_road else round(
+                    extra_time*1.53, 4)
+                if extra_time > 0.05:
+                    log.info("强制断开疾跑")
+                    fix_start_time = time.perf_counter()
+                    key_dict = {'w': 's', 's': 'w', 'a': 'd', 'd': 'a'}
+                    if key in key_dict:
+                        KeyboardController().press(key_dict.get(key))
+                        while time.perf_counter() - fix_start_time < extra_time:
+                            pass
+                        KeyboardController().release(key_dict.get(key))
+                        KeyboardController().press(key)
+                        KeyboardController().release(key)
+        finally:
+            # 无论移动过程是否异常，都必须释放疾跑键与方向键
+            try:
+                self.stop_check_sprint_task()
+            except Exception:
+                pass
+            try:
+                KeyboardController().release(KeyboardKey.shift)
+            except Exception:
+                pass
+            try:
+                KeyboardController().release(key)
+            except Exception:
+                pass
         if allow_run:
             time.sleep(0.03)
-
-        # 系统卡顿识别
-        time_error_check = True
-        if time_error_check and value >= 0.2:
-            extra_time = temp_time - value
-            if extra_time > 0.05:
-                log.info(f"警告，此处出现系统卡顿，实际多移动{extra_time:.4f}秒，可能造成路线错误")
-                self.time_error_cnt += 1
-
-        # 暂不启用
-        extra_fix = False
-        if extra_fix:
-            extra_time = temp_time - value
-            extra_time = extra_time if not run_in_road else round(
-                extra_time*1.53, 4)
-            if extra_time > 0.05:
-                log.info("强制断开疾跑")
-                fix_start_time = time.perf_counter()
-                key_dict = {'w': 's', 's': 'w', 'a': 'd', 'd': 'a'}
-                if key in key_dict:
-                    KeyboardController().press(key_dict.get(key))
-                    while time.perf_counter() - fix_start_time < extra_time:
-                        pass
-                    KeyboardController().release(key_dict.get(key))
-                    KeyboardController().press(key)
-                    KeyboardController().release(key)
 
     # 机器配置不高时，sleep时间过短，会导致误判
     # async def async_cancel_sprint(self):

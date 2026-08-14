@@ -3,7 +3,7 @@ Author: Night-stars-1 nujj1042633805@gmail.com
 Date: 2023-05-12 23:22:54
 LastEditors: Night-stars-1 nujj1042633805@gmail.com
 LastEditTime: 2023-05-14 01:22:36
-FilePath: \Honkai-Star-Rail-beta-2.4h:\Download\Zip\Honkai-Star-Rail-beta-2.7\tools\log.py
+FilePath: Honkai-Star-Rail-beta-2.4h/Download/Zip/Honkai-Star-Rail-beta-2.7/tools/log.py
 Description: 
 
 Copyright (c) 2023 by ${git_name_email}, All Rights Reserved. 
@@ -12,6 +12,19 @@ import os
 import sys
 import datetime
 import requests
+
+# ============================================================
+# 系统语言兼容：日文(cp932)等非 UTF-8 代码页系统下，print()/loguru 输出中文会抛
+# UnicodeEncodeError 导致崩溃（见 issue #428）。此处统一将 stdout/stderr 重配置为
+# UTF-8 + errors='replace'，所有 import 本模块的入口脚本自动获得兼容性。
+# （fhoe.py 顶部也有同样的配置，二者幂等，先后执行均安全。）
+# ============================================================
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError, OSError):
+        pass
+
 from loguru import logger
 from utils.requests import post
 
@@ -39,8 +52,9 @@ def get_folder_modified_time(folder_path):
         minute = modified_datetime.minute
 
         return month, day, hour, minute
-    except Exception as e:
-        log.error(f"获取文件夹修改时间失败: {e}")
+    except Exception:
+        # 注意：这里不能调用 log.error，loguru 的 patcher 会调用 update_extra → get_ver →
+        # 本函数，形成无限递归导致 import 卡死（cwd 不在项目根时相对路径会失败）
         return None
 
 def get_ver() -> str:
@@ -66,8 +80,8 @@ def get_ver() -> str:
         if result:
             month, day, hour, minute = result
             return f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
-    except Exception as e:
-        log.error(f"获取map文件夹修改时间失败: {e}")
+    except Exception:
+        pass  # 同上：不打日志，避免 loguru patcher 无限递归
 
     return "00000000"  # 当所有获取版本号的方式都失败时返回默认值
 

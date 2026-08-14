@@ -1,8 +1,9 @@
 from get_width import get_width
 import time
 import ctypes
+import sys
 import traceback
-from tools.log import log, webhook_and_log
+from utils.log import log, webhook_and_log
 
 
 def main():

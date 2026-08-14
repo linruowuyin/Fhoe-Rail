@@ -359,15 +359,17 @@ class Map:
         """
         黄泉e的状态下快速打开地图，采用按下s打断技能并且按下地图键的方式
         """
-        while self.img.on_main_interface(timeout=0.0, allow_log=False):
-            if time.time() - start_time > 3:
-                return
-            if not speed_open:
-                log.info("按下s打断技能")
-                pyautogui.keyDown('s')
-                pyautogui.press(self.open_map_btn)
-                time.sleep(0.05)
-        pyautogui.keyUp('s')
+        try:
+            while self.img.on_main_interface(timeout=0.0, allow_log=False):
+                if time.time() - start_time > 3:
+                    return
+                if not speed_open:
+                    log.info("按下s打断技能")
+                    pyautogui.keyDown('s')
+                    pyautogui.press(self.open_map_btn)
+                    time.sleep(0.05)
+        finally:
+            pyautogui.keyUp('s')
         return
 
     def _handle_target_recognition(self, target):

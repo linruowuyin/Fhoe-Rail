@@ -7,12 +7,21 @@ import traceback
 
 import pyuac
 
+# 日文系统(cp932)下中文输出会崩,统一把 stdout/stderr 改成 UTF-8
+# 要在 import utils.log 之前执行
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError, OSError):
+        pass  # 部分环境（如某些重定向场景）不支持 reconfigure，忽略即可
+
 from get_width import check_mult_screen
 from utils.config.config import ConfigurationManager
 from utils.log import fetch_php_file_content, log
 from utils.map_utils.map_operations import MapOperations
 from utils.map_utils.map_info import MapInfo
 from utils.map_utils.map_selector import choose_map, choose_map_debug
+from utils.notify import Notify, get_error_summary
 from utils.setting import Setting
 from utils.time_utils import TimeUtils
 from utils.window import Window
@@ -21,6 +30,7 @@ cfg = ConfigurationManager()
 time_mgr = TimeUtils()
 map_info_instance = MapInfo()
 setting = Setting()
+notify = Notify()
 
 def filter_content(content, keyword):
     # 将包含指定关键词的部分替换为空字符串
@@ -54,23 +64,42 @@ def print_info():
 def print_end():
     log.info("结束运行")
     log.info("=" * 60)
+    # 清理 keyboard 全局监听（Pause 注册的 F7-F10 监听线程非 daemon，
+    # 不清理会导致进程结束后无法退出）
+    try:
+        import keyboard
+        keyboard.unhook_all()
+    except Exception:
+        pass
+
+
+def parse_map_arg():
+    """解析 --map <地图ID> 参数：非交互指定起始地图（供 WebUI 选图运行/开发者选图使用）
+    例如: fhoe.py --dev --map 3-5_1
+    """
+    if '--map' in sys.argv:
+        idx = sys.argv.index('--map')
+        if idx + 1 < len(sys.argv):
+            return sys.argv[idx + 1]
+    return None
 
 
 def main():
 
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
     dev = False  # 初始开发者模式，为否
+    map_arg = parse_map_arg()  # --map 参数：非交互指定起始地图（WebUI 选图运行）
 
     if len(sys.argv) > 1:
         if sys.argv[1] == "--debug":
             cfg.main_start()
-            start = choose_map_debug(map_info_instance)
+            start = choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
         elif sys.argv[1] == "--config":
             cfg.main_start_rewrite(setting)
             start = choose_map_debug(map_info_instance)
         elif sys.argv[1] == "--dev":
             cfg.main_start()
-            start = choose_map_debug(map_info_instance)
+            start = choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
             dev = True  # 设置开发者模式
         elif sys.argv[1] == "--white":
             cfg.main_start()
@@ -111,6 +140,7 @@ def main():
         log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
         log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
         start_time = datetime.datetime.now()
+        notify.send_start(start)
         map_instance.process_map(start, start_in_mid, dev=dev)  # 读取配置
         start_map = "1-1_0"
         allow_run_again = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
@@ -119,6 +149,19 @@ def main():
         if allow_run_again:
             map_instance.process_map(start_map, start_in_mid, dev=dev)
         end_time = datetime.datetime.now()
+        # 结束通知（含统计摘要）
+        try:
+            summary = {
+                "总计用时": map_instance.map_statu.total_time if hasattr(map_instance, "map_statu") else None,
+                "战斗次数": map_instance.handle.total_fight_cnt if hasattr(map_instance, "handle") else None,
+                "未战斗次数": map_instance.handle.total_no_fight_cnt if hasattr(map_instance, "handle") else None,
+                "疾跑节约": map_instance.handle.tatol_save_time if hasattr(map_instance, "handle") else None,
+                "系统卡顿": map_instance.handle.time_error_cnt if hasattr(map_instance, "handle") else None,
+            }
+            summary = {k: v for k, v in summary.items() if v is not None}
+            notify.send_end(summary)
+        except Exception as e:
+            log.warning(f"结束通知发送失败: {e}")
         shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
             "auto_shutdown", 0
         )
@@ -186,23 +229,16 @@ if __name__ == "__main__":
             print_info()
             main()
             print_end()
-    except ModuleNotFoundError as e:
+    except BaseException:
         print(traceback.format_exc())
         log.error(traceback.format_exc())
+        # 出错通知
+        try:
+            notify.send_error(get_error_summary(sys.exc_info()[1]))
+        except Exception:
+            pass
         print("请重新运行")
-        input("按回车键退出")
-    except NameError as e:
-        print(traceback.format_exc())
-        log.error(traceback.format_exc())
-        print("请重新运行")
-        input("按回车键退出")
-    except Exception as e:
-        print(traceback.format_exc())
-        log.error(traceback.format_exc())
-        print("请重新运行")
-        input("按回车键退出")
-    except BaseException as e:
-        print(traceback.format_exc())
-        log.error(traceback.format_exc())
-        print("请重新运行")
-        input("按回车键退出")
+        try:
+            input("按回车键退出")
+        except EOFError:
+            pass  # WebUI 等无 stdin 环境下不阻塞退出

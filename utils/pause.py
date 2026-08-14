@@ -6,6 +6,9 @@ import cv2
 
 from utils.log import log
 
+# 模块级保存已注册的键盘监听器，避免每张地图 new Pause() 时重复注册导致监听器泄漏
+_INSTALLED_HANDLERS = []
+
 
 class Pause:
     def __init__(self, dev=False):
@@ -14,10 +17,17 @@ class Pause:
         self.pause_event = threading.Event()
         self.last_key_pressed = None  # 记录最后按下的按键
         self.pause_event.clear()
-        keyboard.on_press_key("F7", self.continue_in_map)
-        keyboard.on_press_key("F8", self.toggle_pause)
-        keyboard.on_press_key("F9", self.continue_and_restart)
-        keyboard.on_press_key("F10", self.continue_new_map)
+        # 先注销上一次注册的监听器，再重新注册（Pause 每张地图都会创建）
+        for handler in _INSTALLED_HANDLERS:
+            try:
+                keyboard.unhook(handler)
+            except Exception:
+                pass
+        _INSTALLED_HANDLERS.clear()
+        _INSTALLED_HANDLERS.append(keyboard.on_press_key("F7", self.continue_in_map))
+        _INSTALLED_HANDLERS.append(keyboard.on_press_key("F8", self.toggle_pause))
+        _INSTALLED_HANDLERS.append(keyboard.on_press_key("F9", self.continue_and_restart))
+        _INSTALLED_HANDLERS.append(keyboard.on_press_key("F10", self.continue_new_map))
 
     def continue_in_map(self, event):
         if self.pause_event.is_set():

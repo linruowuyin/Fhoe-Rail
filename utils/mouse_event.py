@@ -100,8 +100,11 @@ class MouseEvent(metaclass=SingletonMeta):
             :param y:相对坐标y
         """
         win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-        self.mouse_press(x, y, delay)
-        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+        try:
+            self.mouse_press(x, y, delay)
+        finally:
+            # 无论点击过程是否异常，都必须释放 ALT，避免键盘卡住
+            win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def relative_click(self, points):
         """
@@ -165,7 +168,6 @@ class MouseEvent(metaclass=SingletonMeta):
         original_target = cv2.imread(target_path)
         inverted_target = cv2.bitwise_not(original_target)
         start_time = time.time()
-        assigned = False
 
         while time.time() - start_time < timeout:
             click_it, img_search_val = self.click_target_above_threshold(
@@ -179,15 +181,13 @@ class MouseEvent(metaclass=SingletonMeta):
                     log.info("阴阳变转")
                     return True
 
-            if not assigned:
+            # 持续记录最低匹配值（低于0.99时），供报告输出“最相似图片”参考
+            if img_search_val < 0.99:
                 if target_path in self.img_search_val_dict:
-                    if self.img_search_val_dict[target_path] > img_search_val and img_search_val < 0.99:
+                    if img_search_val < self.img_search_val_dict[target_path]:
                         self.img_search_val_dict[target_path] = img_search_val
-                        assigned = True
                 else:
-                    if img_search_val < 0.99:
-                        self.img_search_val_dict[target_path] = img_search_val
-                        assigned = True
+                    self.img_search_val_dict[target_path] = img_search_val
 
             if not flag:  # 是否一定要找到
                 return False
