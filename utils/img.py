@@ -271,8 +271,11 @@ class Img:
             :param prepared: 比对图片地址
         """
         # 修复：temp_screenshot 初始化值为 (0,0,0,0,0)，truthy，原判断永远不成立；
-        # 改为判断是否真正保存过截图数据
-        if not isinstance(self.temp_screenshot, tuple) or len(self.temp_screenshot) != 5 or self.temp_screenshot[0] == 0:
+        # 改为判断是否真正保存过截图数据。
+        # 注意：不能写 temp_screenshot[0] == 0 —— 真实截图是 numpy 数组，
+        # 与 0 比较返回布尔数组，在 if 中求值会抛 ValueError（issue #433）
+        if not isinstance(self.temp_screenshot, tuple) or len(self.temp_screenshot) != 5 \
+                or not isinstance(self.temp_screenshot[0], np.ndarray):
             self.take_screenshot()
 
         try:
