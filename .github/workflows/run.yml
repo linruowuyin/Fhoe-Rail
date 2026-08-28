@@ -30,7 +30,7 @@ jobs:
       - name: Generate program
         run: |
           pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries -n "Fhoe-Rail" fhoe.py -y
-          pyinstaller -D --distpath .\dist\webui\ -i .\logo.ico --contents-directory libraries -n "webui-server" webui\server.py -y --hidden-import onepush --hidden-import winotify --hidden-import PIL --hidden-import utils.notify --hidden-import utils.config.config --hidden-import utils.log
+          pyinstaller -D --distpath .\dist\webui\ -i .\logo.ico --contents-directory libraries -n "webui-server" webui\server.py -y --paths . --hidden-import onepush --hidden-import winotify --hidden-import PIL --hidden-import utils.notify --hidden-import utils.config.config --hidden-import utils.log
           # WebUI 启动器 exe(替代 Start-WebUI.bat;launcher_libraries 避免与主程序 libraries 重名)
           pyinstaller -D --distpath .\dist\launcher\ -i .\logo.ico --contents-directory launcher_libraries -n "Start-WebUI" webui\start_webui.py -y
 
