@@ -9,9 +9,9 @@ cfg = ConfigurationManager()
 setting = Setting()
 
 PLANET_LABELS = {
-    "1": "空间站「黑塔」",
-    "2": "雅利洛-VI",
-    "3": "仙舟「罗浮」",
+    "1": "黑塔",
+    "2": "雅利洛",
+    "3": "罗浮",
     "4": "匹诺康尼",
     "5": "翁法罗斯",
     "6": "二相乐园",
@@ -20,10 +20,8 @@ PLANET_LABELS = {
 
 def _build_main_map_opts(map_info: MapInfo) -> dict:
     keys = sorted(map_info.map_list_map.keys(), key=int)
-    return {
-        f"{key} {PLANET_LABELS.get(key, '未知星球')}": key
-        for key in keys
-    }
+    return {f"{key} {PLANET_LABELS.get(key, '未知星球')}": key for key in keys}
+
 
 def choose_map(map_info: MapInfo):
     map_version = cfg.config_file.get("map_version", "default")
@@ -98,6 +96,7 @@ def _h_main_map(map_info: MapInfo):
         return ("1-1_0", False)
     return opts[choice]
 
+
 def _h_priority(map_info: MapInfo):
     title = "优先星球选择"
     opts = {
@@ -112,7 +111,8 @@ def _h_priority(map_info: MapInfo):
     main = opts[choice]
     side = list(map_info.map_list_map.get(main).keys())[0]
     ConfigurationManager.modify_json_file(
-        ConfigurationManager.CONFIG_FILE_NAME, "main_map", main)
+        ConfigurationManager.CONFIG_FILE_NAME, "main_map", main
+    )
     return (f"{main}-{side}", True)
 
 
@@ -120,7 +120,9 @@ def _h_allowlist():
     cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True)
     if cfg.config_file.get("allowlist_map"):
         return ("1-1_0", False)
-    print(f"请配置allowlist_map的值，当前allowlist_map:{cfg.config_file.get('allowlist_map')}")
+    print(
+        f"请配置allowlist_map的值，当前allowlist_map:{cfg.config_file.get('allowlist_map')}"
+    )
     return "back"
 
 
@@ -136,8 +138,7 @@ def _h_side_map(map_info: MapInfo, main):
     # 二级选项
     sec_opts = list(
         dict.fromkeys(
-            [v[1] for v in values if isinstance(
-                v, list) and len(v) >= 2] + ["【返回】"]
+            [v[1] for v in values if isinstance(v, list) and len(v) >= 2] + ["【返回】"]
         )
     )
     sec_choice = questionary.select(title, sec_opts).ask()

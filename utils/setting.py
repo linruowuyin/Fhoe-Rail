@@ -11,7 +11,6 @@ from utils.singleton import SingletonMeta
 
 
 class Setting(metaclass=SingletonMeta):
-
     def __init__(self):
 
         self.cfg = ConfigurationManager()
@@ -24,7 +23,7 @@ class Setting(metaclass=SingletonMeta):
     def set_config(self, slot: str = "start"):
 
         def get_title(q):
-            return q.get('dynamic_title', lambda _: q['title'])(self.config)
+            return q.get("dynamic_title", lambda _: q["title"])(self.config)
 
         while True:
             questions = self.get_questions_for_slot(slot)
@@ -38,42 +37,47 @@ class Setting(metaclass=SingletonMeta):
                 title = get_title(question)
 
                 # 处理动态选项
-                choices_func = question['choices']
-                choices_dict = choices_func(self.config, self.map_info) if callable(
-                    choices_func) else choices_func
+                choices_func = question["choices"]
+                choices_dict = (
+                    choices_func(self.config, self.map_info)
+                    if callable(choices_func)
+                    else choices_func
+                )
 
                 # 获取当前值
-                current_value = self.config.get(question['config_key'])
+                current_value = self.config.get(question["config_key"])
 
                 # 特殊处理
-                if question['config_key'] in ['forbid_map', 'allowlist_map']:
-                    display_value = ', '.join(
-                        current_value) if current_value else '无'
+                if question["config_key"] in ["forbid_map", "allowlist_map"]:
+                    display_value = ", ".join(current_value) if current_value else "无"
                 else:
                     # 正常配置
                     inverted_choices = {v: k for k, v in choices_dict.items()}
                     display_value = inverted_choices.get(
-                        current_value, "未设置" if current_value is None else "未知值")
+                        current_value, "未设置" if current_value is None else "未知值"
+                    )
 
                 choices.append(f"{title}------({display_value})")
 
             choices.append("【返回】")
 
-            answer = questionary.select(
-                "请选择要修改的设置:",
-                choices=choices
-            ).ask()
+            answer = questionary.select("请选择要修改的设置:", choices=choices).ask()
 
             if answer == "【返回】":
                 return
 
             selected_title = answer.split("------")[0]
             selected_question = next(
-                q for q in questions if get_title(q) == selected_title)
+                q for q in questions if get_title(q) == selected_title
+            )
 
-            if selected_question.get('config_key') in ['forbid_map', 'allowlist_map']:
+            if selected_question.get("config_key") in ["forbid_map", "allowlist_map"]:
                 self.handle_special_config(
-                    selected_question, self.config, self.map_info, mode=selected_question.get('config_key'))
+                    selected_question,
+                    self.config,
+                    self.map_info,
+                    mode=selected_question.get("config_key"),
+                )
                 self.config = self.cfg.load_config()
             else:
                 self.handle_normal_config(selected_question, self.config)
@@ -81,24 +85,31 @@ class Setting(metaclass=SingletonMeta):
 
     def handle_normal_config(self, question, config):
         """处理普通配置"""
-        choices_dict = question['choices'](config, self.map_info) if callable(
-            question['choices']) else question['choices']
+        choices_dict = (
+            question["choices"](config, self.map_info)
+            if callable(question["choices"])
+            else question["choices"]
+        )
 
         answer = questionary.select(
-            question['title'],
-            choices=list(choices_dict.keys())
+            question["title"], choices=list(choices_dict.keys())
         ).ask()
 
         if answer:
-            config[question['config_key']] = choices_dict[answer]
+            config[question["config_key"]] = choices_dict[answer]
 
-    def handle_special_config(self, question, config, map_instance, mode: Literal['forbid_map', 'allowlist_map']):
+    def handle_special_config(
+        self,
+        question,
+        config,
+        map_instance,
+        mode: Literal["forbid_map", "allowlist_map"],
+    ):
         """处理特殊配置"""
         while True:
-            current_choices = question['choices'](config, map_instance)
+            current_choices = question["choices"](config, map_instance)
             answer = questionary.select(
-                question['dynamic_title'](config),
-                choices=list(current_choices.keys())
+                question["dynamic_title"](config), choices=list(current_choices.keys())
             ).ask()
 
             if answer in ["【返回】", "back"]:
@@ -110,31 +121,31 @@ class Setting(metaclass=SingletonMeta):
                 self.add_map_flow(map_instance, mode=mode)
                 config = ConfigurationManager.load_config()
             elif action == "remove":
-                handler = question['handler']['remove']
-                target_choices = handler['choices'](config, map_instance)
+                handler = question["handler"]["remove"]
+                target_choices = handler["choices"](config, map_instance)
                 selected = questionary.select(
-                    handler['title'],
-                    choices=list(target_choices.keys())+["【返回】"]
+                    handler["title"], choices=list(target_choices.keys()) + ["【返回】"]
                 ).ask()
 
                 if selected and selected != "【返回】":
-                    config_key = question['config_key']
+                    config_key = question["config_key"]
                     config[config_key].remove(selected)
 
                     ConfigurationManager.modify_json_file(
-                        self.cfg.CONFIG_FILE_NAME, config_key, config[config_key])
+                        self.cfg.CONFIG_FILE_NAME, config_key, config[config_key]
+                    )
 
     def get_pure_map_name(self, raw_name: str) -> str:
         """提取地图名"""
-        cleaned = re.sub(r'^[\d-]+\s*', '', raw_name)
-        match = re.match(r'^([^\s\-—–]+.*?)(?=\s*[-—–]|$)', cleaned)
+        cleaned = re.sub(r"^[\d-]+\s*", "", raw_name)
+        match = re.match(r"^([^\s\-—–]+.*?)(?=\s*[-—–]|$)", cleaned)
         return match.group(1).strip() if match else cleaned.strip()
 
     def get_main_map_choices(self, config, _map_info) -> dict:
         planet_names = {
-            "1": "空间站",
+            "1": "黑塔",
             "2": "雅利洛",
-            "3": "仙舟",
+            "3": "罗浮",
             "4": "匹诺康尼",
             "5": "翁法罗斯",
             "6": "二相乐园",
@@ -197,7 +208,9 @@ class Setting(metaclass=SingletonMeta):
             },
             {
                 "title": "几点月卡刷新，默认4",
-                "choices": {str(refresh_hour): refresh_hour for refresh_hour in range(24)},
+                "choices": {
+                    str(refresh_hour): refresh_hour for refresh_hour in range(24)
+                },
                 "config_key": "refresh_hour",
             },
             {
@@ -214,25 +227,22 @@ class Setting(metaclass=SingletonMeta):
                     **{map: map for map in config.get("forbid_map", [])},
                     "【新增】": "add",
                     "【删除】": "remove",
-                    "【返回】": "back"
+                    "【返回】": "back",
                 },
-                "dynamic_title": lambda config: f"设置禁用地图（当前已禁用：{len(config.get('forbid_map', []))}个）",
+                "dynamic_title": lambda config: (
+                    f"设置禁用地图（当前已禁用：{len(config.get('forbid_map', []))}个）"
+                ),
                 "config_key": "forbid_map",
                 "handler": {
-                    "add": {
-                        "title": "新增禁用地图",
-                        "choices": self.add_map_flow
-                    },
+                    "add": {"title": "新增禁用地图", "choices": self.add_map_flow},
                     "remove": {
                         "title": "移除禁用地图",
                         "choices": lambda config, _: {
                             map: map for map in config.get("forbid_map", [])
-                        }
+                        },
                     },
-                    "back": {
-                        "choices": self.set_config
-                    }
-                }
+                    "back": {"choices": self.set_config},
+                },
             },
             {
                 "title": "设置白名单地图（当前：{}）",
@@ -240,25 +250,22 @@ class Setting(metaclass=SingletonMeta):
                     **{map: map for map in config.get("allowlist_map", [])},
                     "【新增】": "add",
                     "【删除】": "remove",
-                    "【返回】": "back"
+                    "【返回】": "back",
                 },
-                "dynamic_title": lambda config: f"设置白名单地图（当前白名单：{len(config.get('allowlist_map', []))}个）",
+                "dynamic_title": lambda config: (
+                    f"设置白名单地图（当前白名单：{len(config.get('allowlist_map', []))}个）"
+                ),
                 "config_key": "allowlist_map",
                 "handler": {
-                    "add": {
-                        "title": "新增白名单地图",
-                        "choices": self.add_map_flow
-                    },
+                    "add": {"title": "新增白名单地图", "choices": self.add_map_flow},
                     "remove": {
                         "title": "移除白名单地图",
                         "choices": lambda config, _: {
                             map: map for map in config.get("allowlist_map", [])
-                        }
+                        },
                     },
-                    "back": {
-                        "choices": self.set_config
-                    }
-                }
+                    "back": {"choices": self.set_config},
+                },
             },
             {
                 "title": "每次启动只运行白名单地图",
@@ -282,12 +289,16 @@ class Setting(metaclass=SingletonMeta):
             },
         ]
 
-        slot_questions = {"start": default_questions,
-                          "start_rewrite": default_questions}
+        slot_questions = {
+            "start": default_questions,
+            "start_rewrite": default_questions,
+        }
 
         return slot_questions.get(slot, [])
 
-    def add_map_flow(self, map_info: MapInfo, mode: Literal['forbid_map', 'allowlist_map']):
+    def add_map_flow(
+        self, map_info: MapInfo, mode: Literal["forbid_map", "allowlist_map"]
+    ):
         """添加跳过地图的两级菜单流程
 
         Args:
@@ -310,12 +321,12 @@ class Setting(metaclass=SingletonMeta):
         """星球选择菜单 (第一级)"""
         title = "选择星球："
         opts = {
-            "1 空间站「黑塔」": "1",
-            "2 雅利洛-VI": "2",
-            "3 仙舟「罗浮」": "3",
+            "1 黑塔": "1",
+            "2 雅利洛": "2",
+            "3 罗浮": "3",
             "4 匹诺康尼": "4",
             "5 翁法罗斯": "5",
-            "返回": "back"
+            "返回": "back",
         }
         choice = questionary.select(title, choices=list(opts.keys())).ask()
         return opts.get(choice) if choice else None
@@ -335,37 +346,36 @@ class Setting(metaclass=SingletonMeta):
         unique_maps = {}
         for map_id, map_names in raw_maps.items():
             clean_name = self.get_pure_map_name(map_names[-1])
-            unique_maps[clean_name] = unique_maps.get(
-                clean_name, []) + [map_id]
+            unique_maps[clean_name] = unique_maps.get(clean_name, []) + [map_id]
 
         choices = [
-            f"{name} ({len(ids)}个子地图)"
-            for name, ids in unique_maps.items()
+            f"{name} ({len(ids)}个子地图)" for name, ids in unique_maps.items()
         ] + ["返回上级"]
 
         # 显示选择菜单
-        selected = questionary.select(
-            "请选择地图：",
-            choices=choices
-        ).ask()
+        selected = questionary.select("请选择地图：", choices=choices).ask()
 
         # 处理返回/退出
         if not selected or "返回" in selected:
             return "back"
 
         # 提取原始地图名称
-        return selected.split(' ')[0] if ' ' in selected else selected
+        return selected.split(" ")[0] if " " in selected else selected
 
-    def _add_to_list(self, map_info: MapInfo, main: str, map_name: str, config_key: str):
+    def _add_to_list(
+        self, map_info: MapInfo, main: str, map_name: str, config_key: str
+    ):
         """将选择的地图添加到列表"""
         target = [map_name]
 
         # 更新配置文件
         current = ConfigurationManager.read_json_file(
-            self.cfg.CONFIG_FILE_NAME, False).get(config_key, [])
+            self.cfg.CONFIG_FILE_NAME, False
+        ).get(config_key, [])
         updated = list(set(current + target))
 
         ConfigurationManager.modify_json_file(
-            self.cfg.CONFIG_FILE_NAME, config_key, updated)
+            self.cfg.CONFIG_FILE_NAME, config_key, updated
+        )
 
         log.info(f"已添加子地图 {map_name} 到列表")

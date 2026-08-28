@@ -206,14 +206,14 @@
     overflow: hidden; border: 1px solid var(--border-strong);
   }
   .brand-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .brand-name { font-size: 14px; font-weight: 700; letter-spacing: .3px; color: var(--txt); }
-  .brand-sub { font-size: 11px; color: var(--txt-faint); margin-top: 1px; }
+  .brand-name { font-size: 16px; font-weight: 700; letter-spacing: .3px; color: var(--txt); }
+  .brand-sub { font-size: 13px; color: var(--txt-faint); margin-top: 1px; }
 
   .nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
   .nav-item {
     display: flex; align-items: center; gap: 10px;
     padding: 8px 10px; border-radius: 8px; cursor: pointer;
-    color: var(--txt-dim); font-size: 13.5px; font-weight: 500;
+    color: var(--txt-dim); font-size: 15.5px; font-weight: 500;
     border: 1px solid transparent; transition: all .15s; user-select: none;
     position: relative;
   }
@@ -228,11 +228,11 @@
   }
   .nav-item .ico { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; }
   .nav-item.active .ico { opacity: 1; color: var(--violet); }
-  .sidebar-foot { font-size: 11px; color: var(--txt-faint); text-align: center; padding-top: 10px; border-top: 1px solid var(--border); line-height: 1.7; }
+  .sidebar-foot { font-size: 13px; color: var(--txt-faint); text-align: center; padding-top: 10px; border-top: 1px solid var(--border); line-height: 1.7; }
 
   /* 主题切换器 + 氛围开关 */
   .theme-switcher { padding: 10px 8px 2px; border-top: 1px solid var(--border); margin-top: 6px; }
-  .theme-label { font-size: 11px; color: var(--txt-faint); margin-bottom: 7px; letter-spacing: .5px; }
+  .theme-label { font-size: 13px; color: var(--txt-faint); margin-bottom: 7px; letter-spacing: .5px; }
   .theme-dots { display: flex; gap: 6px; align-items: center; }
   .theme-dot {
     width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
@@ -244,7 +244,7 @@
   .theme-dot .tt {
     position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
     background: var(--bg-2); border: 1px solid var(--border); color: var(--txt);
-    font-size: 11px; padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+    font-size: 13px; padding: 3px 8px; border-radius: 6px; white-space: nowrap;
     opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 20;
   }
   .theme-dot:hover .tt { opacity: 1; }
@@ -252,7 +252,7 @@
     display: flex; align-items: center; gap: 8px; width: 100%;
     margin-top: 8px; padding: 6px 8px; border-radius: 8px;
     background: none; border: 1px solid var(--border); color: var(--txt-dim);
-    font-size: 12px; font-family: var(--font); cursor: pointer; transition: all .15s;
+    font-size: 14px; font-family: var(--font); cursor: pointer; transition: all .15s;
   }
   .ambient-toggle:hover { color: var(--txt); border-color: var(--border-strong); }
   .ambient-toggle.on { color: var(--violet); border-color: var(--violet); }
@@ -263,9 +263,9 @@
   /* 布局模式：默认居中（宽屏下内容区在剩余空间居中）；可切回靠左 */
   .main { margin-left: auto; margin-right: auto; }
   body[data-layout="left"] .main { margin-left: 0; margin-right: auto; }
-  .page-title { font-size: 20px; font-weight: 700; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
-  .page-title .spark { color: var(--violet); font-size: 16px; }
-  .page-desc { color: var(--txt-dim); font-size: 13px; margin: 4px 0 20px; }
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  .page-title .spark { color: var(--violet); font-size: 18px; }
+  .page-desc { color: var(--txt-dim); font-size: 15px; margin: 4px 0 20px; }
 
   /* ============================================================
      卡片（硬边框分离，无投影无渐变线）
@@ -278,7 +278,7 @@
     transition: border-color .15s;
   }
   .glass:hover { border-color: var(--border-strong); }
-  .card-title { font-size: 13.5px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--txt); }
+  .card-title { font-size: 15.5px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--txt); }
   .card-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
   .grid { display: grid; gap: 14px; }
@@ -289,19 +289,19 @@
 
   /* 指标卡 */
   .stat-num {
-    font-size: 28px; font-weight: 700; line-height: 1.25; color: var(--txt);
+    font-size: 30px; font-weight: 700; line-height: 1.25; color: var(--txt);
     font-variant-numeric: tabular-nums;
   }
-  .stat-label { font-size: 12px; color: var(--txt-dim); margin-top: 4px; }
-  .stat-sub { font-size: 11px; color: var(--txt-faint); margin-top: 2px; }
-  .stat-empty { font-size: 15px; color: var(--txt-faint); font-weight: 500; letter-spacing: 1px; }
+  .stat-label { font-size: 14px; color: var(--txt-dim); margin-top: 4px; }
+  .stat-sub { font-size: 13px; color: var(--txt-faint); margin-top: 2px; }
+  .stat-empty { font-size: 17px; color: var(--txt-faint); font-weight: 500; letter-spacing: 1px; }
 
   /* 配置速览：两列键值 */
   .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 28px; }
   @media (max-width: 720px) { .cfg-grid { grid-template-columns: 1fr; } }
   .cfg-row {
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border-soft);
+    font-size: 15px; padding: 6px 0; border-bottom: 1px solid var(--border-soft);
   }
   .cfg-row:last-child { border-bottom: none; }
   .cfg-row .k { color: var(--txt-dim); flex-shrink: 0; }
@@ -312,7 +312,7 @@
      ============================================================ */
   .badge {
     display: inline-block; padding: 1px 8px; border-radius: 6px;
-    font-size: 11px; font-weight: 500; letter-spacing: .2px;
+    font-size: 13px; font-weight: 500; letter-spacing: .2px;
     background: transparent; border: 1px solid;
   }
   .b-violet { color: #b9adff; border-color: rgba(139,123,255,.45); }
@@ -320,6 +320,7 @@
   .b-pink { color: #f9a8d4; border-color: rgba(244,114,182,.4); }
   .b-green { color: #6ee7b7; border-color: rgba(52,211,153,.4); }
   .b-red { color: #fda4af; border-color: rgba(251,113,133,.4); }
+  .b-amber { color: #fcd34d; border-color: rgba(250,204,21,.4); }
   .b-gold { color: #fcd34d; border-color: rgba(251,191,36,.4); }
   .b-dim { color: var(--txt-faint); border-color: var(--border-strong); }
 
@@ -327,7 +328,7 @@
     display: inline-flex; align-items: center; gap: 6px;
     padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
     background: var(--bg-1); color: var(--txt);
-    font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s;
+    font-size: 15px; font-weight: 500; cursor: pointer; transition: all .15s;
     font-family: var(--font);
   }
   .btn:hover { background: var(--bg-hover); border-color: var(--txt-faint); }
@@ -360,11 +361,11 @@
 
   .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); }
   .field:last-child { border-bottom: none; }
-  .field label { font-size: 13px; color: var(--txt); }
-  .field .hint { font-size: 11px; color: var(--txt-faint); display: block; margin-top: 2px; max-width: 420px; }
+  .field label { font-size: 15px; color: var(--txt); }
+  .field .hint { font-size: 13px; color: var(--txt-faint); display: block; margin-top: 2px; max-width: 420px; }
   .field input[type="text"], .field input[type="number"], .field select, textarea {
     background: var(--bg-2); border: 1px solid var(--border); color: var(--txt);
-    border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; outline: none; min-width: 120px;
+    border-radius: var(--radius-sm); padding: 6px 10px; font-size: 15px; outline: none; min-width: 120px;
     font-family: var(--font);
   }
   .field input:focus, .field select:focus, textarea:focus { border-color: var(--violet); }
@@ -373,7 +374,7 @@
 
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   .tab {
-    padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 15px; font-weight: 500;
     background: transparent; color: var(--txt-dim); border: 1px solid var(--border); transition: all .15s;
     font-family: var(--font);
   }
@@ -381,9 +382,9 @@
   .tab.active { background: var(--violet); border-color: var(--violet); color: #fff; }
 
   .planet-block { margin-bottom: 16px; }
-  .planet-head { font-size: 13.5px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .planet-head { font-size: 15.5px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
   .planet-head:hover { color: var(--txt); }
-  .planet-head .fold { margin-left: auto; color: var(--txt-faint); font-size: 11px; transition: transform .15s; }
+  .planet-head .fold { margin-left: auto; color: var(--txt-faint); font-size: 13px; transition: transform .15s; }
   .planet-block.collapsed .fold { transform: rotate(-90deg); }
   .planet-block.collapsed .map-list { display: none; }
   .planet-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--violet); }
@@ -393,14 +394,14 @@
     padding: 10px 12px; cursor: pointer; transition: all .15s;
   }
   .map-item:hover { border-color: var(--border-strong); background: var(--bg-2); }
-  .map-item .m-name { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-  .map-item .m-id { font-size: 11px; color: var(--txt-faint); font-family: var(--font-mono); }
-  .map-item .m-author { font-size: 11px; color: var(--txt-faint); margin-top: 3px; }
+  .map-item .m-name { font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .map-item .m-id { font-size: 13px; color: var(--txt-faint); font-family: var(--font-mono); }
+  .map-item .m-author { font-size: 13px; color: var(--txt-faint); margin-top: 3px; }
 
   .log-box {
     background: var(--bg-0); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: 12px 14px; height: 520px; overflow-y: auto; font-family: var(--font-mono);
-    font-size: 12px; line-height: 1.75; white-space: pre-wrap; word-break: break-all;
+    font-size: 14px; line-height: 1.75; white-space: pre-wrap; word-break: break-all;
   }
 
   /* 自定义细滚动条（Linear 风格） */
@@ -424,7 +425,7 @@
   .note-item:hover { border-color: var(--border-strong); }
   .note-item img { width: 100%; display: block; aspect-ratio: 4/3; object-fit: cover; }
   .note-item .note-name {
-    font-size: 12px; color: var(--txt-dim); padding: 8px 10px;
+    font-size: 14px; color: var(--txt-dim); padding: 8px 10px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
@@ -438,41 +439,58 @@
   .modal-mask.open { display: flex; }
   .modal {
     background: var(--bg-1); border: 1px solid var(--border-strong);
-    border-radius: var(--radius); max-width: 780px; width: 100%; max-height: 84vh; overflow-y: auto;
-    padding: 20px 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;
+    border-radius: var(--radius); max-width: 900px; width: 100%; max-height: 88vh; overflow-y: auto;
+    padding: 24px 28px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;
   }
   .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
-  .modal-head h3 { font-size: 16px; font-weight: 600; }
-  .modal-close { cursor: pointer; font-size: 18px; color: var(--txt-dim); background: none; border: none; padding: 4px 8px; border-radius: 8px; }
+  .modal-head h3 { font-size: 20px; font-weight: 600; }
+  .modal-close { cursor: pointer; font-size: 22px; color: var(--txt-dim); background: none; border: none; padding: 4px 8px; border-radius: 8px; }
   .modal-close:hover { color: var(--txt); background: var(--bg-2); }
   .steps { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
   .step-row {
-    display: flex; gap: 10px; font-size: 12px; font-family: var(--font-mono);
+    display: flex; gap: 10px; font-size: 15.5px; font-family: var(--font-mono);
     background: var(--bg-2); border-radius: 6px; padding: 5px 9px;
     color: var(--txt-dim); word-break: break-all;
   }
   .step-row .k { color: var(--cyan); flex-shrink: 0; }
   .step-row .v { color: var(--pink); }
+  .edit-row { display: flex; gap: 6px; align-items: center; background: var(--bg-2); border-radius: 6px; padding: 4px 8px; margin-bottom: 4px; }
+  .edit-row .ek { width: 160px; font-family: var(--font-mono); font-size: 15.5px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: var(--cyan); }
+  .edit-row .ev { flex: 1; font-family: var(--font-mono); font-size: 15.5px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: var(--pink); }
+  .edit-row .edel { cursor: pointer; color: var(--txt-dim); background: none; border: none; font-size: 17px; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+  .edit-row .edel:hover { color: var(--red); background: rgba(255,0,0,.1); }
+  .edit-field { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .edit-field label { font-size: 15.5px; color: var(--txt-dim); width: 50px; flex-shrink: 0; }
+  .edit-field input { flex: 1; font-size: 16px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; color: var(--txt); }
+  .edit-section-title { font-size: 14px; color: var(--txt-faint); margin: 14px 0 6px; display: flex; align-items: center; gap: 8px; }
+  .btn-add { font-size: 13px; padding: 3px 10px; cursor: pointer; background: var(--bg-2); border: 1px dashed var(--border); border-radius: 4px; color: var(--txt-dim); }
+  .btn-add:hover { color: var(--cyan); border-color: var(--cyan); }
+  .edit-actions { display: flex; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .cmd-suggest { position: absolute; left: 0; top: 100%; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); max-height: 180px; overflow-y: auto; z-index: 1000; display: none; min-width: 120px; }
+  .cmd-suggest div { padding: 4px 10px; cursor: pointer; font-size: 15px; }
+  .cmd-suggest div:hover { background: var(--bg-3); color: var(--cyan); }
+  .pic-preview { position: fixed; display: none; max-width: 220px; max-height: 160px; z-index: 2000; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg-2); box-shadow: 0 8px 30px rgba(0,0,0,.5); pointer-events: none; }
+  .pic-preview img { max-width: 100%; max-height: 100%; display: block; border-radius: var(--radius-sm); }
 
   .toast {
     position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(16px);
     background: var(--bg-2); border: 1px solid var(--border-strong); color: var(--txt);
-    padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+    padding: 10px 20px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 500;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); opacity: 0; pointer-events: none;
     transition: all .22s; z-index: 100;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.err { border-color: var(--red); color: var(--red); }
 
-  .loading { color: var(--txt-faint); font-size: 13px; padding: 30px; text-align: center; animation: pulse 1.2s ease-in-out infinite; }
+  .loading { color: var(--txt-faint); font-size: 15px; padding: 30px; text-align: center; animation: pulse 1.2s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
-  .empty { color: var(--txt-faint); font-size: 13px; padding: 30px; text-align: center; }
+  .empty { color: var(--txt-faint); font-size: 15px; padding: 30px; text-align: center; }
   .error-box {
     background: rgba(251,113,133,.08); border: 1px solid rgba(251,113,133,.35); color: #fda4af;
-    padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; line-height: 1.8;
+    padding: 12px 14px; border-radius: var(--radius-sm); font-size: 15px; margin-bottom: 16px; line-height: 1.8;
   }
 
-  .kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; background: var(--bg-2); border: 1px solid var(--border-strong); font-size: 11px; font-family: var(--font-mono); }
+  .kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; background: var(--bg-2); border: 1px solid var(--border-strong); font-size: 13px; font-family: var(--font-mono); }
   .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
   a { color: var(--cyan); text-decoration: none; }
   a:hover { text-decoration: underline; }
@@ -489,7 +507,7 @@
     .brand { border-bottom: none; margin-bottom: 0; padding: 0 10px 0 0; border-right: 1px solid var(--border); }
     .brand-name, .brand-sub { display: none; }
     .nav { flex-direction: row; gap: 2px; }
-    .nav-item { padding: 7px 9px; font-size: 13px; }
+    .nav-item { padding: 7px 9px; font-size: 15px; }
     .nav-item.active::before { display: none; }  /* 移动端去掉左侧竖线 */
     .nav-item .lbl { display: none; }
     .nav-item .ico { width: 18px; }
@@ -497,7 +515,7 @@
     /* 主题切换器在移动端隐藏（低频操作） */
     .theme-switcher { display: none; }
     .main { padding: 16px 14px 48px; }
-    .page-title { font-size: 18px; }
+    .page-title { font-size: 20px; }
     .g-stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
   }
 
@@ -567,7 +585,7 @@
       <h1 class="page-title"><span class="spark">✦</span> 地图图鉴</h1>
       <p class="page-desc">浏览全部锄地路线 · 点击任意地图查看路线详情</p>
       <div class="tabs" id="map-tabs"></div>
-      <div style="margin-bottom:14px"><input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size:13px;outline:none"></div>
+      <div style="margin-bottom:14px"><input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size: 15px;outline:none"></div>
       <div id="maps-content"><div class="loading">正在装载星图…</div></div>
     </section>
 
@@ -608,13 +626,13 @@
       <div class="grid g-2">
         <div class="glass">
           <div class="card-title"><img src="/logo.png" alt="Fhoe-Rail logo" onerror="this.onerror=null;this.src=window.LOGO_FALLBACK" style="width:20px;height:20px;border-radius:5px;vertical-align:-4px"> Fhoe-Rail</div>
-          <div style="font-size:12px;color:var(--txt-dim);margin-bottom:10px">当前版本：<span class="badge b-cyan" id="about-version">加载中…</span></div>
-          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+          <div style="font-size: 14px;color:var(--txt-dim);margin-bottom:10px">当前版本：<span class="badge b-cyan" id="about-version">加载中…</span></div>
+          <p style="font-size: 15px;color:var(--txt-dim);line-height:1.9">
             崩坏：星穹铁道锄大地自动化脚本，StarRailAssistant 轻量化分支。
             基于图片识别 + 键鼠模拟，全自动完成每日锄地、传送、战斗与购买流程。
           </p>
           <hr class="divider">
-          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+          <p style="font-size: 15px;color:var(--txt-dim);line-height:1.9">
             开源协议：GPL-3.0<br>
             项目地址：<a href="https://github.com/linruowuyin/Fhoe-Rail" target="_blank">github.com/linruowuyin/Fhoe-Rail</a><br>
             上游项目：<a href="https://github.com/Starry-Wind/StarRailAssistant" target="_blank">StarRailAssistant</a>（已停更）
@@ -622,12 +640,12 @@
         </div>
         <div class="glass">
           <div class="card-title">🖥️ WebUI</div>
-          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+          <p style="font-size: 15px;color:var(--txt-dim);line-height:1.9">
             本面板为零依赖本地服务（Python 标准库 + onepush 通知引擎），仅监听 <span class="kbd">127.0.0.1:8666</span>，
             不联网、不上传数据。修改配置会直接写入项目根目录的 <span class="kbd">config.json</span>。
           </p>
           <hr class="divider">
-          <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+          <p style="font-size: 15px;color:var(--txt-dim);line-height:1.9">
             启动：<span class="kbd">Start-WebUI.bat</span>（自动管理员权限）<br>
             停止：关闭启动窗口 / <span class="kbd">Ctrl+C</span>
           </p>
@@ -645,13 +663,19 @@
         <h3 id="modal-title">地图详情</h3>
         <div style="margin-top:6px"><span class="badge b-violet" id="modal-id"></span> <span class="badge b-pink" id="modal-author"></span></div>
       </div>
-      <button class="modal-close" id="modal-close">✕</button>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button class="modal-close" id="modal-open-btn" style="display:none" title="打开地图文件">📂</button>
+        <button class="modal-close" id="modal-run-btn" style="display:none" title="运行此地图">▶</button>
+        <button class="modal-close" id="modal-edit-btn" style="display:none" title="编辑">✏️</button>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
     </div>
     <div id="modal-body"><div class="loading">…</div></div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="pic-preview" id="pic-preview"><img src="" alt=""></div>
 
 <script>
 "use strict";
@@ -762,7 +786,7 @@ async function loadDashboard() {
     const stats = data.log_stats || {};
     const verMap = data.map_versions || {};
     const verBadges = Object.entries(verMap)
-      .map(([v, n]) => `<span class="badge b-cyan">${esc(v)} · ${n}图</span>`).join(" ");
+      .map(([v, n]) => `<span class="badge b-cyan">${esc(VERSION_NAMES[v] || v)} · ${n}图</span>`).join(" ");
     el.innerHTML = `
       <div class="grid g-stats" style="margin-bottom:16px">
         <div class="glass"><div class="stat-num">${data.map_total ?? "—"}</div><div class="stat-label">地图总数（4个版本）</div></div>
@@ -776,7 +800,7 @@ async function loadDashboard() {
         <div class="glass">
           <div class="card-title">🎛️ 当前配置</div>
           <div class="cfg-grid">
-            <div class="cfg-row"><span class="k">地图版本</span><span class="v">${esc(cfg.map_version ?? "default")}</span></div>
+            <div class="cfg-row"><span class="k">地图版本</span><span class="v">${esc(VERSION_NAMES[cfg.map_version] || cfg.map_version || "default")}</span></div>
             <div class="cfg-row"><span class="k">优先星球</span><span class="v">${esc(cfg.main_map ?? "1")}</span></div>
             <div class="cfg-row"><span class="k">疾跑模式</span><span class="v">${fmtVal(cfg.auto_run_in_map)}</span></div>
             <div class="cfg-row"><span class="k">最后一击秘技</span><span class="v">${fmtVal(cfg.auto_final_fight_e)}</span></div>
@@ -790,9 +814,9 @@ async function loadDashboard() {
         </div>
         <div class="glass">
           <div class="card-title">🗂️ 地图版本分布</div>
-          <div style="font-size:13px;line-height:2.2">${verBadges || "暂无数据"}</div>
+          <div style="font-size: 15px;line-height:2.2">${verBadges || "暂无数据"}</div>
           <hr class="divider">
-          <div style="font-size:13px;color:var(--txt-dim);line-height:2">
+          <div style="font-size: 15px;color:var(--txt-dim);line-height:2">
             ${(stats.recent_maps || []).length ? "最近锄过的地图：" : "日志中还没有锄地记录"}
             ${(stats.recent_maps || []).map(m => `<div style="color:var(--cyan)">· ${esc(m)}</div>`).join("")}
           </div>
@@ -840,7 +864,7 @@ async function loadRun() {
           <button class="btn primary" id="run-start">🚀 启动</button>
           <button class="btn danger" id="run-stop" disabled>⏹ 停止</button>
         </div>
-        <div style="font-size:11px;color:var(--txt-faint);margin-top:12px;line-height:1.9">
+        <div style="font-size: 13px;color:var(--txt-faint);margin-top:12px;line-height:1.9">
           ⚠️ 启动前请先到「参数设置」保存好配置；启动会自动保存当前配置。<br>
           💡 录制地图：启动后 3 秒开始录制，请在游戏里操作，按 <span class="kbd">F9</span> 保存（本机键盘直接操作即可）。<br>
           🔒 锄地会接管键鼠，请勿在运行中操作电脑。
@@ -850,13 +874,13 @@ async function loadRun() {
         <div class="card-title">📡 运行状态</div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
           <span class="badge b-gold" id="run-state">未知</span>
-          <span style="font-size:12px;color:var(--txt-dim)" id="run-meta"></span>
+          <span style="font-size: 14px;color:var(--txt-dim)" id="run-meta"></span>
         </div>
-        <div style="font-size:13px;color:var(--txt-dim);line-height:1.9" id="run-info">等待启动…</div>
+        <div style="font-size: 15px;color:var(--txt-dim);line-height:1.9" id="run-info">等待启动…</div>
       </div>
     </div>
     <div class="glass">
-      <div class="card-title">🖥️ 实时输出 <span style="font-size:11px;color:var(--txt-faint);font-weight:400">（每 1.5 秒刷新，最多保留 500 行）</span></div>
+      <div class="card-title">🖥️ 实时输出 <span style="font-size: 13px;color:var(--txt-faint);font-weight:400">（每 1.5 秒刷新，最多保留 500 行）</span></div>
       <div class="log-box" id="run-output" style="height:340px"><div class="loading">等待运行…</div></div>
     </div>`;
 
@@ -868,8 +892,7 @@ async function loadRun() {
   const pickPlanet = $("#pick-planet");
   const pickMap = $("#pick-map");
 
-  // 星球名称（与 server.py PLANET_NAMES 一致）
-  const PLANET_LABELS = {"1":"空间站「黑塔」","2":"雅利洛-VI","3":"仙舟「罗浮」","4":"匹诺康尼","5":"翁法罗斯","6":"二相乐园"};
+  // 星球名称从后端 /api/maps 的 planet_names 获取，不再前端硬编码
 
   // 选图模式：版本 → 星球 → 地图 三级联动
   const MODE_HINTS = {
@@ -882,7 +905,7 @@ async function loadRun() {
   };
   async function fillMapPicker() {
     if (!mapData) {
-      try { mapData = await api("/api/maps"); } catch (e) { return; }
+      try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); } catch (e) { return; }
     }
     const versions = Object.keys(mapData);
     const v = versions.includes("default") ? "default" : versions[0];
@@ -894,7 +917,7 @@ async function loadRun() {
     const planets = mapData[version] || {};
     const keys = Object.keys(planets).sort((a, b) => a - b);
     pickPlanet.innerHTML = keys.map(k =>
-      `<option value="${esc(k)}">${PLANET_EMOJI[k] || "🌍"} ${esc(k)}号星球 ${esc(PLANET_LABELS[k] || "")}</option>`).join("");
+      `<option value="${esc(k)}">${PLANET_EMOJI[k] || "🌍"} ${esc(k)} ${esc(planetNames[k] || "")}</option>`).join("");
     fillMapList(version, keys[0]);
   }
   function fillMapList(version, planet) {
@@ -973,12 +996,12 @@ async function pollRun() {
 }
 
 /* ---------------- 地图图鉴 ---------------- */
-let mapData = null, currentVersion = null;
+let mapData = null, currentVersion = null, planetNames = {};
 async function loadMaps() {
   if (!mapData) {
     $("#maps-content").innerHTML = '<div class="loading">正在装载星图…</div>';
     try {
-      mapData = await api("/api/maps");
+      const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {});
     } catch (e) {
       $("#maps-content").innerHTML = `<div class="error-box">加载失败：${esc(e.message)}。<br>请用 <span class="kbd">Start-WebUI.bat</span> 或 <span class="kbd">python webui/server.py</span> 启动服务后访问。</div>`;
       return;
@@ -987,7 +1010,7 @@ async function loadMaps() {
   const versions = Object.keys(mapData);
   if (!currentVersion) currentVersion = versions.includes("default") ? "default" : versions[0];
   $("#map-tabs").innerHTML = versions.map(v =>
-    `<div class="tab${v === currentVersion ? " active" : ""}" data-v="${esc(v)}">${esc(v)} <span style="opacity:.6">(${Object.values(mapData[v]).reduce((a,b)=>a+b.length,0)})</span></div>`
+    `<div class="tab${v === currentVersion ? " active" : ""}" data-v="${esc(v)}">${esc(VERSION_NAMES[v] || v)} <span style="opacity:.6">(${Object.values(mapData[v]).reduce((a,b)=>a+b.length,0)})</span></div>`
   ).join("");
   $$("#map-tabs .tab").forEach(t => t.addEventListener("click", () => {
     currentVersion = t.dataset.v;
@@ -1017,18 +1040,17 @@ function renderMaps() {
     shown += maps.length;
     return `
       <div class="planet-block" data-planet="${main}">
-        <div class="planet-head"><span class="dot"></span> ${PLANET_EMOJI[main] || "🌍"} ${esc(main)}号星球 · ${maps.length} 张路线 <span class="fold">▾</span></div>
+        <div class="planet-head"><span class="dot"></span> ${PLANET_EMOJI[main] || "🌍"} ${esc(main)} ${esc(planetNames[main] || "")} · ${maps.length} 张路线 <span class="fold">▾</span></div>
         <div class="map-list">${maps.map(m => `
           <div class="map-item" data-file="${esc(m.file)}" data-version="${esc(currentVersion)}">
             <div class="m-name"><span>${esc(m.name || "未命名路线")}</span><span class="m-id">${esc(m.id)}</span></div>
             <div class="m-author">路线作者：${esc(m.author || "未知")}</div>
           </div>`).join("")}
-        </div>
-      </div>`;
+        </div>`;
   }).join("") || (q ? '<div class="empty">没有匹配「' + esc(q) + '」的地图</div>' : '<div class="empty">该版本没有地图数据</div>');
   if (q) {
     const total = Object.values(planets).reduce((a, b) => a + b.length, 0);
-    $("#maps-content").insertAdjacentHTML("afterbegin", `<div style="font-size:12px;color:var(--txt-faint);margin-bottom:10px">搜索「${esc(q)}」：命中 ${shown} / ${total} 张</div>`);
+    $("#maps-content").insertAdjacentHTML("afterbegin", `<div style="font-size: 14px;color:var(--txt-faint);margin-bottom:10px">搜索「${esc(q)}」：命中 ${shown} / ${total} 张</div>`);
   }
   // 星球折叠/展开（点击标题栏切换）
   $$("#maps-content .planet-head").forEach(head => {
@@ -1041,55 +1063,248 @@ $("#map-search")?.addEventListener("input", renderMaps);
 async function showMapDetail(file, version) {
   $("#modal-mask").classList.add("open");
   $("#modal-title").textContent = "地图详情";
-  $("#modal-id").textContent = version + " / " + file;
+  $("#modal-id").textContent = (VERSION_NAMES[version] || version) + " / " + file;
   $("#modal-author").textContent = "加载中…";
   $("#modal-body").innerHTML = '<div class="loading">正在读取路线…</div>';
   try {
     const data = await api("/api/map?file=" + encodeURIComponent(file) + "&version=" + encodeURIComponent(version));
-    $("#modal-title").textContent = data.name || file;
-    $("#modal-author").textContent = "作者：" + (data.author || "未知");
-    const startSteps = (data.start || []).map(s => {
-      const k = Object.keys(s)[0], v = s[k];
-      return `<div class="step-row"><span class="k">${esc(k)}</span><span class="v">${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span></div>`;
-    }).join("");
-    const totalSteps = (data.map || []).length;
-    const stepRow = s => {
-      const k = Object.keys(s)[0], v = s[k];
-      const tag = k === "fighting" ? '<span class="badge b-red" style="margin-left:6px">战斗</span>'
-        : k === "f" ? '<span class="badge b-cyan" style="margin-left:6px">交互</span>'
-        : k === "e" ? '<span class="badge b-pink" style="margin-left:6px">秘技</span>' : "";
-      return `<div class="step-row"><span class="k">${esc(k)}</span><span class="v">${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>${tag}</div>`;
-    };
-    const PREVIEW = 60;
-    const previewSteps = (data.map || []).slice(0, PREVIEW).map(stepRow).join("");
-    const extraSteps = (data.map || []).slice(PREVIEW);
-    $("#modal-body").innerHTML = `
-      <div style="font-size:12px;color:var(--txt-faint);margin-bottom:6px">📦 起始步骤（${(data.start||[]).length}）</div>
-      <div class="steps">${startSteps || '<div class="empty">无</div>'}</div>
-      <div style="font-size:12px;color:var(--txt-faint);margin:14px 0 6px">🚶 行进步骤（共 ${totalSteps}）</div>
-      <div class="steps">${previewSteps || '<div class="empty">无</div>'}</div>
-      ${totalSteps > PREVIEW ? `<div style="text-align:center;margin-top:10px"><button class="btn ghost" id="modal-expand">展开全部 ${extraSteps.length} 条步骤 ▾</button></div>
-      <div class="steps" id="modal-extra" style="display:none">${extraSteps.map(stepRow).join("")}</div>` : ""}`;
-    const expandBtn = $("#modal-expand");
-    if (expandBtn) expandBtn.addEventListener("click", () => {
-      const extra = $("#modal-extra");
-      const hidden = extra.style.display === "none";
-      extra.style.display = hidden ? "" : "none";
-      expandBtn.textContent = hidden ? "收起多余步骤 ▴" : `展开全部 ${extraSteps.length} 条步骤 ▾`;
-    });
+    currentMapData = data;
+    currentMapFile = file;
+    currentMapVersion = version;
+    renderMapReadOnly();
   } catch (e) {
     $("#modal-body").innerHTML = `<div class="error-box">读取失败：${esc(e.message)}</div>`;
   }
 }
-$("#modal-close").addEventListener("click", () => $("#modal-mask").classList.remove("open"));
-$("#modal-mask").addEventListener("click", (e) => { if (e.target === e.currentTarget) $("#modal-mask").classList.remove("open"); });
+
+let currentMapData = null, currentMapFile = null, currentMapVersion = null, mapEditing = false, mapDirty = false;
+
+const START_CMDS = ["main","map","scene","await","floor","space","drag","drag_offset","view_set","view_reset","view_rotate","forbid_retry","need_allow_map_buy","need_allow_memory_token","need_allow_snack_buy","clicks","picture\\"];
+const MAP_CMDS = ["w","a","s","d","b","fighting","f","e","esc","check"];
+
+function renderMapReadOnly() {
+  mapEditing = false;
+  mapDirty = false;
+  const data = currentMapData;
+  $("#modal-title").textContent = data.name || currentMapFile;
+  $("#modal-author").textContent = "作者：" + (data.author || "未知");
+  const stepRow = s => {
+    const k = Object.keys(s)[0], v = s[k];
+    const tag = (k === "fighting" && v === 1) ? '<span class="badge b-red" style="margin-left:6px">战斗</span>'
+      : (k === "fighting" && v === 2) ? '<span class="badge b-amber" style="margin-left:6px">除障</span>'
+      : k === "view_rotate" ? '<span class="badge b-violet" style="margin-left:6px">转视角</span>'
+      : k === "view_set" ? '<span class="badge b-violet" style="margin-left:6px">设视角</span>'
+      : k === "view_reset" ? '<span class="badge b-violet" style="margin-left:6px">重置视角</span>'
+      : k === "f" ? '<span class="badge b-cyan" style="margin-left:6px">交互</span>'
+      : k === "e" ? '<span class="badge b-pink" style="margin-left:6px">秘技</span>'
+      : k === "await" ? `<span class="badge b-amber" style="margin-left:6px">等${v}秒</span>`
+      : k === "floor" ? `<span class="badge b-green" style="margin-left:6px">切${Array.isArray(v) ? v[1] : v}层</span>`
+      : k === "need_allow_memory_token" ? '<span class="badge b-amber" style="margin-left:6px">需允许记忆代币</span>'
+      : k === "need_allow_map_buy" ? '<span class="badge b-amber" style="margin-left:6px">需允许地图购买</span>'
+      : k === "need_allow_snack_buy" ? '<span class="badge b-amber" style="margin-left:6px">需允许零食购买</span>'
+      : k === "check" ? `<span class="badge b-cyan" style="margin-left:6px">${v === 1 || (Array.isArray(v) && v.length === 7) ? "每日必检" : "周检"}</span>`
+      : k === "normal_run" ? '<span class="badge b-red" style="margin-left:6px">禁疾跑</span>'
+      : k === "blackscreen" ? '<span class="badge b-dim" style="margin-left:6px">黑屏检测</span>' : "";
+    const picMatch = k.match(/^picture\\(.+\.\w+)$/);
+    const picAttr = picMatch ? ` data-pic="${esc(picMatch[1])}"` : "";
+    return `<div class="step-row"><span class="k"${picAttr}>${esc(k)}</span><span class="v">${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>${tag}</div>`;
+  };
+  const startSteps = (data.start || []).map(stepRow).join("");
+  const totalSteps = (data.map || []).length;
+  const allSteps = (data.map || []).map(stepRow).join("");
+  $("#modal-body").innerHTML = `
+    <div style="font-size: 14px;color:var(--txt-faint);margin-bottom:6px">📦 起始步骤（${(data.start||[]).length}）</div>
+    <div class="steps">${startSteps || '<div class="empty">无</div>'}</div>
+    <div style="font-size: 14px;color:var(--txt-faint);margin:14px 0 6px">🚶 行进步骤（共 ${totalSteps}）</div>
+    <div class="steps">${allSteps || '<div class="empty">无</div>'}</div>
+  `;
+  $("#modal-open-btn").style.display = "";
+  $("#modal-open-btn").onclick = async () => {
+    try {
+      const res = await api("/api/open-map", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file: currentMapFile, version: currentMapVersion }) });
+      if (!res.ok) toast("打开失败：" + (res.error || "未知错误"), true);
+    } catch (err) { toast("打开失败：" + err.message, true); }
+  };
+  $("#modal-edit-btn").style.display = "";
+  $("#modal-edit-btn").onclick = renderMapEditor;
+  $("#modal-run-btn").style.display = "";
+  $("#modal-run-btn").onclick = async () => {
+    const mapId = currentMapFile.match(/^map_(.+)\.json$/)?.[1] || currentMapFile.match(/^(.+)\.json$/)?.[1] || "";
+    if (!mapId) return;
+    try {
+      const res = await api("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "map", map: mapId, map_version: currentMapVersion }) });
+      if (res.ok) { toast("🚀 进程已启动 (PID " + res.pid + ")"); pollRun(); }
+      else toast("启动失败：" + (res.error || "未知错误"), true);
+    } catch (err) { toast("启动失败：" + err.message, true); }
+  };
+}
+
+function renderMapEditor() {
+  $("#modal-edit-btn").style.display = "none";
+  $("#modal-open-btn").style.display = "none";
+  $("#modal-run-btn").style.display = "none";
+  mapEditing = true;
+  mapDirty = false;
+  const data = currentMapData;
+  const valStr = v => typeof v === "object" ? JSON.stringify(v) : String(v);
+  const renderSection = (arr, secName) =>
+    arr.map((s, i) => {
+      const k = Object.keys(s)[0], v = s[k];
+      return `<div class="edit-row" data-sec="${secName}">
+        <input class="ek" value="${esc(k)}" data-field="k">
+        <input class="ev" value="${esc(valStr(v))}" data-field="v">
+        <button class="edel" data-action="del">✕</button>
+      </div>`;
+    }).join("");
+  $("#modal-body").innerHTML = `
+    <div class="edit-field"><label>名称</label><input id="edit-name" value="${esc(data.name || "")}"></div>
+    <div class="edit-field"><label>作者</label><input id="edit-author" value="${esc(data.author || "")}"></div>
+    <div class="edit-section-title">📦 起始步骤（<span id="cnt-start">${(data.start||[]).length}</span>）</div>
+    <div id="edit-start">${renderSection(data.start || [], "start")}</div>
+    <button class="btn-add" data-action="add" data-sec="start">+ 添加步骤</button>
+    <div class="edit-section-title">🚶 行进步骤（<span id="cnt-map">${(data.map||[]).length}</span>）</div>
+    <div id="edit-map">${renderSection(data.map || [], "map")}</div>
+    <button class="btn-add" data-action="add" data-sec="map">+ 添加步骤</button>
+    <div class="edit-actions">
+      <button class="btn" id="btn-save">💾 保存</button>
+      <button class="btn ghost" id="btn-cancel">取消</button>
+    </div>`;
+  const attachCmdSuggest = input => {
+    const sec = input.closest(".edit-row").dataset.sec;
+    const cmds = sec === "start" ? START_CMDS : MAP_CMDS;
+    const box = document.createElement("div");
+    box.className = "cmd-suggest";
+    input.parentElement.style.position = "relative";
+    input.parentElement.appendChild(box);
+    input.addEventListener("input", () => {
+      const val = input.value.toLowerCase();
+      if (!val) { box.style.display = "none"; return; }
+      const matches = cmds.filter(c => c.toLowerCase().startsWith(val));
+      if (matches.length < 2) { box.style.display = "none"; return; }
+      box.innerHTML = matches.map(c => `<div data-cmd="${esc(c)}">${esc(c)}</div>`).join("");
+      box.style.display = "block";
+    });
+    box.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const t = e.target.closest("[data-cmd]");
+      if (t) { input.value = t.dataset.cmd; box.style.display = "none"; input.focus(); }
+    });
+    input.addEventListener("blur", () => { setTimeout(() => { box.style.display = "none"; }, 120); });
+  };
+  $$("#modal-body .edit-row .ek").forEach(attachCmdSuggest);
+  const updateCount = sec => { const c = $("#cnt-" + sec); if (c) c.textContent = $("#edit-" + sec).children.length; };
+  $$("#modal-body .btn-add").forEach(btn => btn.addEventListener("click", () => {
+    mapDirty = true;
+    const sec = btn.dataset.sec;
+    const container = $("#edit-" + sec);
+    const row = document.createElement("div");
+    row.className = "edit-row";
+    row.dataset.sec = sec;
+    row.innerHTML = `<input class="ek" value="" data-field="k"><input class="ev" value="" data-field="v"><button class="edel" data-action="del">✕</button>`;
+    container.appendChild(row);
+    attachCmdSuggest(row.querySelector(".ek"));
+    row.querySelector(".edel").addEventListener("click", () => { row.remove(); updateCount(sec); mapDirty = true; });
+    row.querySelector(".ek").focus();
+    updateCount(sec);
+  }));
+  $$("#modal-body .edit-row .edel").forEach(btn => btn.addEventListener("click", () => {
+    const row = btn.closest(".edit-row");
+    const sec = row.dataset.sec;
+    row.remove();
+    updateCount(sec);
+    mapDirty = true;
+  }));
+  $("#btn-save").addEventListener("click", saveMapEdit);
+  $("#btn-cancel").addEventListener("click", renderMapReadOnly);
+  // 监听任何输入变化，标记为已修改
+  $("#modal-body").querySelectorAll("input, textarea").forEach(el => {
+    el.addEventListener("input", () => { mapDirty = true; });
+  });
+}
+
+async function saveMapEdit() {
+  const name = $("#edit-name").value.trim();
+  const author = $("#edit-author").value.trim();
+  const collect = sec => {
+    const steps = [];
+    $("#edit-" + sec).querySelectorAll(".edit-row").forEach(row => {
+      const k = row.querySelector('[data-field="k"]').value.trim();
+      const vRaw = row.querySelector('[data-field="v"]').value.trim();
+      if (!k) return;
+      let v;
+      try { v = JSON.parse(vRaw); } catch {
+        const num = Number(vRaw);
+        v = (vRaw !== "" && !isNaN(num)) ? num : vRaw;
+      }
+      steps.push({ [k]: v });
+    });
+    return steps;
+  };
+  const data = Object.assign({}, currentMapData, { name, author, start: collect("start"), map: collect("map") });
+  const btn = $("#btn-save");
+  btn.textContent = "保存中…"; btn.disabled = true;
+  try {
+    await api("/api/map", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file: currentMapFile, version: currentMapVersion, data }) });
+    toast("保存成功");
+    currentMapData = data;
+    mapData = null;
+    if (document.querySelector("#page-maps").style.display !== "none") await loadMaps();
+    renderMapReadOnly();
+  } catch (e) {
+    toast("保存失败：" + esc(e.message), true);
+    btn.textContent = "💾 保存"; btn.disabled = false;
+  }
+}
+
+$("#modal-close").addEventListener("click", () => {
+  if (mapEditing && mapDirty && !confirm("有未保存的修改，确定关闭？")) return;
+  $("#modal-mask").classList.remove("open");
+});
+$("#modal-mask").addEventListener("click", (e) => { if (e.target === e.currentTarget && !mapEditing) $("#modal-mask").classList.remove("open"); });
+
+/* 地图步骤中 picture 图片悬浮预览 */
+(function(){
+  const preview = $("#pic-preview"), img = preview.querySelector("img");
+  const show = src => { img.src = src; preview.style.display = "block"; };
+  const hide = () => { img.src = ""; preview.style.display = "none"; };
+  const move = e => { preview.style.left = (e.clientX + 18) + "px"; preview.style.top = (e.clientY - 10) + "px"; };
+  const getPic = el => {
+    if (el.classList.contains("k") && el.dataset.pic) return "picture\\" + el.dataset.pic;
+    const k = el.closest(".k");
+    if (k && k.dataset.pic) return "picture\\" + k.dataset.pic;
+    if (el.classList.contains("ek") && /^picture\\/.test(el.value)) return el.value;
+    return null;
+  };
+  $("#modal-body").addEventListener("mouseover", e => {
+    const p = getPic(e.target);
+    if (!p) return;
+    const name = p.replace(/^picture\\/, "");
+    show("/api/picture?p=" + encodeURIComponent(name));
+  });
+  $("#modal-body").addEventListener("mousemove", e => {
+    if (preview.style.display === "block") move(e);
+  });
+  $("#modal-body").addEventListener("mouseout", e => {
+    const p = getPic(e.target);
+    if (!p) return;
+    const rel = e.relatedTarget;
+    if (rel && getPic(rel) === p) return;
+    hide();
+  });
+})();
 
 /* ---------------- 参数设置 ---------------- */
 let configData = null;
+/* 地图版本中文别名：硬编码兜底，API 返回 version_names 时自动覆盖 */
+let VERSION_NAMES = {
+  default: "默认",
+  HuangQuan: "黄泉专用",
+  technique: "秘技版",
+};
 /* 配置表单定义：新增配置项只需在此数组加一项 */
 const CONFIG_DEFS = [
   { group: "🌍 基础", items: [
-    { key: "map_version", label: "地图版本", hint: "default 疾跑 / HuangQuan 黄泉专用 / SilverWolfLv999 银狼专用", type: "select-version" },
+    { key: "map_version", label: "地图版本", hint: "疾跑版 / 黄泉专用 / 银狼专用", type: "select-version" },
     { key: "main_map", label: "优先星球", hint: "1 黑塔 / 2 雅利洛 / 3 罗浮 / 4 匹诺康尼 / 5 翁法罗斯", type: "select-main" },
     { key: "auto_shutdown", label: "锄后系统设置", hint: "0 无操作 / 1 关机 / 2 注销 / 3 关闭指定进程", type: "select", options: {"0":"无操作","1":"关机","2":"注销","3":"关闭指定进程"} },
     { key: "taskkill_name", label: "关闭的进程名", hint: "auto_shutdown=3 时生效", type: "text" },
@@ -1154,7 +1369,7 @@ async function loadConfig() {
   el.innerHTML = '<div class="loading">正在读取配置…</div>';
   try {
     if (!mapData) {
-      try { mapData = await api("/api/maps"); } catch (e) { /* 地图数据加载失败不阻塞配置编辑 */ }
+      try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); } catch (e) { /* 地图数据加载失败不阻塞配置编辑 */ }
     }
     configData = await api("/api/config");
     renderConfigForm();
@@ -1172,42 +1387,42 @@ function renderConfigForm() {
       ${g.group.includes("通知推送") ? `
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-soft)">
         <button class="btn" id="notify-test">📨 发送测试通知</button>
-        <span id="notify-test-result" style="font-size:12px;color:var(--txt-dim);margin-left:10px"></span>
+        <span id="notify-test-result" style="font-size: 14px;color:var(--txt-dim);margin-left:10px"></span>
       </div>` : ""}
     </div>`).join("") + `
     <div class="glass" style="margin-bottom:16px">
       <div class="card-title">🛠️ 开发者选项</div>
-      <div style="font-size:11px;color:var(--txt-faint);margin-bottom:4px">以下选项面向开发者/维护者，普通用户无需修改。</div>
+      <div style="font-size: 13px;color:var(--txt-faint);margin-bottom:4px">以下选项面向开发者/维护者，普通用户无需修改。</div>
       ${DEV_DEFS.map(item => fieldHtml(item)).join("")}
     </div>
     <div class="glass" style="margin-bottom:16px">
       <div class="card-title">🧭 视角校准</div>
-      <div style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+      <div style="font-size: 15px;color:var(--txt-dim);line-height:1.9">
         当前视角参数：<span class="kbd">${esc(configData.angle ?? "1.0")}</span> · 校准状态：${configData.angle_set ? '<span class="badge b-green">已校准</span>' : '<span class="badge b-gold">未校准（下次运行会自动校准）</span>'}
       </div>
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn ghost" id="calibrate-angle">🔧 标记：下次运行前重新校准视角</button>
       </div>
-      <div style="font-size:11px;color:var(--txt-faint);margin-top:8px">点击后设置 angle_set=false，下次锄地启动时会自动执行视角校准（需进入游戏）。</div>
+      <div style="font-size: 13px;color:var(--txt-faint);margin-top:8px">点击后设置 angle_set=false，下次锄地启动时会自动执行视角校准（需进入游戏）。</div>
     </div>
     <div class="glass" style="margin-bottom:16px">
       <div class="card-title">📋 只读信息</div>
-      <div style="font-size:12px;color:var(--txt-dim);line-height:2;font-family:var(--font-mono)">
+      <div style="font-size: 14px;color:var(--txt-dim);line-height:2;font-family:var(--font-mono)">
         version: ${esc(configData.version ?? "—")} · picture_version: ${esc(configData.picture_version ?? "—")} · star_version: ${esc(configData.star_version ?? "—")}<br>
         real_width: ${esc(configData.real_width ?? "—")} · real_height: ${esc(configData.real_height ?? "—")} · map_debug: ${esc(configData.map_debug ?? "—")} · start: ${esc(configData.start ?? "—")}
       </div>
-      <div style="font-size:11px;color:var(--txt-faint);margin-top:6px">这些字段由程序自动维护，如需修改请在下方原始 JSON 中编辑。</div>
+      <div style="font-size: 13px;color:var(--txt-faint);margin-top:6px">这些字段由程序自动维护，如需修改请在下方原始 JSON 中编辑。</div>
     </div>
     <div class="glass" style="margin-bottom:16px">
       <div class="card-title">🧾 原始 JSON</div>
-      <textarea id="raw-json" rows="10" style="width:100%;font-family:var(--font-mono);font-size:12px;line-height:1.6;background:rgba(4,6,14,.7);color:var(--txt);border:1px solid var(--glass-border);border-radius:10px;padding:12px">${esc(JSON.stringify(configData, null, 2))}</textarea>
+      <textarea id="raw-json" rows="10" style="width:100%;font-family:var(--font-mono);font-size: 14px;line-height:1.6;background:rgba(4,6,14,.7);color:var(--txt);border:1px solid var(--glass-border);border-radius:10px;padding:12px">${esc(JSON.stringify(configData, null, 2))}</textarea>
       <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
         <button class="btn primary" id="save-config">💾 保存全部修改</button>
         <button class="btn ghost" id="copy-config">📋 复制 JSON</button>
         <button class="btn ghost" id="download-config">⬇️ 下载 config.json</button>
         <button class="btn ghost" id="reload-config">🔄 重新读取</button>
       </div>
-      <div style="font-size:11px;color:var(--txt-faint);margin-top:10px">⚠️ 保存会直接写入项目根目录 config.json；数组字段用逗号分隔（如 1-1,2-1）。</div>
+      <div style="font-size: 13px;color:var(--txt-faint);margin-top:10px">⚠️ 保存会直接写入项目根目录 config.json；数组字段用逗号分隔（如 1-1,2-1）。</div>
     </div>`;
   el.innerHTML = html;
 
@@ -1292,7 +1507,7 @@ function fieldHtml(item) {
     // 地图版本：选项动态来自实际存在的版本目录
     const versions = mapData ? Object.keys(mapData) : [];
     const opts = versions.map(val =>
-      `<option value="${esc(val)}" ${String(v) === String(val) ? "selected" : ""}>${esc(val)}</option>`).join("");
+      `<option value="${esc(val)}" ${String(v) === String(val) ? "selected" : ""}>${esc(VERSION_NAMES[val] || val)}</option>`).join("");
     return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><select>${opts}</select></div>`;
   }
   if (item.type === "select") {
@@ -1302,7 +1517,7 @@ function fieldHtml(item) {
   }
   if (item.type === "select-main") {
     const mains = mapData ? Object.keys(mapData[configData.map_version || "default"] || {}).sort((a,b)=>a-b) : ["1","2","3","4","5","6"];
-    const opts = mains.map(m => `<option value="${esc(m)}" ${String(v) === String(m) ? "selected" : ""}>${esc(m)} 号星球</option>`).join("");
+    const opts = mains.map(m => `<option value="${esc(m)}" ${String(v) === String(m) ? "selected" : ""}>${esc(m)} ${esc(planetNames[m] || "")}</option>`).join("");
     return `<div class="field cfg-field" ${base}><label>${esc(item.label)}${item.hint ? `<span class="hint">${esc(item.hint)}</span>` : ""}</label><select>${opts}</select></div>`;
   }
   if (item.type === "text-arr") {
@@ -1341,7 +1556,7 @@ async function saveConfig() {
 /* ---------------- 航行日志 ---------------- */
 let logTimer = null, logFilter = "all", logCleared = false;
 function stopLogs() {
-  if (logTimer) { clearInterval(logTimer); logTimer = null; }
+  if (logTimer) { clearTimeout(logTimer); logTimer = null; }
 }
 async function fetchLogs() {
   try {
@@ -1378,9 +1593,10 @@ async function startLogs() {
   }
   renderLogs(data);
   $("#log-count").textContent = data.length + " 行";
-  logTimer = setInterval(async () => {
+  logTimer = setTimeout(async function poll() {
     const d = await fetchLogs();
     if (d) { renderLogs(d); $("#log-count").textContent = d.length + " 行"; }
+    if (logTimer !== null) logTimer = setTimeout(poll, 3000);
   }, 3000);
 }
 function setLogFilter(f) {
@@ -1520,7 +1736,7 @@ if (location.protocol === "file:") {
     <div style="position:fixed;inset:0;z-index:999;background:rgba(4,5,13,.97);display:flex;align-items:center;justify-content:center;padding:20px">
       <div class="glass" style="max-width:540px;padding:28px 30px">
         <div class="card-title">🚨 打开方式不对</div>
-        <p style="font-size:13px;color:var(--txt-dim);line-height:1.9">
+        <p style="font-size: 15px;color:var(--txt-dim);line-height:1.9">
           你直接双击打开了页面文件,浏览器禁止 <span class="kbd">file://</span> 页面访问本地数据,所以界面无法加载。<br><br>
           <b style="color:var(--txt)">正确打开方式(二选一):</b><br>
           ① 双击项目根目录的 <span class="kbd">Start-WebUI.bat</span> —— 自动启动服务并打开页面<br>
