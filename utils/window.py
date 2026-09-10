@@ -6,6 +6,7 @@ import pyautogui
 import win32api
 import win32con
 import win32gui
+import win32process
 
 from utils.exceptions import CustomException
 from utils.log import log
@@ -80,24 +81,83 @@ class Window(metaclass=SingletonMeta):
         SetForegroundWindow 在后台进程调用时常失败，
         AttachThreadInput 关联前台线程后可成功激活。
         """
+        import ctypes
         import time as _t
+
+        # 检查窗口是否最小化，如果是则恢复
+        if win32gui.IsIconic(hwnd):
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
         for attempt in range(5):
+            used_method = "none"
             try:
+                # 获取当前前台窗口和线程
                 fg = win32gui.GetForegroundWindow()
-                tid_fg = win32api.GetWindowThreadProcessId(fg)[0] if fg else 0
+                tid_fg = win32process.GetWindowThreadProcessId(fg)[0] if fg else 0
                 tid_self = win32api.GetCurrentThreadId()
+
+                # 关联线程输入队列
+                attached = False
                 if tid_fg != tid_self and tid_fg:
-                    win32api.AttachThreadInput(tid_self, tid_fg, True)
-                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                win32gui.SetForegroundWindow(hwnd)
-                if tid_fg != tid_self and tid_fg:
-                    win32api.AttachThreadInput(tid_self, tid_fg, False)
+                    try:
+                        attached = win32api.AttachThreadInput(tid_self, tid_fg, True)
+                    except Exception:
+                        pass
+
+                try:
+                    # 方法1: SetForegroundWindow
+                    win32gui.SetForegroundWindow(hwnd)
+                    used_method = "SetForegroundWindow"
+                except Exception:
+                    pass
+
+                try:
+                    # 方法2: BringWindowToTop
+                    win32gui.BringWindowToTop(hwnd)
+                    if used_method == "none":
+                        used_method = "BringWindowToTop"
+                except Exception:
+                    pass
+
+                try:
+                    # 方法3: SetWindowPos 置顶
+                    win32gui.SetWindowPos(
+                        hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
+                        win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+                    )
+                    win32gui.SetWindowPos(
+                        hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0,
+                        win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+                    )
+                    if used_method == "none":
+                        used_method = "SetWindowPos"
+                except Exception:
+                    pass
+
+                try:
+                    # 方法4: ctypes 直接调用 User32
+                    ctypes.windll.user32.SetForegroundWindow(hwnd)
+                    ctypes.windll.user32.BringWindowToTop(hwnd)
+                    if used_method == "none":
+                        used_method = "ctypes.User32"
+                except Exception:
+                    pass
+
+                # 解除线程输入队列关联
+                if attached and tid_fg != tid_self and tid_fg:
+                    try:
+                        win32api.AttachThreadInput(tid_self, tid_fg, False)
+                    except Exception:
+                        pass
+
                 # 确认是否成功
+                _t.sleep(0.1)
                 if win32gui.GetForegroundWindow() == hwnd:
+                    log.info(f"强激活成功，使用方法: {used_method}")
                     return True
             except Exception as e:
                 log.debug(f"强激活尝试 {attempt + 1} 失败: {e}")
-            _t.sleep(0.4)
+            _t.sleep(0.3)
         log.warning(f"强激活窗口失败(hwnd={hwnd})，继续尝试后续流程")
         return False
 
