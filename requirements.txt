@@ -36,4 +36,10 @@ requests
 
 keyboard
 
+onepush
 
+winotify
+
+
+
+docopt

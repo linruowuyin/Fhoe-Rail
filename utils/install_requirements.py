@@ -1,6 +1,14 @@
 import os
 import subprocess
+import sys
 import time
+
+# 系统语言兼容（issue #428 同类问题）：日文系统 cp932 代码页下中文 print 会崩溃
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError, OSError):
+        pass
 
 def find_requirements_file():
     # 尝试在当前目录查找requirements.txt
@@ -33,23 +41,23 @@ def set_fastest_proxy():
 
     if aliyun_time < tuna_time:
         print("阿里云源延迟较低，设置为代理源...")
-        subprocess.check_call(["pip", "config", "set", "global.index-url", "https://mirrors.aliyun.com/pypi/simple"])
+        subprocess.check_call([sys.executable, "-m", "pip", "config", "set", "global.index-url", "https://mirrors.aliyun.com/pypi/simple"])
     else:
         print("上海交通大学源延迟较低，设置为代理源...")
-        subprocess.check_call(["pip", "config", "set", "global.index-url", "https://pypi.tuna.tsinghua.edu.cn/simple"])
+        subprocess.check_call([sys.executable, "-m", "pip", "config", "set", "global.index-url", "https://pypi.tuna.tsinghua.edu.cn/simple"])
 
 def check_and_install_dependencies():
     requirements_file = find_requirements_file()
 
     if requirements_file:
         try:
-            subprocess.check_call(["pip", "show", "-r", requirements_file])
+            subprocess.check_call([sys.executable, "-m", "pip", "show", "-r", requirements_file])
             print("依赖已经存在！")
         except subprocess.CalledProcessError:
             print("安装依赖中，请稍等...")
             set_fastest_proxy()
-            subprocess.check_call(["pip", "install", "-r", requirements_file])
-            subprocess.check_call(["pip", "config", "unset", "global.index-url"])  # 恢复默认源
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", requirements_file])
+            subprocess.check_call([sys.executable, "-m", "pip", "config", "unset", "global.index-url"])  # 恢复默认源
             print("安装完成！")
     else:
         print("无法找到requirements.txt文件！")

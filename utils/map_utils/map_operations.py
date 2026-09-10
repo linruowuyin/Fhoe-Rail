@@ -59,9 +59,17 @@ class MapOperations:
             # 等待窗口实例ready，确保线程初始化完成
             TEXT_WINDOWS[window_id].ready.wait()
 
-    def process_map(self, start, start_in_mid: bool = False, dev: bool = False):
+    def process_map(
+        self,
+        start,
+        start_in_mid: bool = False,
+        dev: bool = False,
+        single_map: bool = False,
+    ):
         """
-        处理地图
+        处理地图。
+
+        single_map 为 True 时只处理 start 指定的地图，不继续执行后续路线。
         """
         # 检查是否自动使用秘技消耗品
         config = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False)
@@ -80,14 +88,17 @@ class MapOperations:
             total_start_time = time.time()
             self.map.reset_round_count()  # 重置该锄地轮次相关的计数
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
-            map_list = self.map.get_map_list(start, start_in_mid)
-            max_index = max(index for index, _ in enumerate(map_list))
+            map_list = (
+                [f"map_{start}.json"]
+                if single_map
+                else self.map.get_map_list(start, start_in_mid)
+            )
             self.map_statu.next_map_drag = False  # 初始化下一张图拖动为否
 
             for index, map_json in enumerate(map_list):
                 self.process_single_map(index, map_json, dev)
                 if self.map_statu.skip_this_map:
-                    continue
+                    continue  # process_single_map 内部已 return，此处为防御性保留
 
             # 计算总时间与总战斗时间
             self.map_statu.total_time = time.time() - total_start_time
@@ -458,6 +469,6 @@ class MapOperations:
         """
         if dev:
             winrect = self.window.get_rect()
-            log.info({winrect})
+            log.info(winrect)
             x, y = winrect[0] + x_offset, winrect[1] + y_offset
             show_text(text, x, y, "nouid", text_mode)

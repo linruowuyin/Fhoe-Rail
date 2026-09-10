@@ -54,19 +54,17 @@ class Handle(metaclass=SingletonMeta):
 
         self.running = False
         self.thread_cancel_sprint = None  # 用于保存取消疾跑任务的线程
-        self.thread_check_sprint = None   # 用于保存检测疾跑任务的线程
+        self.thread_check_sprint = None  # 用于保存检测疾跑任务的线程
 
-        self.arrow_0 = cv2.imread("./picture/screenshot_arrow.png")
+        self.arrow_0 = Img.get_img("./picture/screenshot_arrow.png")
 
     def handle_space(self, value, key):
-        """按下space键，延迟value秒后抬起
-        """
+        """按下space键，延迟value秒后抬起"""
         KeyboardEvent.keyboard_press(key, value)
 
     def handle_caps(self, value):
-        """按下space键，延迟value秒后抬起
-        """
-        KeyboardEvent.keyboard_press('caps', value)
+        """按下space键，延迟value秒后抬起"""
+        KeyboardEvent.keyboard_press("caps", value)
 
     def handle_r(self, value, key):
         """
@@ -90,11 +88,11 @@ class Handle(metaclass=SingletonMeta):
         use_time, delay, allow_f = self._check_f_img(value)
         if allow_f:
             if use_time:
-                KeyboardEvent.keyboard_press('f', delay=0.1)
+                KeyboardEvent.keyboard_press("f", delay=0.1)
                 log.info(f"按下'F'，等待{delay}秒")
                 time.sleep(delay)
             else:
-                KeyboardEvent.keyboard_press('f', delay=0.1)
+                KeyboardEvent.keyboard_press("f", delay=0.1)
                 log.info("按下'F'，等待主界面检测")
                 time.sleep(2)  # 2 秒后开始检测主界面
                 self.img.on_main_interface()
@@ -114,14 +112,14 @@ class Handle(metaclass=SingletonMeta):
         :return: tuple, 包含三个元素：(是否使用绝对时间, 绝对时间的值（秒）, 是否允许按下F)
         """
         images = {
-            'target': cv2.imread("./picture/sw.png"),
-            'dream_pop': cv2.imread("./picture/F_DreamPop.png"),
-            'teleport': cv2.imread("./picture/F_Teleport.png"),
-            'space_anchor': cv2.imread("./picture/F_SpaceAnchor.png"),
-            'dream_module': cv2.imread("./picture/F_DreamModule.png"),
-            'listen': cv2.imread("./picture/F_Listen.png"),
-            'dream_scape': cv2.imread("./picture/F_DreamScape.png"),
-            'go_to': cv2.imread("./picture/F_Goto.png")
+            "target": Img.get_img("./picture/sw.png"),
+            "dream_pop": Img.get_img("./picture/F_DreamPop.png"),
+            "teleport": Img.get_img("./picture/F_Teleport.png"),
+            "space_anchor": Img.get_img("./picture/F_SpaceAnchor.png"),
+            "dream_module": Img.get_img("./picture/F_DreamModule.png"),
+            "listen": Img.get_img("./picture/F_Listen.png"),
+            "dream_scape": Img.get_img("./picture/F_DreamScape.png"),
+            "go_to": Img.get_img("./picture/F_Goto.png"),
         }
 
         start_time = time.time()
@@ -132,13 +130,18 @@ class Handle(metaclass=SingletonMeta):
 
         while time.time() - start_time < timeout:
             for count, (name, img) in enumerate(images.items(), start=1):
-                result = self.img.scan_screenshot(
-                    img) if count == 1 else self.img.scan_temp_screenshot(img)
-                if result['max_val'] > 0.95:
-                    found_images[name] = result['max_val']
+                result = (
+                    self.img.scan_screenshot(img)
+                    if count == 1
+                    else self.img.scan_temp_screenshot(img)
+                )
+                if result["max_val"] > 0.95:
+                    found_images[name] = result["max_val"]
                     log.info(f"扫描'F'：{name}，匹配度：{result['max_val']:.3f}")
 
-            if len(found_images) == 2 or ('target' in found_images and time.time() - start_time >= 2):
+            if len(found_images) == 2 or (
+                "target" in found_images and time.time() - start_time >= 2
+            ):
                 break
 
             time.sleep(0.5)
@@ -156,32 +159,32 @@ class Handle(metaclass=SingletonMeta):
         use_absolute_time = True
         delay = default_delay
         allow_press_f = True
-        if 'target' in found_images:
-            if 'dream_pop' in found_images:
-                log.info('扫描到 梦泡充能')
+        if "target" in found_images:
+            if "dream_pop" in found_images:
+                log.info("扫描到 梦泡充能")
                 delay = 3
-            elif 'teleport' in found_images:
-                log.info('扫描到 入画')
+            elif "teleport" in found_images:
+                log.info("扫描到 入画")
                 use_absolute_time = False
                 delay = 0
-            elif 'space_anchor' in found_images:
-                log.info('扫描到 界域定锚')
+            elif "space_anchor" in found_images:
+                log.info("扫描到 界域定锚")
                 use_absolute_time = False
                 delay = 0
                 allow_press_f = False
-            elif 'dream_module' in found_images:
-                log.info('扫描到 筑梦模块')
+            elif "dream_module" in found_images:
+                log.info("扫描到 筑梦模块")
                 delay = 4
-            elif 'listen' in found_images:
-                log.info('扫描到 旁听')
+            elif "listen" in found_images:
+                log.info("扫描到 旁听")
                 use_absolute_time = False
                 delay = 0
                 allow_press_f = False
-            elif 'dream_scape' in found_images:
-                log.info('扫描到 梦境空间')
+            elif "dream_scape" in found_images:
+                log.info("扫描到 梦境空间")
                 delay = 5
-            elif 'go_to' in found_images:
-                log.info('扫描到 前往')
+            elif "go_to" in found_images:
+                log.info("扫描到 前往")
                 use_absolute_time = False
                 delay = 0
             else:
@@ -224,8 +227,13 @@ class Handle(metaclass=SingletonMeta):
         if value == 1:  # 战斗
             self.current_fighting_index += 1
             auto_final_fight_e_cnt_max = self.cfg.config_file.get(
-                "auto_final_fight_e_cnt")
-            if self.cfg.config_file.get("auto_final_fight_e", False) and self.current_fighting_index == self.fighting_count and self.auto_final_fight_e_cnt < auto_final_fight_e_cnt_max:
+                "auto_final_fight_e_cnt"
+            )
+            if (
+                self.cfg.config_file.get("auto_final_fight_e", False)
+                and self.current_fighting_index == self.fighting_count
+                and self.auto_final_fight_e_cnt < auto_final_fight_e_cnt_max
+            ):
                 self.auto_final_fight_e_cnt += 1
                 log.info("地图最后一个fighting:1，改为使用e")
                 self.handle_e(value)
@@ -250,7 +258,7 @@ class Handle(metaclass=SingletonMeta):
         """
         使用'E'攻击，补充秘技点数
         """
-        pyautogui.press('e')
+        pyautogui.press("e")
         time.sleep(0.25)
         self.technique_points_dialog()
 
@@ -259,7 +267,7 @@ class Handle(metaclass=SingletonMeta):
             self.mouse_event.click_center()
             fight_status = self.fight_elapsed()
             if not fight_status:
-                log.info('未进入战斗')
+                log.info("未进入战斗")
         elif value == 2:
             pass
 
@@ -271,64 +279,102 @@ class Handle(metaclass=SingletonMeta):
         """
         if not self.img.on_main_interface(timeout=0.0, allow_log=True):
             time.sleep(0.5)
-            image_a = cv2.imread("./picture/eat.png")
+            image_a = Img.get_img("./picture/eat.png")
             result_a = self.img.scan_screenshot(image_a)
             if result_a["max_val"] > 0.9:
                 allow_fight_e_buy_prop = self.cfg.config_file.get(
-                    "allow_fight_e_buy_prop", False)
+                    "allow_fight_e_buy_prop", False
+                )
                 if allow_fight_e_buy_prop:
                     allow_buy = False
-                    round_disable = cv2.imread("./picture/round_disable.png")
-                    if self.img.on_interface(check_list=[round_disable], timeout=0.5, interface_desc='无法购买', threshold=0.95):
+                    round_disable = Img.get_img("./picture/round_disable.png")
+                    if self.img.on_interface(
+                        check_list=[round_disable],
+                        timeout=0.5,
+                        interface_desc="无法购买",
+                        threshold=0.95,
+                    ):
                         pass
                     else:
-                        food_lab = cv2.imread("./picture/qiqiao_lab.png")
-                        food_icon = cv2.imread("./picture/qiqiao.png")
+                        food_lab = Img.get_img("./picture/qiqiao_lab.png")
+                        food_icon = Img.get_img("./picture/qiqiao.png")
                         find = False
                         drag = 0
                         while not find and drag < 4:
-                            if self.img.on_interface(check_list=[food_icon], timeout=2, interface_desc='奇巧零食图片', threshold=0.95, offset=(900, 300, -400, -300)):
+                            if self.img.on_interface(
+                                check_list=[food_icon],
+                                timeout=2,
+                                interface_desc="奇巧零食图片",
+                                threshold=0.95,
+                                offset=(900, 300, -400, -300),
+                            ):
                                 find = True
                                 for _ in range(2):
                                     self.mouse_event.click_target(
-                                        "./picture/qiqiao.png", 0.95, True, 2, (900, 300, -400, -300), False)
-                                    if self.img.on_interface(check_list=[food_lab], timeout=2, interface_desc='奇巧零食', threshold=0.97):
+                                        "./picture/qiqiao.png",
+                                        0.95,
+                                        True,
+                                        2,
+                                        (900, 300, -400, -300),
+                                        False,
+                                    )
+                                    if self.img.on_interface(
+                                        check_list=[food_lab],
+                                        timeout=2,
+                                        interface_desc="奇巧零食",
+                                        threshold=0.97,
+                                    ):
                                         time.sleep(0.1)
                                         self.mouse_event.click_target(
-                                            "./picture/round.png", 0.9, timeout=8)
+                                            "./picture/round.png", 0.9, timeout=8
+                                        )
                                         self.snack_used += 1
                                         time.sleep(0.5)
                                         allow_buy = True
                             else:
                                 log.info("下滑查找零食")
-                                self.mouse_event.mouse_drag(
-                                    1460, 450, 1460, 330)
+                                self.mouse_event.mouse_drag(1460, 450, 1460, 330)
                                 time.sleep(0.5)
                                 drag += 1
                         time.sleep(1)
                     self.mouse_event.click_target(
-                        "./picture/cancel.png", 0.95, timeout=2)
+                        "./picture/cancel.png", 0.95, timeout=2
+                    )
                     time.sleep(0.1)
                     if allow_buy:
                         log.info("补E")
                         time.sleep(0.25)
-                        pyautogui.press('e')
+                        pyautogui.press("e")
                         log.info("补E结束")
                         time.sleep(0.25)
                 else:
                     self.mouse_event.click_target(
-                        "./picture/cancel.png", 0.95, timeout=2)
+                        "./picture/cancel.png", 0.95, timeout=2
+                    )
                     time.sleep(0.1)
 
     def back_to_main(self, delay=2.0):
         """
         检测并回到主界面
+        增加总超时保护：长时间检测不到主界面时强制继续，避免游戏异常时无限按esc死循环
         """
-        while not self.img.on_main_interface(timeout=2):  # 检测是否出现左上角灯泡，即主界面检测
-            pyautogui.press('esc')
+        start_time = time.time()
+        while not self.img.on_main_interface(
+            timeout=2
+        ):  # 检测是否出现左上角灯泡，即主界面检测
+            if time.time() - start_time > 120:
+                log.error("回到主界面超时（120秒），强制继续执行下一步")
+                break
+            pyautogui.press("esc")
             time.sleep(delay)
-            if self.img.on_interface(check_list=[self.img.battle_esc_check], timeout=0.0, threshold=0.97, offset=(0, 0, -1800, -970), allow_log=True):
-                pyautogui.press('esc')
+            if self.img.on_interface(
+                check_list=[self.img.battle_esc_check],
+                timeout=0.0,
+                threshold=0.97,
+                offset=(0, 0, -1800, -970),
+                allow_log=True,
+            ):
+                pyautogui.press("esc")
                 time.sleep(2)
                 self.fight_elapsed()
 
@@ -338,9 +384,10 @@ class Handle(metaclass=SingletonMeta):
         """
         if value == 1:
             win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0)
-            time.sleep(random.uniform(0.09, 0.15))
-            win32api.keybd_event(win32con.VK_ESCAPE, 0,
-                                 win32con.KEYEVENTF_KEYUP, 0)
+            try:
+                time.sleep(random.uniform(0.09, 0.15))
+            finally:
+                win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
             time.sleep(3)
         else:
             raise CustomException("map数据错误, esc参数只能为1")
@@ -358,7 +405,7 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(0.5)
 
             # 按下ESC打开菜单
-            pyautogui.press('esc')
+            pyautogui.press("esc")
             time.sleep(2)
 
             # 通过识图，选择设置
@@ -374,10 +421,14 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(0.5)
 
             # 向下滚动到秘技点不足时自动使用消耗品选项
-            self.mouse_event.mouse_drag(1920/2, 1080/2, 1920/2, 1080/4, press_time=1)
+            self.mouse_event.mouse_drag(
+                1920 / 2, 1080 / 2, 1920 / 2, 1080 / 4, press_time=1
+            )
 
             # 点击自动使用消耗品开关
-            if not self.mouse_event.click_target("picture\\auto_use_technique_consumable.png", 0.98):
+            if not self.mouse_event.click_target(
+                "picture\\auto_use_technique_consumable.png", 0.98
+            ):
                 log.warning("未找到自动使用消耗品选项")
                 return False
             time.sleep(1)
@@ -403,9 +454,12 @@ class Handle(metaclass=SingletonMeta):
         按下数字键，等待value秒后抬起
         """
         time.sleep(value)
-        KeyboardController().press(key)
-        time.sleep(0.3)
-        KeyboardController().release(key)
+        controller = KeyboardController()
+        try:
+            controller.press(key)
+            time.sleep(0.3)
+        finally:
+            controller.release(key)
 
     def handle_main(self, value):
         """
@@ -416,14 +470,12 @@ class Handle(metaclass=SingletonMeta):
         time.sleep(2)
 
     def handle_view_set(self, value):
-        """设置初始视角
-        """
+        """设置初始视角"""
         time.sleep(value)
         self.arrow_begin = self.take_arrow()
 
     def handle_view_reset(self, value):
-        """重置视角
-        """
+        """重置视角"""
         time.sleep(value)
         sub = 0
         cnt = 0
@@ -446,14 +498,12 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(0.6)
 
     def cal_ang(self, arrow_img, arrow_begin_img):
-        """计算与初始蓝色箭头相差的角度
-        """
+        """计算与初始蓝色箭头相差的角度"""
         mx_acc = 0
         ang = 0
         for i in range(360):
             rt = self.img.image_rotate(arrow_img, i)
-            result = cv2.matchTemplate(
-                arrow_begin_img, rt, cv2.TM_CCORR_NORMED)
+            result = cv2.matchTemplate(arrow_begin_img, rt, cv2.TM_CCORR_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
             if max_val > mx_acc:
                 mx_acc = max_val
@@ -461,6 +511,7 @@ class Handle(metaclass=SingletonMeta):
                 ang = i
 
         return ang
+
     # 不同电脑鼠标移动速度、放缩比、分辨率等不同，因此需要校准
     # 基本逻辑：每次正反转60度，然后计算实际转了几度，计算出误差比
 
@@ -487,8 +538,7 @@ class Handle(metaclass=SingletonMeta):
 
                 ang_list = []
                 for _ in range(repeat):
-                    self.mouse_event.mouse_move(
-                        move_num, fine=3 // repeat, align=True)
+                    self.mouse_event.mouse_move(move_num, fine=3 // repeat, align=True)
                     time.sleep(0.2)
                     self.handle_move(0.01, "w")
                     time.sleep(0.6)
@@ -496,13 +546,19 @@ class Handle(metaclass=SingletonMeta):
                     now_ang = self.cal_ang(arrow_temp, self.arrow_begin)
                     log.debug(f"now_ang: {now_ang}")
                     sub = now_ang - last_ang
-                    sub = sub + 360 if (move_num >= 0 and sub < 0) else sub - \
-                        360 if (move_num < 0 and sub > 0) else sub
+                    sub = (
+                        sub + 360
+                        if (move_num >= 0 and sub < 0)
+                        else sub - 360
+                        if (move_num < 0 and sub > 0)
+                        else sub
+                    )
                     ang_list.append(sub)
                     last_ang = now_ang
 
-                valid_angles = [a for a in ang_list if abs(
-                    a - np.median(ang_list)) <= 5]
+                valid_angles = [
+                    a for a in ang_list if abs(a - np.median(ang_list)) <= 5
+                ]
                 if valid_angles:
                     ax = sum([move_num for _ in valid_angles])
                     ay = sum(valid_angles)
@@ -516,9 +572,13 @@ class Handle(metaclass=SingletonMeta):
         if offset_list:
             self.multi_config = np.median(offset_list)
             self.cfg.modify_json_file(
-                filename=self.cfg.CONFIG_FILE_NAME, key="angle", value=str(self.multi_config))
+                filename=self.cfg.CONFIG_FILE_NAME,
+                key="angle",
+                value=str(self.multi_config),
+            )
             self.cfg.modify_json_file(
-                filename=self.cfg.CONFIG_FILE_NAME, key="angle_set", value=True)
+                filename=self.cfg.CONFIG_FILE_NAME, key="angle_set", value=True
+            )
             log.info(f"校准完成，angle: {self.multi_config}")
         else:
             log.info("校准失败")
@@ -571,8 +631,7 @@ class Handle(metaclass=SingletonMeta):
         截取小地图蓝色箭头
         """
         # 小地图中心 460-320=140,345-194=151
-        screenshot = self.img.take_screenshot(
-            offset=(125, 136, -1765, -914))[0]
+        screenshot = self.img.take_screenshot(offset=(125, 136, -1765, -914))[0]
 
         return screenshot
 
@@ -589,6 +648,7 @@ class Handle(metaclass=SingletonMeta):
     def handle_move(self, value, key, normal_run=False, last_key: str = ""):
         """
         移动，并处理疾跑
+        使用 try/finally 保证方向键与 Shift 一定会被释放，避免异常时键盘卡住
         """
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
@@ -597,89 +657,111 @@ class Handle(metaclass=SingletonMeta):
             if not self.img.on_main_interface(timeout=0.2):
                 fight_status = self.fight_elapsed()
                 if not fight_status:
-                    log.info('未进入战斗')
+                    log.info("未进入战斗")
                 else:
-                    log.info('进入战斗')
+                    log.info("进入战斗")
                     self.fight_in_map = True
 
         self.run_fix_time = 0
         KeyboardController().press(key)
-        
-        log.info(f"上一次疾跑状态: {self.last_step_run}")
-        # 疾跑相关逻辑回退2025.2.28版本
-        # # 固定ctrl两次取消疾跑
-        # if self.last_step_run:
-        #     self.start_cancel_sprint_task()
-        #     self.stop_cancel_sprint_task()
 
-        start_time = time.perf_counter()
-        allow_run = self.cfg.config_file.get("auto_run_in_map", False)
-        add_time = True
-        run_in_road = False
-        walk_in_road = False
-        is_normal_run = False  # 普通跑步状态
-        temp_time = 0
-        self.run_fixed = False  # 强制断开初始化为否
+        try:
+            log.info(f"上一次疾跑状态: {self.last_step_run}")
+            # 疾跑相关逻辑回退2025.2.28版本
+            # # 固定ctrl两次取消疾跑
+            # if self.last_step_run:
+            #     self.start_cancel_sprint_task()
+            #     self.stop_cancel_sprint_task()
 
-        value_before = value
-        while time.perf_counter() - start_time < value:
-            # if not is_normal_run and self.last_step_run:
-            #     # self.start_check_sprint_task(need_run=False, delay=0.03)
-            #     self.disable_run()
-            #     is_normal_run = True
-            # else:
-            #     is_normal_run = True
-            if value_before > 2 and not run_in_road and allow_run and not normal_run:
-                self.move_run_fix(start_time)
-                if time.perf_counter() - start_time > 1:
-                    self.enable_run()
-                    self.start_check_sprint_task(need_run=True)
-                    run_in_road = True
-                    temp_value = value_before
-                    value = round((value_before - 1) / 1.53, 4) + 1
-                    self.tatol_save_time += (temp_value - value)
-                    self.last_step_run = True
-            elif value_before <= 1 and allow_run and add_time and self.last_step_run:
-                value = value_before + 0.07
-                self.move_run_fix(start_time)
-                add_time = False
-                self.last_step_run = False
-            elif value_before <= 2 and not walk_in_road:
-                self.move_run_fix(start_time)
-                walk_in_road = True
-                self.last_step_run = False
-        temp_time = time.perf_counter() - start_time
-        self.stop_check_sprint_task()
-        KeyboardController().release(KeyboardKey.shift)
-        KeyboardController().release(key)
+            start_time = time.perf_counter()
+            allow_run = self.cfg.config_file.get("auto_run_in_map", False)
+            add_time = True
+            run_in_road = False
+            walk_in_road = False
+            is_normal_run = False  # 普通跑步状态
+            temp_time = 0
+            self.run_fixed = False  # 强制断开初始化为否
+
+            value_before = value
+            while time.perf_counter() - start_time < value:
+                # if not is_normal_run and self.last_step_run:
+                #     # self.start_check_sprint_task(need_run=False, delay=0.03)
+                #     self.disable_run()
+                #     is_normal_run = True
+                # else:
+                #     is_normal_run = True
+                if (
+                    value_before > 2
+                    and not run_in_road
+                    and allow_run
+                    and not normal_run
+                ):
+                    self.move_run_fix(start_time)
+                    if time.perf_counter() - start_time > 1:
+                        self.enable_run()
+                        self.start_check_sprint_task(need_run=True)
+                        run_in_road = True
+                        temp_value = value_before
+                        value = round((value_before - 1) / 1.53, 4) + 1
+                        self.tatol_save_time += temp_value - value
+                        self.last_step_run = True
+                elif (
+                    value_before <= 1 and allow_run and add_time and self.last_step_run
+                ):
+                    value = value_before + 0.07
+                    self.move_run_fix(start_time)
+                    add_time = False
+                    self.last_step_run = False
+                elif value_before <= 2 and not walk_in_road:
+                    self.move_run_fix(start_time)
+                    walk_in_road = True
+                    self.last_step_run = False
+            temp_time = time.perf_counter() - start_time
+
+            # 系统卡顿识别
+            time_error_check = True
+            if time_error_check and value >= 0.2:
+                extra_time = temp_time - value
+                if extra_time > 0.05:
+                    log.info(
+                        f"警告，此处出现系统卡顿，实际多移动{extra_time:.4f}秒，可能造成路线错误"
+                    )
+                    self.time_error_cnt += 1
+
+            # 暂不启用
+            extra_fix = False
+            if extra_fix:
+                extra_time = temp_time - value
+                extra_time = (
+                    extra_time if not run_in_road else round(extra_time * 1.53, 4)
+                )
+                if extra_time > 0.05:
+                    log.info("强制断开疾跑")
+                    fix_start_time = time.perf_counter()
+                    key_dict = {"w": "s", "s": "w", "a": "d", "d": "a"}
+                    if key in key_dict:
+                        KeyboardController().press(key_dict.get(key))
+                        while time.perf_counter() - fix_start_time < extra_time:
+                            pass
+                        KeyboardController().release(key_dict.get(key))
+                        KeyboardController().press(key)
+                        KeyboardController().release(key)
+        finally:
+            # 无论移动过程是否异常，都必须释放疾跑键与方向键
+            try:
+                self.stop_check_sprint_task()
+            except Exception:
+                pass
+            try:
+                KeyboardController().release(KeyboardKey.shift)
+            except Exception:
+                pass
+            try:
+                KeyboardController().release(key)
+            except Exception:
+                pass
         if allow_run:
             time.sleep(0.03)
-
-        # 系统卡顿识别
-        time_error_check = True
-        if time_error_check and value >= 0.2:
-            extra_time = temp_time - value
-            if extra_time > 0.05:
-                log.info(f"警告，此处出现系统卡顿，实际多移动{extra_time:.4f}秒，可能造成路线错误")
-                self.time_error_cnt += 1
-
-        # 暂不启用
-        extra_fix = False
-        if extra_fix:
-            extra_time = temp_time - value
-            extra_time = extra_time if not run_in_road else round(
-                extra_time*1.53, 4)
-            if extra_time > 0.05:
-                log.info("强制断开疾跑")
-                fix_start_time = time.perf_counter()
-                key_dict = {'w': 's', 's': 'w', 'a': 'd', 'd': 'a'}
-                if key in key_dict:
-                    KeyboardController().press(key_dict.get(key))
-                    while time.perf_counter() - fix_start_time < extra_time:
-                        pass
-                    KeyboardController().release(key_dict.get(key))
-                    KeyboardController().press(key)
-                    KeyboardController().release(key)
 
     # 机器配置不高时，sleep时间过短，会导致误判
     # async def async_cancel_sprint(self):
@@ -722,9 +804,8 @@ class Handle(metaclass=SingletonMeta):
         """
         判断是否在疾跑状态
         """
-        result = self.img.scan_screenshot(
-            self.img.switch_run, (1720, 930, 0, 0))
-        return result['max_val'] > 0.996
+        result = self.img.scan_screenshot(self.img.switch_run, (1720, 930, 0, 0))
+        return result["max_val"] > 0.996
 
     async def async_check_sprint_status(self, need_run=True, delay=0.12):
         """异步检测疾跑状态
@@ -745,11 +826,15 @@ class Handle(metaclass=SingletonMeta):
                 log.info(f"当前已{action}疾跑")
                 break
 
-            await loop.run_in_executor(None, KeyboardController().press, KeyboardKey.shift)
+            await loop.run_in_executor(
+                None, KeyboardController().press, KeyboardKey.shift
+            )
             if not need_run:
                 await asyncio.sleep(0.03)
-                await loop.run_in_executor(None, KeyboardController().release, KeyboardKey.shift)
-            log.info(f"{action}疾跑" + (f"，第{count+1}次尝试" if count else ""))
+                await loop.run_in_executor(
+                    None, KeyboardController().release, KeyboardKey.shift
+                )
+            log.info(f"{action}疾跑" + (f"，第{count + 1}次尝试" if count else ""))
 
         self.running = False
 
@@ -760,7 +845,10 @@ class Handle(metaclass=SingletonMeta):
             return
         self.running = True
         self.thread_check_sprint = threading.Thread(
-            target=partial(self._run_async_check_sprint, need_run=need_run, delay=delay), daemon=True
+            target=partial(
+                self._run_async_check_sprint, need_run=need_run, delay=delay
+            ),
+            daemon=True,
         )
         self.thread_check_sprint.start()
 
@@ -775,7 +863,7 @@ class Handle(metaclass=SingletonMeta):
     def _run_async_check_sprint(self, need_run=True, delay=0.12):
         """运行异步任务，处理检测疾跑的逻辑"""
         asyncio.run(self.async_check_sprint_status(need_run=need_run, delay=delay))
-    
+
     # 2025.6.5 疾跑依然有严重问题
     # def disable_run(self):
     #     """强制关闭疾跑"""
@@ -798,7 +886,7 @@ class Handle(metaclass=SingletonMeta):
             log.info("开启疾跑")
 
     def move_run_fix(self, start_time, time_limit=0.3):
-        '''
+        """
         用于修复2.6更新后连续移动时，疾跑意外打开的情况。
 
         该方法用于检测当前疾跑状态，并在检测到疾跑意外激活时，模拟按下和释放 Shift 键来强制关闭疾跑。
@@ -807,7 +895,7 @@ class Handle(metaclass=SingletonMeta):
         参数:
         - start_time: 循环开始时间。
         - time_limit: 限制检测逻辑的时间窗口，默认为 0.3 秒。
-        '''
+        """
         # 测试
         # return
         # 回退至2025.2.28版本
@@ -821,10 +909,11 @@ class Handle(metaclass=SingletonMeta):
                 if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
                     # for _ in range(4):  # 强制断开检查最多4次，避免误判
                     result_run = self.img.scan_screenshot(
-                        self.img.switch_run, (1720, 930, 0, 0))
+                        self.img.switch_run, (1720, 930, 0, 0)
+                    )
                     # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
                     # 如果匹配度超过 0.996，强制断开疾跑
-                    if result_run['max_val'] > 0.996:
+                    if result_run["max_val"] > 0.996:
                         log.info(f"疾跑匹配度: {result_run['max_val']}")
                         log.info("强制断开疾跑")
                         KeyboardController().press(KeyboardKey.shift)
@@ -843,11 +932,11 @@ class Handle(metaclass=SingletonMeta):
         """
 
         img_list = []
-        img_list.append(cv2.imread("./picture/round.png"))
+        img_list.append(Img.get_img("./picture/round.png"))
         for img in img_list:
             result = self.img.scan_screenshot(img)
             log.info(f"未战斗识别，匹配度{result['max_val']:.3f}，需要0.95")
-            if result['max_val'] > 0.95:
+            if result["max_val"] > 0.95:
                 log.info("不在战斗中")
                 return True
         return False
@@ -861,10 +950,11 @@ class Handle(metaclass=SingletonMeta):
             return False
         while time.time() - start_time < timeout:
             main_result = self.img.scan_screenshot(
-                self.img.main_ui, offset=(0, 0, -1630, -800))
+                self.img.main_ui, offset=(0, 0, -1630, -800)
+            )
             doubt_result = self.img.scan_temp_screenshot(self.img.doubt_ui)
             # warn_result = self.img.scan_temp_screenshot(self.img.warn_ui)
-            if main_result['max_val'] < 0.9:
+            if main_result["max_val"] < 0.9:
                 return True
             elif doubt_result["max_val"] > 0.92:
                 action_executed = self.click_action(is_warning=False)
@@ -892,7 +982,7 @@ class Handle(metaclass=SingletonMeta):
         start_time = time.time()
         while time.time() - start_time < timeout:
             main_result = self.img.scan_screenshot(self.img.main_ui)
-            if main_result['max_val'] < 0.9:
+            if main_result["max_val"] < 0.9:
                 return True
             time.sleep(0.5)
 
@@ -910,17 +1000,17 @@ class Handle(metaclass=SingletonMeta):
             是否识别到敌人
         """
         detect_fight_status_time = self.cfg.config_file.get(
-            "detect_fight_status_time", 15)
-        fight_status = self.detect_fight_status(
-            timeout=detect_fight_status_time)
+            "detect_fight_status_time", 15
+        )
+        fight_status = self.detect_fight_status(timeout=detect_fight_status_time)
         if not fight_status:
             # 结束识别，此处可能无敌人
             return False
 
         start_time = time.time()
         log.info("战斗开始")
-        not_auto = cv2.imread("./picture/auto.png")
-        not_auto_c = cv2.imread("./picture/not_auto.png")
+        not_auto = Img.get_img("./picture/auto.png")
+        not_auto_c = Img.get_img("./picture/not_auto.png")
         auto_switch = False
         auto_switch_clicked = False
         auto_check_cnt = 0
@@ -930,8 +1020,7 @@ class Handle(metaclass=SingletonMeta):
             result = self.img.scan_screenshot(self.img.main_ui)
             elapsed_time = time.time() - start_time
             if result["max_val"] > 0.92:
-                points = self.img.img_center_point(
-                    result, self.img.main_ui.shape)
+                points = self.img.img_center_point(result, self.img.main_ui.shape)
                 log.info(f"识别点位{points}")
                 self.total_fight_time += elapsed_time
                 self.fight_error_cnt(elapsed_time)
@@ -940,9 +1029,12 @@ class Handle(metaclass=SingletonMeta):
                 formatted_time = f"{elapsed_minutes}分钟{elapsed_seconds:.2f}秒"
                 self.total_fight_cnt += 1
                 colored_message = (
-                    f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m")
+                    f"战斗完成,单场用时\033[1;92m『{formatted_time}』\033[0m"
+                )
                 log.info(colored_message)
-                match_details = f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+                match_details = (
+                    f"匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+                )
                 log.info(match_details)
 
                 # self.rotate()
@@ -954,7 +1046,7 @@ class Handle(metaclass=SingletonMeta):
             if not auto_switch and elapsed_time > 5:
                 not_auto_result = self.img.scan_screenshot(not_auto)
                 if not_auto_result["max_val"] > 0.95:
-                    pyautogui.press('v')
+                    pyautogui.press("v")
                     log.info("开启自动战斗")
                     time.sleep(1)
                     auto_switch_clicked = True
@@ -963,18 +1055,29 @@ class Handle(metaclass=SingletonMeta):
 
             if elapsed_time > 10 and auto_check_cnt < 2:
                 if screenshot_auto_check is None:
-                    screenshot_auto_check, * \
-                        _ = self.img.take_screenshot(
-                            offset=(40, 20, -1725, -800))
+                    screenshot_auto_check, *_ = self.img.take_screenshot(
+                        offset=(40, 20, -1725, -800)
+                    )
                 if elapsed_time > 15:
                     if auto_check_cnt == 0:
-                        first_auto_check = self.img.on_interface(check_list=[
-                            screenshot_auto_check], timeout=1, threshold=0.97, offset=(40, 20, -1725, -800), allow_log=False)
+                        first_auto_check = self.img.on_interface(
+                            check_list=[screenshot_auto_check],
+                            timeout=1,
+                            threshold=0.97,
+                            offset=(40, 20, -1725, -800),
+                            allow_log=False,
+                        )
                         auto_check_cnt += 1
                     if elapsed_time > 20 and first_auto_check and auto_check_cnt == 1:
                         auto_check_cnt += 1
-                        if self.img.on_interface(check_list=[screenshot_auto_check], timeout=1, threshold=0.97, offset=(40, 20, -1725, -800), allow_log=False):
-                            pyautogui.press('v')
+                        if self.img.on_interface(
+                            check_list=[screenshot_auto_check],
+                            timeout=1,
+                            threshold=0.97,
+                            offset=(40, 20, -1725, -800),
+                            allow_log=False,
+                        ):
+                            pyautogui.press("v")
                             log.info("开启自动战斗（通过行动条识别）")
                             time.sleep(1)
                             auto_switch_clicked = True
@@ -983,17 +1086,18 @@ class Handle(metaclass=SingletonMeta):
                 not_auto_result_c = self.img.scan_screenshot(not_auto_c)
                 while not_auto_result_c["max_val"] > 0.95:
                     log.info(
-                        f"开启自动战斗，识别'C'，匹配值：{not_auto_result_c['max_val']}")
-                    pyautogui.press('v')
+                        f"开启自动战斗，识别'C'，匹配值：{not_auto_result_c['max_val']}"
+                    )
+                    pyautogui.press("v")
                     time.sleep(2)
                     not_auto_result_c = self.img.scan_screenshot(not_auto_c)
 
             if elapsed_time > 90:
                 # self.mouse_event.click_target("./picture/auto.png", 0.98, False)
                 self.mouse_event.click_target(
-                    "./picture/continue_fighting.png", 0.98, False)
-                self.mouse_event.click_target(
-                    "./picture/defeat.png", 0.98, False)
+                    "./picture/continue_fighting.png", 0.98, False
+                )
+                self.mouse_event.click_target("./picture/defeat.png", 0.98, False)
                 # self.mouse_event.click_target("./picture/map_4-2_point_3.png", 0.98, False)
                 # self.mouse_event.click_target("./picture/orientation_close.png", 0.98, False)
                 if elapsed_time > 600:
@@ -1007,7 +1111,7 @@ class Handle(metaclass=SingletonMeta):
 
         if not fight_status:
             self.total_no_fight_cnt += 1
-            log.info('未进入战斗')
+            log.info("未进入战斗")
             time.sleep(0.5)
 
     def rotate(self):
@@ -1015,7 +1119,7 @@ class Handle(metaclass=SingletonMeta):
         旋转视角，废弃
         """
         if self.need_rotate:
-            KeyboardEvent.keyboard_press('w')
+            KeyboardEvent.keyboard_press("w")
             time.sleep(0.7)
             self.asu.screen = self.img.take_screenshot()[0]
             ang = self.ang - self.asu.get_now_direc()
@@ -1032,7 +1136,7 @@ class Handle(metaclass=SingletonMeta):
         """
         按下b键
         """
-        pyautogui.press('b')
+        pyautogui.press("b")
         time.sleep(1)
 
     def handle_click_floor(self, floor_idx: int):

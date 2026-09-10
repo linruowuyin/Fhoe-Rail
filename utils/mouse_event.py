@@ -26,7 +26,7 @@ class MouseEvent(metaclass=SingletonMeta):
             log.debug(f"scale:{self.scale}")
         except Exception:
             self.scale = 1.0
-            log.info(f'DPI获取失败，使用默认比例scale:{self.scale}')
+            log.info(f"DPI获取失败，使用默认比例scale:{self.scale}")
 
     def click(self, points, slot=0.0, clicks=1, delay=0.05):
         """
@@ -67,17 +67,17 @@ class MouseEvent(metaclass=SingletonMeta):
         """
         说明：
             在窗口内执行鼠标拖拽操作
-            
+
         参数：
             :param x: 起始点x坐标(相对于窗口)
             :param y: 起始点y坐标(相对于窗口)
             :param end_x: 终点x坐标(相对于窗口)
             :param end_y: 终点y坐标(相对于窗口)
             :param press_time: 鼠标拖动到终点后的停留时间(秒)，默认为0
-            
+
         返回：
             None
-            
+
         示例：
             mouse_drag(100, 100, 300, 300)  # 从(100,100)拖拽到(300,300)
             mouse_drag(100, 100, 300, 300, 0.5)  # 拖拽到终点后停留0.5秒
@@ -100,8 +100,11 @@ class MouseEvent(metaclass=SingletonMeta):
             :param y:相对坐标y
         """
         win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
-        self.mouse_press(x, y, delay)
-        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+        try:
+            self.mouse_press(x, y, delay)
+        finally:
+            # 无论点击过程是否异常，都必须释放 ALT，避免键盘卡住
+            win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
 
     def relative_click(self, points):
         """
@@ -114,8 +117,10 @@ class MouseEvent(metaclass=SingletonMeta):
             left, top, right, bottom = self.window.get_rect()
             # real_width = self.cfg.config_file["real_width"]  # 暂时没用
             # real_height = self.cfg.config_file["real_height"]  # 暂时没用
-            x, y = int(left + (right - left) / 100 *
-                       points[0]), int(top + (bottom - top) / 100 * points[1])
+            x, y = (
+                int(left + (right - left) / 100 * points[0]),
+                int(top + (bottom - top) / 100 * points[1]),
+            )
             log.info((x, y))
             self.mouse_press_alt(x, y)
 
@@ -128,7 +133,9 @@ class MouseEvent(metaclass=SingletonMeta):
             x, y = int((left + right) / 2), int((top + bottom) / 2)
             self.mouse_press(x, y)
 
-    def click_target_above_threshold(self, target, threshold, offset, clicks=1, delay=0.05):
+    def click_target_above_threshold(
+        self, target, threshold, offset, clicks=1, delay=0.05
+    ):
         """
         尝试点击匹配度大于阈值的目标图像。
         参数:
@@ -142,11 +149,21 @@ class MouseEvent(metaclass=SingletonMeta):
         result = self.img.scan_screenshot(target, offset)
         if result["max_val"] > threshold:
             points = self.img.img_center_point(result, target.shape)
-            self.click(points, result['max_val'], clicks, delay)
-            return True, result['max_val']
-        return False, result['max_val']
+            self.click(points, result["max_val"], clicks, delay)
+            return True, result["max_val"]
+        return False, result["max_val"]
 
-    def click_target(self, target_path, threshold, flag=True, timeout=30.0, offset=(0, 0, 0, 0), retry_in_map: bool = True, clicks=1, delay=0.05):
+    def click_target(
+        self,
+        target_path,
+        threshold,
+        flag=True,
+        timeout=30.0,
+        offset=(0, 0, 0, 0),
+        retry_in_map: bool = True,
+        clicks=1,
+        delay=0.05,
+    ):
         """
         说明：
             点击指定图片
@@ -162,39 +179,44 @@ class MouseEvent(metaclass=SingletonMeta):
             :return 是否点击成功
         """
         # 定义目标图像与颜色反转后的图像
-        original_target = cv2.imread(target_path)
+        original_target = Img.get_img(target_path)
+        if original_target is None:
+            log.error(f"图片不存在: {target_path}")
+            return False
         inverted_target = cv2.bitwise_not(original_target)
         start_time = time.time()
-        assigned = False
 
         while time.time() - start_time < timeout:
             click_it, img_search_val = self.click_target_above_threshold(
-                original_target, threshold, offset, clicks, delay)
+                original_target, threshold, offset, clicks, delay
+            )
             if click_it:
                 return True
-            if time.time() - start_time > 1:  # 如果超过1秒，同时匹配原图像和颜色反转后的图像
+            if (
+                time.time() - start_time > 1
+            ):  # 如果超过1秒，同时匹配原图像和颜色反转后的图像
                 click_it, _ = self.click_target_above_threshold(
-                    inverted_target, threshold, offset, clicks, delay)
+                    inverted_target, threshold, offset, clicks, delay
+                )
                 if click_it:
                     log.info("阴阳变转")
                     return True
 
-            if not assigned:
+            # 持续记录最低匹配值（低于0.99时），供报告输出“最相似图片”参考
+            if img_search_val < 0.99:
                 if target_path in self.img_search_val_dict:
-                    if self.img_search_val_dict[target_path] > img_search_val and img_search_val < 0.99:
+                    if img_search_val < self.img_search_val_dict[target_path]:
                         self.img_search_val_dict[target_path] = img_search_val
-                        assigned = True
                 else:
-                    if img_search_val < 0.99:
-                        self.img_search_val_dict[target_path] = img_search_val
-                        assigned = True
+                    self.img_search_val_dict[target_path] = img_search_val
 
             if not flag:  # 是否一定要找到
                 return False
             time.sleep(0.5)  # 添加短暂延迟避免性能消耗
 
         log.info(
-            f"查找图片超时 {target_path} ，最相似图片匹配值 {img_search_val}，所需匹配值 {threshold}")
+            f"查找图片超时 {target_path} ，最相似图片匹配值 {img_search_val}，所需匹配值 {threshold}"
+        )
         self.img.search_img_allow_retry = retry_in_map
         return False
 
@@ -217,8 +239,7 @@ class MouseEvent(metaclass=SingletonMeta):
         log.debug(f"ALT初始状态: {initial_state}")
 
         try:
-            win32api.keybd_event(win32con.VK_MENU, 0,
-                                 win32con.KEYEVENTF_EXTENDEDKEY, 0)
+            win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_EXTENDEDKEY, 0)
             time.sleep(0.15)
 
             self.click_target(target_path, threshold, flag, clicks=clicks)
@@ -231,7 +252,11 @@ class MouseEvent(metaclass=SingletonMeta):
             log.debug(f"释放前状态: {current_state}, 正在执行强制释放")
             if win32api.GetKeyState(win32con.VK_MENU) != initial_state:
                 win32api.keybd_event(
-                    win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP | win32con.KEYEVENTF_EXTENDEDKEY, 0)
+                    win32con.VK_MENU,
+                    0,
+                    win32con.KEYEVENTF_KEYUP | win32con.KEYEVENTF_EXTENDEDKEY,
+                    0,
+                )
             time.sleep(0.1)
 
     def mouse_move(self, x, fine=1, align=False):

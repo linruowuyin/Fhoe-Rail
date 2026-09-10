@@ -1,6 +1,8 @@
 import cv2 as cv
 import numpy as np
 
+from utils.img import Img
+
 
 class ASU:
     def __init__(self):
@@ -29,7 +31,7 @@ class ASU:
     def get_now_direc(self):
         loc_scr = self.screen[101:241, 94:224]
         arrow = "./picture/loc_arrow.jpg"
-        arrow = cv.imread(arrow)
+        arrow = Img.get_img(arrow)
         hsv = cv.cvtColor(loc_scr, cv.COLOR_BGR2HSV)  # 转HSV
         lower = np.array([93, 120, 60])
         upper = np.array([97, 255, 255])

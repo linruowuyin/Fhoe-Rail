@@ -1,3 +1,4 @@
+import os
 import time
 
 import cv2
@@ -12,6 +13,9 @@ from utils.window import Window
 
 
 class Img:
+    # 图片加载缓存：{(路径): (文件mtime, ndarray)}，文件更新后自动失效
+    _IMG_CACHE = {}
+
     def __init__(self, image_paths: dict = None):
         self.window = Window()
         self.temp_screenshot = (0, 0, 0, 0, 0)  # 初始化临时截图
@@ -38,16 +42,49 @@ class Img:
         self.load_images()
 
     @staticmethod
+    def resolve_path(img_path):
+        """
+        解析图片路径，按优先级查找同名文件：.webp > .png > .jpg。
+        若原路径后缀为图片格式（webp/png/jpg），则依次尝试同名文件的其他后缀，
+        返回第一个实际存在的文件路径；所有候选都不存在时返回原路径，
+        由调用方处理文件不存在的情况。
+        """
+        base, ext = os.path.splitext(img_path)
+        ext_lower = ext.lower()
+        if ext_lower in (".webp", ".png", ".jpg"):
+            for cand_ext in (".webp", ".png", ".jpg"):
+                cand = base + cand_ext
+                if os.path.isfile(cand):
+                    return cand
+        return img_path
+
+    @staticmethod
     def get_img(img_path):
         """
-        获取图片
+        获取图片（带 mtime 缓存，避免多实例重复 imread）
+        优先读取 .webp，不存在则自动查找同名 .png / .jpg / .jpeg。
         :param img_path: 图片路径
         :return: 图片数据（numpy 数组），如果加载失败返回 None
         """
+        img_path = Img.resolve_path(img_path)
+
+        try:
+            mtime = os.path.getmtime(img_path)
+        except OSError:
+            log.error(f"加载图片时发生错误: 路径不存在或文件损坏: {img_path}")
+            return None
+
+        cached = Img._IMG_CACHE.get(img_path)
+        if cached is not None and cached[0] == mtime:
+            return cached[1]
+
         try:
             img = cv2.imread(img_path)
             if img is None:
-                raise FileNotFoundError(f"图片加载失败，路径不存在或文件损坏: {img_path}")
+                raise FileNotFoundError(
+                    f"图片加载失败，路径不存在或文件损坏: {img_path}"
+                )
+            Img._IMG_CACHE[img_path] = (mtime, img)
             return img
         except Exception as e:
             log.error(f"加载图片时发生错误: {e}")
@@ -115,12 +152,12 @@ class Img:
         """
         for image in prepared:
             result_dict = self.scan_screenshot(image, offset)
-            max_val = result_dict['max_val']
+            max_val = result_dict["max_val"]
             if max_val > threshold:
-                log.info(f'找到图片，匹配值：{max_val:.3f}')
+                log.info(f"找到图片，匹配值：{max_val:.3f}")
                 return True
             else:
-                log.debug(f'图片匹配值未达到阈值，当前值：{max_val:.3f}')
+                log.debug(f"图片匹配值未达到阈值，当前值：{max_val:.3f}")
         return False
 
     @staticmethod
@@ -150,11 +187,11 @@ class Img:
             bmp_info = save_bitmap.GetInfo()
             bmp_str = save_bitmap.GetBitmapBits(True)
             picture = Image.frombuffer(
-                'RGB',
-                (bmp_info['bmWidth'], bmp_info['bmHeight']),
+                "RGB",
+                (bmp_info["bmWidth"], bmp_info["bmHeight"]),
                 bmp_str,
-                'raw',
-                'BGRX',
+                "raw",
+                "BGRX",
                 0,
                 1,
             )
@@ -188,7 +225,12 @@ class Img:
         """
         if self.window.check_window_visibility():
             base_left, base_top, base_right, base_bottom = self.cal_screenshot()
-            screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = base_left, base_top, base_right, base_bottom
+            screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = (
+                base_left,
+                base_top,
+                base_right,
+                base_bottom,
+            )
 
             # 计算偏移截图范围
             new_left = screenshot_left + offset[0]
@@ -197,10 +239,16 @@ class Img:
             new_bottom = screenshot_bottom + offset[3]
             # 偏移有效则使用偏移值
             if all([new_left < new_right, new_top < new_bottom]):
-                screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = new_left, new_top, new_right, new_bottom
+                screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = (
+                    new_left,
+                    new_top,
+                    new_right,
+                    new_bottom,
+                )
             else:
                 log.info(
-                    f'截图区域无效，偏移值错误({offset[0]},{offset[1]},{offset[2]},{offset[3]})，将使用窗口截图')
+                    f"截图区域无效，偏移值错误({offset[0]},{offset[1]},{offset[2]},{offset[3]})，将使用窗口截图"
+                )
 
             retries = 0
             while retries <= max_retries:
@@ -213,24 +261,49 @@ class Img:
                         picture = self.capture_window_background(
                             self.window.hwnd,
                             (base_left, base_top, base_width, base_height),
-                            (screenshot_left, screenshot_top, screenshot_right, screenshot_bottom),
+                            (
+                                screenshot_left,
+                                screenshot_top,
+                                screenshot_right,
+                                screenshot_bottom,
+                            ),
                         )
                         if picture is None:
                             log.debug("后台截图失败，回退到前台截图")
 
                     if picture is None:
                         picture = ImageGrab.grab(
-                            (screenshot_left, screenshot_top, screenshot_right, screenshot_bottom), all_screens=True)
+                            (
+                                screenshot_left,
+                                screenshot_top,
+                                screenshot_right,
+                                screenshot_bottom,
+                            ),
+                            all_screens=True,
+                        )
 
                     # 保存截图到本地，测试用
                     # picture.save("test.png")
                     screenshot = np.array(picture)
                     screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
                     self.temp_screenshot = (
-                        screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom)
-                    return screenshot, screenshot_left, screenshot_top, screenshot_right, screenshot_bottom
+                        screenshot,
+                        screenshot_left,
+                        screenshot_top,
+                        screenshot_right,
+                        screenshot_bottom,
+                    )
+                    return (
+                        screenshot,
+                        screenshot_left,
+                        screenshot_top,
+                        screenshot_right,
+                        screenshot_bottom,
+                    )
                 except Exception as e:
-                    log.info(f"截图失败，原因: {str(e)}，等待 {retry_interval} 秒后重试")
+                    log.info(
+                        f"截图失败，原因: {str(e)}，等待 {retry_interval} 秒后重试"
+                    )
                     retries += 1
                     time.sleep(retry_interval)
             raise RuntimeError(f"截图尝试失败，已达到最大重试次数 {max_retries} 次）")
@@ -243,8 +316,7 @@ class Img:
             :param prepared: 比对图片地址
             :param offset: 左、上、右、下，正值为向右或向下偏移
         """
-        screenshot, left, top, right, bottom = self.take_screenshot(
-            offset=offset)
+        screenshot, left, top, right, bottom = self.take_screenshot(offset=offset)
 
         return Img.match_screenshot(screenshot, prepared, left, top)
 
@@ -255,7 +327,15 @@ class Img:
         参数：
             :param prepared: 比对图片地址
         """
-        if not self.temp_screenshot:
+        # 修复：temp_screenshot 初始化值为 (0,0,0,0,0)，truthy，原判断永远不成立；
+        # 改为判断是否真正保存过截图数据。
+        # 注意：不能写 temp_screenshot[0] == 0 —— 真实截图是 numpy 数组，
+        # 与 0 比较返回布尔数组，在 if 中求值会抛 ValueError（issue #433）
+        if (
+            not isinstance(self.temp_screenshot, tuple)
+            or len(self.temp_screenshot) != 5
+            or not isinstance(self.temp_screenshot[0], np.ndarray)
+        ):
             self.take_screenshot()
 
         try:
@@ -281,7 +361,7 @@ class Img:
         """
         颜色反转
         """
-        original_target = cv2.imread(target_path)
+        original_target = Img.get_img(target_path)
         inverted_target = cv2.bitwise_not(original_target)
         result = self.scan_screenshot(inverted_target, offset)
         return inverted_target, result
@@ -292,13 +372,16 @@ class Img:
         """
         retry = 0
         while retry < 5:
-            original_target = cv2.imread(target_path)
-            target,  result_inverted = self.img_trans_bitwise(
-                target_path, offset)
+            original_target = Img.get_img(target_path)
+            target, result_inverted = self.img_trans_bitwise(target_path, offset)
             result_original = self.scan_screenshot(original_target, offset)
             log.info(
-                f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}")
-            if round(result_original['max_val'], 3) == 0.0 or round(result_inverted['max_val'], 3) == 0.0:
+                f"颜色反转后的匹配值：{result_inverted['max_val']:.3f}，反转前匹配值：{result_original['max_val']:.3f}"
+            )
+            if (
+                round(result_original["max_val"], 3) == 0.0
+                or round(result_inverted["max_val"], 3) == 0.0
+            ):
                 retry += 1
                 time.sleep(0.5)
             else:
@@ -312,7 +395,14 @@ class Img:
         else:
             return False
 
-    def on_main_interface(self, check_list=None, timeout=60.0, threshold=0.9, offset=(0, 0, 0, 0), allow_log=True):
+    def on_main_interface(
+        self,
+        check_list=None,
+        timeout=60.0,
+        threshold=0.9,
+        offset=(0, 0, 0, 0),
+        allow_log=True,
+    ):
         """
         说明：
             检测主页面
@@ -326,11 +416,26 @@ class Img:
         if check_list is None:
             check_list = [self.main_ui]
             offset = (0, 0, -1630, -800)
-        interface_desc = '游戏主界面，非战斗/传送/黑屏状态'
+        interface_desc = "游戏主界面，非战斗/传送/黑屏状态"
 
-        return self.on_interface(check_list=check_list, timeout=timeout, interface_desc=interface_desc, threshold=threshold, offset=offset, allow_log=allow_log)
+        return self.on_interface(
+            check_list=check_list,
+            timeout=timeout,
+            interface_desc=interface_desc,
+            threshold=threshold,
+            offset=offset,
+            allow_log=allow_log,
+        )
 
-    def on_interface(self, check_list=None, timeout=60.0, interface_desc='', threshold=0.9, offset=(0, 0, 0, 0), allow_log=True):
+    def on_interface(
+        self,
+        check_list=None,
+        timeout=60.0,
+        interface_desc="",
+        threshold=0.9,
+        offset=(0, 0, 0, 0),
+        allow_log=True,
+    ):
         """
         说明：
             检测check_list中的图片是否在某个页面
@@ -353,18 +458,21 @@ class Img:
                 if result["max_val"] > threshold:
                     if allow_log:
                         log.info(
-                            f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒")
+                            f"检测到{interface_desc}，耗时 {(time.time() - start_time):.1f} 秒"
+                        )
                         log.info(
-                            f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}")
+                            f"检测图片序号为{index}，匹配度{result['max_val']:.3f}，匹配位置为{result['max_loc']}"
+                        )
                     return True
                 else:
-                    temp_max_val.append(result['max_val'])
+                    temp_max_val.append(result["max_val"])
                     time.sleep(0.2)
 
             if time.time() - start_time >= timeout:
                 if allow_log:
                     log.info(
-                        f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}")
+                        f"在 {timeout} 秒 的时间内未检测到{interface_desc}，相似图片最高匹配值{max(temp_max_val):.3f}"
+                    )
                 return False
 
     def image_rotate(self, src, rotate=0):

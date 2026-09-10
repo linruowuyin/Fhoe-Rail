@@ -7,6 +7,7 @@ import orjson
 from utils.singleton import SingletonMeta
 from utils.log import log
 
+
 class ConfigurationManager(metaclass=SingletonMeta):
     CONFIG_FILE_NAME = "config.json"
 
@@ -16,7 +17,9 @@ class ConfigurationManager(metaclass=SingletonMeta):
                 log.info("配置文件不存在，正在初始化")
                 ConfigurationManager.init_config_file(0, 0)
             else:
-                config_path = ConfigurationManager.normalize_file_path(self.CONFIG_FILE_NAME)
+                config_path = ConfigurationManager.normalize_file_path(
+                    self.CONFIG_FILE_NAME
+                )
                 log.info(f"配置文件已存在，路径：{config_path}")
         except Exception as e:
             log.error(f"初始化配置文件时出现错误: {e}")
@@ -39,7 +42,8 @@ class ConfigurationManager(metaclass=SingletonMeta):
         更新配置文件
         """
         self._config = ConfigurationManager.read_json_file(
-            ConfigurationManager.CONFIG_FILE_NAME)
+            ConfigurationManager.CONFIG_FILE_NAME
+        )
         self._last_updated = time.time()
 
     def _config_needs_update(self):
@@ -49,8 +53,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
         if self._last_updated is None:
             return True
 
-        file_modified_time = os.path.getmtime(
-            ConfigurationManager.CONFIG_FILE_NAME)
+        file_modified_time = os.path.getmtime(ConfigurationManager.CONFIG_FILE_NAME)
         return file_modified_time > self._last_updated
 
     @classmethod
@@ -72,10 +75,10 @@ class ConfigurationManager(metaclass=SingletonMeta):
         except FileNotFoundError:
             return {}
         except json.JSONDecodeError as e:
-            print(f"配置文件格式有误，请检查 JSON 格式是否正确: {e}")
+            log.error(f"配置文件格式有误，请检查 JSON 格式是否正确: {e}")
             return {}
         except Exception as e:
-            print(f"读取配置文件时出现未知错误: {e}")
+            log.error(f"读取配置文件时出现未知错误: {e}")
             return {}
 
     @staticmethod
@@ -102,7 +105,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
         if file_path:
             with open(file_path, "rb") as f:
                 content = f.read()
-                if content.startswith(b'\xef\xbb\xbf'):
+                if content.startswith(b"\xef\xbb\xbf"):
                     content = content[3:]
                 data = orjson.loads(content)
                 if path:
@@ -124,8 +127,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
             :param value: value
         """
         # 先读，再写
-        data, file_path = ConfigurationManager.read_json_file(
-            filename, path=True)
+        data, file_path = ConfigurationManager.read_json_file(filename, path=True)
         data[key] = value
         with open(file_path, "wb") as f:
             f.write(orjson.dumps(data))
@@ -166,15 +168,22 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "allowlist_mode_once": False,
             "allowlist_map": [],
             "angle": "1.0",
-            "angle_set": False
+            "angle_set": False,
+            "notify_enabled": False,
+            "notify_channel": "windows",
+            "notify_key": "",
+            "notify_chat_id": "",
+            "notify_params": "",
+            "notify_on_start": False,
+            "notify_on_end": True,
+            "notify_on_error": True,
         }
 
         return config_keys
 
     @staticmethod
     def config_all_keys(real_width=0, real_height=0):
-        all_key = ConfigurationManager.config_keys(
-            real_width, real_height).keys()
+        all_key = ConfigurationManager.config_keys(real_width, real_height).keys()
 
         return all_key
 
@@ -182,19 +191,15 @@ class ConfigurationManager(metaclass=SingletonMeta):
     def init_config_file(cls, real_width, real_height):
         if ConfigurationManager.normalize_file_path(cls.CONFIG_FILE_NAME) is None:
             with open(cls.CONFIG_FILE_NAME, "wb+") as f:
-                f.write(
-                    orjson.dumps(
-                        cls.config_keys(real_width, real_height)
-                    )
-                )
+                f.write(orjson.dumps(cls.config_keys(real_width, real_height)))
 
     @classmethod
     def config_issubset(cls) -> bool:
-        """检查是否配置中都包含了必要配置
-        """
+        """检查是否配置中都包含了必要配置"""
         all_keys = cls.config_all_keys()
         existing_keys = ConfigurationManager.read_json_file(
-            cls.CONFIG_FILE_NAME, False).keys()
+            cls.CONFIG_FILE_NAME, False
+        ).keys()
 
         return set(all_keys).issubset(existing_keys)
 
@@ -204,17 +209,19 @@ class ConfigurationManager(metaclass=SingletonMeta):
         写入未找到配置的默认值
         """
         if not cls.config_issubset():
-            print("配置文件不完整，正在写入默认配置")
+            log.info("配置文件不完整，正在写入默认配置")
             all_keys = cls.config_all_keys()
             existing_keys = ConfigurationManager.read_json_file(
-                cls.CONFIG_FILE_NAME, False).keys()
+                cls.CONFIG_FILE_NAME, False
+            ).keys()
             missing_keys = set(all_keys) - set(existing_keys)
 
             if missing_keys:
                 initial_dict = cls.config_keys(real_width=0, real_height=0)
                 for key in missing_keys:
                     ConfigurationManager.modify_json_file(
-                        ConfigurationManager.CONFIG_FILE_NAME, key, initial_dict[key])
+                        ConfigurationManager.CONFIG_FILE_NAME, key, initial_dict[key]
+                    )
 
     @staticmethod
     def get_file(path, exclude, exclude_file=None, get_path=False):

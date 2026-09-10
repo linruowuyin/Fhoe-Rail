@@ -74,6 +74,33 @@ class Window(metaclass=SingletonMeta):
         style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
         return not style & win32con.WS_OVERLAPPEDWINDOW
 
+    @staticmethod
+    def _force_foreground(hwnd):
+        """强制将窗口切到前台（破解 Windows 前台锁限制）。
+        SetForegroundWindow 在后台进程调用时常失败，
+        AttachThreadInput 关联前台线程后可成功激活。
+        """
+        import time as _t
+        for attempt in range(5):
+            try:
+                fg = win32gui.GetForegroundWindow()
+                tid_fg = win32api.GetWindowThreadProcessId(fg)[0] if fg else 0
+                tid_self = win32api.GetCurrentThreadId()
+                if tid_fg != tid_self and tid_fg:
+                    win32api.AttachThreadInput(tid_self, tid_fg, True)
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(hwnd)
+                if tid_fg != tid_self and tid_fg:
+                    win32api.AttachThreadInput(tid_self, tid_fg, False)
+                # 确认是否成功
+                if win32gui.GetForegroundWindow() == hwnd:
+                    return True
+            except Exception as e:
+                log.debug(f"强激活尝试 {attempt + 1} 失败: {e}")
+            _t.sleep(0.4)
+        log.warning(f"强激活窗口失败(hwnd={hwnd})，继续尝试后续流程")
+        return False
+
     def get_hwnd_title(self, hwnd_max_retries=10) -> str:
         """获取窗口标题"""
         all_windows = pyautogui.getAllWindows()
@@ -126,10 +153,16 @@ class Window(metaclass=SingletonMeta):
                 return True
             else:
                 cnt += 1
-        # 等待用户输入回车键继续
-        input("未找到星铁窗口，请打开星铁，进入游戏界面后，输入回车键继续")
-        time.sleep(1)
-        return self.check_window_visibility(depth + 1)
+        # 修复：WebUI 无 stdin 时 input() 会 EOFError 崩溃，改为轮询等待
+        log.info("未找到星铁窗口，请打开星铁并进入游戏界面，5 秒后自动重试（最长 60 秒）...")
+        for _ in range(12):
+            time.sleep(5)
+            self.get_hwnd()
+            if self.hwnd:
+                self.switch_window()
+                return True
+        log.info("等待窗口超时（60 秒），返回失败")
+        return False
 
     def get_rect(self, hwnd=None):
         """
@@ -187,6 +220,7 @@ class Window(metaclass=SingletonMeta):
         # all_titles = [win.title for win in pyautogui.getAllWindows()]
         # print("当前所有窗口标题:", [t for t in all_titles if t.strip()])
         lnk_started = False  # 添加一个标志，用于记录lnk文件是否已经启动
+        wait_start = time.time()  # 等待窗口的总超时（避免无 stdin 环境下 input 崩溃/无限等待）
 
         while True:
             if not lnk_started:  # 如果lnk文件未启动，继续查找窗口
@@ -204,11 +238,11 @@ class Window(metaclass=SingletonMeta):
                 for w in all_windows:
                     if is_target_window(w):
                         log.info(f'激活窗口: {w.title}')
-                        # client.Dispatch("WScript.Shell").SendKeys('%')  # 确保窗口可激活
                         try:
                             w.restore()  # 防止最小化状态
-                            # w.maximize() # 最大化窗口确保可见
-                            w.activate()
+                            # 强激活：Windows 前台锁常导致 SetForegroundWindow 失败，
+                            # 使用 AttachThreadInput 技巧 + 重试，确保窗口能切到前台
+                            self._force_foreground(w._hWnd)
                             # 获取窗口的位置和尺寸
                             left, top, width, height = w.left, w.top, w.width, w.height
                             log.info(
@@ -265,8 +299,15 @@ class Window(metaclass=SingletonMeta):
                 # 如果lnk文件已经启动成功，不再等待用户按下回车键，直接退出
                 return
 
-            # 等待用户按下回车键后继续
-            input("按下回车键继续查找窗口...")
+            # 找不到窗口：轮询等待代替 input 阻塞。
+            # 修复：WebUI 启动时 stdin 为空管道，input() 会抛 EOFError 崩溃；
+            # 且后台调用场景不应无限等待用户按键。
+            # 超时给到 300 秒，覆盖游戏/云游戏慢启动场景（CLI 与 WebUI 通用）。
+            if time.time() - wait_start > 300:
+                raise CustomException(
+                    "无法找到游戏窗口（已等待 300 秒），请先打开游戏再运行锄地")
+            log.info("未找到游戏窗口，3 秒后自动重试（最长等待 300 秒）...")
+            time.sleep(3)
 
     def find_lnk_files(self, folder_path):
         lnk_files = []

@@ -31,14 +31,15 @@ class MonthlyPass:
         # 状态管理
         self.next_check_time: Optional[datetime] = None  # 下次检查时间
         self.last_check_time: Optional[datetime] = None  # 月卡检测时间
-        self.monthly_pass_status: Optional[int] = None  # 月卡状态，0未检测，1有月卡并领取，2无月卡，3找不到与月卡图片相符的图
+        self.monthly_pass_status: Optional[int] = (
+            None  # 月卡状态，0未检测，1有月卡并领取，2无月卡，3找不到与月卡图片相符的图
+        )
         self.have_monthly_pass = False  # 标志是否领取完月卡
 
     @staticmethod
     def _calculate_next_check(base_time: datetime, hour: int, minute: int) -> datetime:
         """计算下次检查时间"""
-        next_time = base_time.replace(
-            hour=hour, minute=minute, second=0, microsecond=0)
+        next_time = base_time.replace(hour=hour, minute=minute, second=0, microsecond=0)
         return next_time if next_time > base_time else next_time + timedelta(days=1)
 
     def monthly_update_check_time(self):
@@ -52,6 +53,11 @@ class MonthlyPass:
         current_time = datetime.now()
         self.refresh_hour = self.cfg.config_file.get("refresh_hour", 4)
         self.refresh_minute = self.cfg.config_file.get("refresh_minute", 0)
+
+        # 修复：首次运行（next_check_time 为 None）且临近刷新时间时，
+        # _wait_until_refresh_time 会因 None 比较而崩溃，这里先初始化下次检查时间
+        if self.next_check_time is None:
+            self.monthly_update_check_time()
 
         if self._need_wait_before_check(current_time):
             self._wait_until_refresh_time()
@@ -68,10 +74,7 @@ class MonthlyPass:
         """
         # 生成基准目标时间（当日）
         target_time = current.replace(
-            hour=self.refresh_hour,
-            minute=self.refresh_minute,
-            second=0,
-            microsecond=0
+            hour=self.refresh_hour, minute=self.refresh_minute, second=0, microsecond=0
         )
         # 若当前时间已过当日目标时间
         if target_time < current:
@@ -121,21 +124,22 @@ class MonthlyPass:
         # 更新上次检查时间
         self.last_check_time = current
         log.info(
-            f"月卡检查时间更新至：{self.last_check_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            f"月卡检查时间更新至：{self.last_check_time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
 
         # 更新下次检查时间
         self.monthly_update_check_time()
 
     def check_for_monthly_pass(self) -> bool:
-        """无月卡检测
-        """
+        """无月卡检测"""
         log.info("判断是否存在月卡")
-        target = cv2.imread("./picture/finish_fighting.png")
+        target = Img.get_img("./picture/finish_fighting.png")
         result = self.img.scan_screenshot(target)
         if result["max_val"] > 0.92:
             points = self.img.img_center_point(result, target.shape)
             log.info(
-                f"识别到主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
+                f"识别到主界面，无月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+            )
             self.monthly_pass_status = self.Status.NO_PASS  # 月卡检查完成，无月卡
             return False
         else:
@@ -156,30 +160,34 @@ class MonthlyPass:
         log.info("准备点击月卡")
         monthly_pass_pics = [
             ("./picture/monthly_pass_pic.png", "月卡下方文字部分"),
-            ("./picture/monthly_pass_pic_2.png", "月卡动画中心图片")
+            ("./picture/monthly_pass_pic_2.png", "月卡动画中心图片"),
         ]
-        pic_data_check = cv2.imread("./picture/monthly_pass_pic_3.png")
+        pic_data_check = Img.get_img("./picture/monthly_pass_pic_3.png")
         for pic_path, pic_desc in monthly_pass_pics:
-            pic_data = cv2.imread(pic_path)
+            pic_data = Img.get_img(pic_path)
             result = self.img.scan_screenshot(pic_data)
             log.info(f"开始月卡识图{pic_path}，图片特征描述：{pic_desc}")
             if result["max_val"] > threshold:
                 points = self.img.img_center_point(result, pic_data.shape)
                 log.info(
-                    f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})")
+                    f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+                )
                 self.mouse_event.click(points)
                 time.sleep(5)  # 等待动画
                 self._confirm_reward_claim()
                 break
             else:
                 log.info(
-                    f"找不到相符的图，图片匹配度：{result['max_val']:.2f} 需要 > {threshold}")
+                    f"找不到相符的图，图片匹配度：{result['max_val']:.2f} 需要 > {threshold}"
+                )
         else:
-            self.monthly_pass_status = self.Status.NOT_FOUND  # 月卡检查，找不到与月卡图片相符的图
+            self.monthly_pass_status = (
+                self.Status.NOT_FOUND
+            )  # 月卡检查，找不到与月卡图片相符的图
 
     def _confirm_reward_claim(self):
         """确认奖励领取"""
-        pic_data_check = cv2.imread("./picture/monthly_pass_pic_3.png")
+        pic_data_check = Img.get_img("./picture/monthly_pass_pic_3.png")
         for _ in range(5):
             result = self.img.scan_screenshot(pic_data_check)
             if result["max_val"] > 0.91:

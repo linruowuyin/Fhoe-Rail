@@ -29,20 +29,22 @@ class BlackScreen:
         mean_pixel_value = self.calculate_mean_pixel_value(grayscale_image)
 
         if mean_pixel_value < threshold:
-            log.info(f'当前黑屏，值为{mean_pixel_value:.3f} < {threshold}')
+            log.info(f"当前黑屏，值为{mean_pixel_value:.3f} < {threshold}")
             return True
         return False
 
     def load_finish_fighting_images(self):
         """加载所有以 'finish_fighting' 开头的图像"""
-        return [f for f in os.listdir(self.image_folder) if f.startswith("finish_fighting")]
+        return [
+            f for f in os.listdir(self.image_folder) if f.startswith("finish_fighting")
+        ]
 
     def match_finish_fighting_images(self, finish_fighting_images, max_attempts=3):
         """尝试匹配 'finish_fighting' 图像"""
         attempts = 0
         while attempts < max_attempts:
             for image_name in finish_fighting_images:
-                target = cv2.imread(os.path.join(self.image_folder, image_name))
+                target = Img.get_img(os.path.join(self.image_folder, image_name))
                 result = self.img.scan_screenshot(target)
                 if result and result["max_val"] > 0.9:
                     log.info(f"匹配到{image_name}，匹配度{result['max_val']:.3f}")

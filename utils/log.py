@@ -1,13 +1,14 @@
-'''
+"""
 Author: Night-stars-1 nujj1042633805@gmail.com
 Date: 2023-05-12 23:22:54
 LastEditors: Night-stars-1 nujj1042633805@gmail.com
 LastEditTime: 2023-05-14 01:22:36
-FilePath: \Honkai-Star-Rail-beta-2.4h:\Download\Zip\Honkai-Star-Rail-beta-2.7\tools\log.py
-Description: 
+FilePath: Honkai-Star-Rail-beta-2.4h/Download/Zip/Honkai-Star-Rail-beta-2.7/tools/log.py
+Description:
 
-Copyright (c) 2023 by ${git_name_email}, All Rights Reserved. 
-'''
+Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
+"""
+
 import os
 import sys
 import datetime
@@ -22,13 +23,27 @@ for _stream_name in ("stdout", "stderr"):
         except Exception:
             pass
 import requests
+
+# ============================================================
+# 系统语言兼容：日文(cp932)等非 UTF-8 代码页系统下，print()/loguru 输出中文会抛
+# UnicodeEncodeError 导致崩溃（见 issue #428）。此处统一将 stdout/stderr 重配置为
+# UTF-8 + errors='replace'，所有 import 本模块的入口脚本自动获得兼容性。
+# （fhoe.py 顶部也有同样的配置，二者幂等，先后执行均安全。）
+# ============================================================
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        pass
+
 from loguru import logger
 from utils.requests import post
 
 # 日志配置
 log = logger
 LOG_DIR = "logs"
-PATH_LOG = os.path.join(LOG_DIR, '日志文件.log')
+PATH_LOG = os.path.join(LOG_DIR, "日志文件.log")
+
 
 def get_folder_modified_time(folder_path):
     """获取文件夹的修改时间
@@ -49,9 +64,11 @@ def get_folder_modified_time(folder_path):
         minute = modified_datetime.minute
 
         return month, day, hour, minute
-    except Exception as e:
-        log.error(f"获取文件夹修改时间失败: {e}")
+    except Exception:
+        # 注意：这里不能调用 log.error，loguru 的 patcher 会调用 update_extra → get_ver →
+        # 本函数，形成无限递归导致 import 卡死（cwd 不在项目根时相对路径会失败）
         return None
+
 
 def get_ver() -> str:
     """获取当前版本号
@@ -72,14 +89,15 @@ def get_ver() -> str:
 
     # 如果version.txt不存在或为空，使用map文件夹修改时间作为版本号
     try:
-        result = get_folder_modified_time('map')
+        result = get_folder_modified_time("map")
         if result:
             month, day, hour, minute = result
             return f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
-    except Exception as e:
-        log.error(f"获取map文件夹修改时间失败: {e}")
+    except Exception:
+        pass  # 同上：不打日志，避免 loguru patcher 无限递归
 
     return "00000000"  # 当所有获取版本号的方式都失败时返回默认值
+
 
 def update_extra(record):
     """更新日志记录的额外信息
@@ -94,6 +112,7 @@ def update_extra(record):
     record["new_module"] = f"{module}.{function}:{line}"
     record["VER"] = f"{version}"
 
+
 def webhook_and_log(message):
     """发送webhook消息并记录日志
 
@@ -102,15 +121,18 @@ def webhook_and_log(message):
     """
     log.info(message)
     from utils.config.config import ConfigurationManager  # Circular import
+
     cfg = ConfigurationManager()
-    url = cfg.read_json_file(
-        filename=cfg.CONFIG_FILE_NAME, path=False).get("webhook_url")
+    url = cfg.read_json_file(filename=cfg.CONFIG_FILE_NAME, path=False).get(
+        "webhook_url"
+    )
     if url == "" or url is None:
         return
     try:
         post(url, json={"content": message})
     except Exception as e:
         log.error(f"Webhook发送失败: {e}")
+
 
 def fetch_php_file_content():
     """获取PHP接口内容
@@ -120,7 +142,7 @@ def fetch_php_file_content():
     """
     php_urls = [
         "https://wanghun.top/api/tgrj.php",
-        "http://api.ay15.cn/api/tiangou/api.php?charset=utf-8"
+        "http://api.ay15.cn/api/tiangou/api.php?charset=utf-8",
     ]
 
     for url in php_urls:
@@ -135,21 +157,30 @@ def fetch_php_file_content():
 
     return ""
 
+
 # 配置日志记录器
 log = logger.patch(update_extra)
 
 logger.remove()
-log.add(sys.stdout, level='INFO', colorize=True,
-        format="{time:HH:mm:ss.SSS} - "
-        "<cyan>{module}.{function}:{line}</cyan> - "+"<cyan>{VER}</cyan> - "
-        "<level>{message}</level>"
-        )
+log.add(
+    sys.stdout,
+    level="INFO",
+    colorize=True,
+    format="{time:HH:mm:ss.SSS} - "
+    "<cyan>{module}.{function}:{line}</cyan> - " + "<cyan>{VER}</cyan> - "
+    "<level>{message}</level>",
+)
 
-log.add(PATH_LOG,
-        format="{time:HH:mm:ss.SSS} - "
-        "{level:<6} \t| "
-        "<cyan>{new_module:<40}</cyan> \t- " +
-        "<cyan>{VER}</cyan> - "+"{message}",
-        rotation='0:00', enqueue=True, serialize=False, encoding="utf-8", retention="7 days")
+log.add(
+    PATH_LOG,
+    format="{time:HH:mm:ss.SSS} - "
+    "{level:<6} \t| "
+    "<cyan>{new_module:<40}</cyan> \t- " + "<cyan>{VER}</cyan> - " + "{message}",
+    rotation="0:00",
+    enqueue=True,
+    serialize=False,
+    encoding="utf-8",
+    retention="7 days",
+)
 
 log.info("=" * 60)

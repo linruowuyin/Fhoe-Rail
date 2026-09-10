@@ -3,10 +3,21 @@ from tkinter import messagebox
 import os
 from PIL import Image, ImageTk
 
+
+def _resolve_image(path):
+    """按 webp > png > jpg 优先级查找实际存在的文件"""
+    base, _ = os.path.splitext(path)
+    for ext in (".webp", ".png", ".jpg"):
+        cand = base + ext
+        if os.path.isfile(cand):
+            return cand
+    return path
+
+
 window = tk.Tk()
 window.title("倒计时强制关机程序")
 
-background_image = Image.open("./picture/2.png")
+background_image = Image.open(_resolve_image("./picture/2.png"))
 background_photo = ImageTk.PhotoImage(background_image)
 
 background_label = tk.Label(window, image=background_photo)
@@ -20,6 +31,7 @@ countdown_minutes.set("240")
 counting_down = False
 
 timer_id = [None]
+
 
 def start_countdown():
     global counting_down
@@ -38,16 +50,20 @@ def start_countdown():
             if countdown_seconds > 0 and counting_down:
                 countdown_seconds -= 1
                 countdown_minutes.set(
-                    str(countdown_seconds // 60) + "分" + str(countdown_seconds % 60) + "秒"
+                    str(countdown_seconds // 60)
+                    + "分"
+                    + str(countdown_seconds % 60)
+                    + "秒"
                 )
                 timer_id[0] = window.after(1000, update_countdown)
             else:
                 if counting_down:
                     os.system("shutdown /s /t 1")
-        
+
         update_countdown()
     except ValueError:
         messagebox.showerror("错误", "请输入一个有效的正整数分钟数")
+
 
 def cancel_countdown():
     global counting_down
@@ -58,17 +74,21 @@ def cancel_countdown():
     start_button.config(state="normal")
     cancel_button.config(state="disabled")
 
+
 def start_initial_countdown():
     initial_minutes = int(countdown_minutes.get())
     countdown_minutes.set(str(initial_minutes))
     start_countdown()
+
 
 window.after(30000, start_initial_countdown)
 
 countdown_label = tk.Label(window, textvariable=countdown_minutes, font=font_style)
 countdown_label.pack(pady=20)
 
-minutes_entry = tk.Entry(window, textvariable=countdown_minutes, font=font_style, width=11, justify='center')
+minutes_entry = tk.Entry(
+    window, textvariable=countdown_minutes, font=font_style, width=11, justify="center"
+)
 minutes_entry.pack(pady=11)
 
 start_button = tk.Button(
