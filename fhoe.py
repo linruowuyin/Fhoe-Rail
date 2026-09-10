@@ -1,7 +1,19 @@
-import datetime
+# -*- coding: utf-8 -*-
 import os
-import subprocess
 import sys
+
+# 强制控制台使用UTF-8编码，防止cp932等非中文编码导致UnicodeEncodeError
+os.environ["PYTHONIOENCODING"] = "utf-8"
+for stream_name in ("stdout", "stderr"):
+    stream = getattr(sys, stream_name)
+    if hasattr(stream, "reconfigure"):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+import datetime
+import subprocess
 import time
 import traceback
 
