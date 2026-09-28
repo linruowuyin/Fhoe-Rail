@@ -234,7 +234,7 @@ class Handle(metaclass=SingletonMeta):
             ):
                 KeyboardEvent.keyboard_press("esc")
                 time.sleep(2)
-                self.fight_elapsed()
+                self.combat.fight_elapsed()
 
     def handle_esc(self, value):
         """

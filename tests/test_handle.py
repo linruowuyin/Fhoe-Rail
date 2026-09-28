@@ -792,3 +792,56 @@ class TestFighting:
         combat.fighting()
 
         assert combat.total_no_fight_cnt == 0
+
+
+class TestBackToMain:
+    """`back_to_main` —— 它曾经崩在实机上：
+
+        AttributeError: 'Handle' object has no attribute 'fight_elapsed'
+
+    `fight_elapsed` 在「拆 Handle 第一簇（战斗）」时挪进了 `Combat`，这个调用点
+    漏改了（同一次拆分里另一个调用点后来被修掉，只剩它一个）。触发条件是
+    「ESC 打开的是战斗界面」那条分支，此前没有任何测试覆盖它，所以潜伏了很久。
+    """
+
+    @pytest.fixture
+    def subject(self, make_instance, monkeypatch):
+        fake = TickingTime()
+        monkeypatch.setattr(handle_module, "time", fake)
+        keyboard = SimpleNamespace(pressed=[])
+        keyboard.keyboard_press = lambda key, delay=0: keyboard.pressed.append(key)
+        monkeypatch.setattr(handle_module, "KeyboardEvent", keyboard)
+        # 第一次不在主界面（走进循环），第二次在（退出循环）
+        on_main = iter([False, True])
+        img = SimpleNamespace(
+            battle_esc_check="battle_esc_check.png",
+            on_main_interface=lambda timeout=2: next(on_main, True),
+            on_interface=lambda **kwargs: True,  # 命中「ESC 打开的是战斗界面」
+        )
+        fought = []
+        instance = make_instance(
+            Handle,
+            img=img,
+            combat=SimpleNamespace(fight_elapsed=lambda: fought.append(1)),
+        )
+        return instance, fought, keyboard, fake
+
+    def test_battle_esc_branch_goes_through_combat(self, subject):
+        instance, fought, keyboard, fake = subject
+
+        instance.back_to_main()
+
+        assert fought == [1], "命中战斗界面时必须走 combat.fight_elapsed()"
+        assert keyboard.pressed == ["esc", "esc"]
+        assert fake.slept == [2.0, 2]
+
+    def test_already_on_main_interface_does_nothing(self, subject):
+        """已经在主界面时不该按任何键 —— 免得把正常的界面踩乱。"""
+        instance, fought, keyboard, fake = subject
+        instance.img.on_main_interface = lambda timeout=2: True
+
+        instance.back_to_main()
+
+        assert keyboard.pressed == []
+        assert fought == []
+        assert fake.slept == []
