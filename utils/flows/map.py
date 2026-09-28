@@ -9,7 +9,7 @@ from utils.vision.img import Img
 from utils.core.map_info import MapInfo
 from utils.flows.monthly_pass import MonthlyPass
 from utils.drivers.mouse_event import MouseEvent
-from utils.core.map_move import MAP_MOVE_NAV_DATA
+from utils.core.map_move import MAP_MOVE_NAV_DATA, STAR_MAP_DIRECTIONS
 from utils.core.log import log
 from utils.core.thresholds import (
     BACK_BUTTON,
@@ -94,6 +94,7 @@ class Map:
         timeout=60,
         exact=None,
         offset=None,
+        directions=None,
     ):
         """
         说明:
@@ -105,6 +106,8 @@ class Map:
             :param timeout: 超时时间（秒）
             :param exact: 精确查找，None 时使用默认移动逻辑
             :param offset: 查找偏移，None 时使用默认移动逻辑
+            :param directions: 只试这几个方向（None = 全部），透传给 `_move_default`；
+                星轨航图传 `STAR_MAP_DIRECTIONS`
         """
         start_time = time.time()
         target = Img.get_img(key)
@@ -121,7 +124,7 @@ class Map:
                 offset = None
 
             if exact is None:
-                self._move_default(target, threshold)
+                self._move_default(target, threshold, directions)
             else:
                 self._move_with_exact(exact)
 
@@ -141,11 +144,21 @@ class Map:
         """
         return self.img.have_screenshot([target], (0, 0, 0, 0), threshold)
 
-    def _move_default(self, target, threshold):
+    def _move_default(self, target, threshold, direction_names=None):
         """
         按默认逻辑移动地图。
+
+        :param direction_names: 只试这几个方向（None = 全部）。星轨航图传
+            `STAR_MAP_DIRECTIONS`，只左右拖。
         """
-        for direction_name, direction_coords in self._directions().items():
+        directions = self._directions()
+        if direction_names is not None:
+            directions = {
+                name: coords
+                for name, coords in directions.items()
+                if name in direction_names
+            }
+        for direction_name, direction_coords in directions.items():
             log.info(f"尝试 {direction_name} ，当前阈值：{threshold:.2f}")
             for _ in range(3):
                 self.pause_gate()
@@ -385,7 +398,13 @@ class Map:
             return
         else:
             self.find_transfer_point(
-                key, threshold=PLANET, offset=self.drag_offset, exact=self.drag_exact
+                key,
+                threshold=PLANET,
+                offset=self.drag_offset,
+                exact=self.drag_exact,
+                # 星轨航图只在左右两个方向找：上下拖会把地图上下平移，
+                # 既浪费一轮 2/3 的拖拽，又可能把已接近视野的节点挪走
+                directions=STAR_MAP_DIRECTIONS,
             )
             if self.img.click_target(
                 key, PLANET_CLICK, delay=0.1, click_offset=self.click_offset

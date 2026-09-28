@@ -9,3 +9,8 @@ MAP_MOVE_NAV_DATA = {
         }
     }
 }
+
+#: 星轨航图上找星球节点时只试这两个方向。`down` / `up` 会把地图上下平移，既浪费
+#: 时间（每轮从 15 次拖拽降到 6 次）又可能把已经接近视野的节点挪走。
+#: 消费方是 `Map.handle_planet`。
+STAR_MAP_DIRECTIONS = ("left", "right")

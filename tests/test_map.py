@@ -6,7 +6,7 @@ import pytest
 
 import utils.flows.map as map_module
 from utils.config.config import ConfigurationManager
-from utils.core.map_move import MAP_MOVE_NAV_DATA
+from utils.core.map_move import MAP_MOVE_NAV_DATA, STAR_MAP_DIRECTIONS
 from utils.flows.map import Map
 
 
@@ -248,7 +248,7 @@ class TestFindTransferPoint:
         monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
         game_map.img = SimpleNamespace(have_screenshot=lambda *a, **k: True)
         moved = []
-        game_map._move_default = lambda target, threshold: moved.append(threshold)
+        game_map._move_default = lambda target, threshold, direction_names=None: moved.append(threshold)
 
         game_map.find_transfer_point("key.png")
 
@@ -269,7 +269,7 @@ class TestFindTransferPoint:
             return clock.now
 
         monkeypatch.setattr(map_module.time, "time", fake_time)
-        game_map._move_default = lambda target, threshold: None
+        game_map._move_default = lambda target, threshold, direction_names=None: None
 
         game_map.find_transfer_point(
             "key.png", threshold=0.99, min_threshold=0.93, timeout=60
@@ -293,13 +293,50 @@ class TestFindTransferPoint:
             return clock.now
 
         monkeypatch.setattr(map_module.time, "time", fake_time)
-        game_map._move_default = lambda target, threshold: None
+        game_map._move_default = lambda target, threshold, direction_names=None: None
 
         game_map.find_transfer_point(
             "key.png", threshold=0.95, min_threshold=0.94, timeout=100
         )
 
         assert set(thresholds) <= {0.95, 0.94}
+
+
+class TestFindTransferPointDirections:
+    """`directions` 参数：星轨航图只左右拖，其余调用方行为不变。"""
+
+    @staticmethod
+    def _one_round_of_drags(game_map, monkeypatch, **kwargs):
+        """跑一轮 find_transfer_point（假时钟让它在第一圈后立刻超时），返回拖拽序列。"""
+        monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
+        game_map.img = SimpleNamespace(have_screenshot=lambda *a, **k: False)
+        drags = []
+        game_map.mouse_event = SimpleNamespace(
+            mouse_drag=lambda *a, **k: drags.append(a)
+        )
+        clock = SimpleNamespace(now=0.0)
+
+        def fake_time():
+            clock.now += 35.0  # 第一圈走完，60 秒预算就耗尽了
+            return clock.now
+
+        monkeypatch.setattr(map_module.time, "time", fake_time)
+        game_map.find_transfer_point("key.png", timeout=60, **kwargs)
+        return drags
+
+    def test_default_still_tries_every_direction(self, game_map, monkeypatch):
+        """不传 directions 时行为一字不变 —— 这是 600+ 张图的既有路径。"""
+        assert len(self._one_round_of_drags(game_map, monkeypatch)) == 15
+
+    def test_directions_limits_the_search(self, game_map, monkeypatch):
+        """星轨航图只左右：一轮的拖拽次数 15 → 6，不会把地图上下平移。"""
+        directions = MAP_MOVE_NAV_DATA["16:9"]["directions"]
+
+        drags = self._one_round_of_drags(
+            game_map, monkeypatch, directions=STAR_MAP_DIRECTIONS
+        )
+
+        assert drags == [directions["left"]] * 3 + [directions["right"]] * 3
 
 
 class TestPauseGate:
@@ -315,7 +352,7 @@ class TestPauseGate:
         monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
         game_map.img = SimpleNamespace(have_screenshot=lambda *a, **k: False)
         rounds = []
-        game_map._move_default = lambda target, threshold: rounds.append(threshold)
+        game_map._move_default = lambda target, threshold, direction_names=None: rounds.append(threshold)
         game_map.pause_gate = gate
 
         clock = SimpleNamespace(now=0.0)
@@ -376,11 +413,7 @@ class TestPauseGate:
 
 
 class TestHandlePlanetClickOffset:
-    """修饰键 → handle_planet → click_target 的完整链路。
-
-    场景：星球节点的**静态部分**可识别，但可点热区在它右边 60 像素
-    （动态的那块才是热区）。
-    """
+    """handle_planet 的接线：点击偏移（静态锚点在热区左侧 60 像素）+ 只左右找点位。"""
 
     @staticmethod
     def _prepare(game_map, monkeypatch, interface_answers=()):
@@ -423,3 +456,17 @@ class TestHandlePlanetClickOffset:
         game_map.handle_planet("picture\\orientation_7.png")
 
         assert [call["click_offset"] for call in clicks] == [(60, 0), (60, 0)]
+
+    def test_planet_search_is_limited_to_horizontal(self, game_map, monkeypatch):
+        """星轨航图只在左右两个方向找 —— handle_planet 必须把方向集合传下去。"""
+        monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
+        game_map.check_planet = lambda key: False
+        game_map.drag_offset = None
+        game_map.drag_exact = None
+        captured = {}
+        game_map.find_transfer_point = lambda *a, **k: captured.update(k)
+        game_map.img = SimpleNamespace(click_target=lambda *a, **k: False)
+
+        game_map.handle_planet("picture\\orientation_7.png")
+
+        assert captured["directions"] == STAR_MAP_DIRECTIONS
