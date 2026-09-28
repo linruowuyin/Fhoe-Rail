@@ -6,19 +6,23 @@ from utils.config.config import ConfigurationManager
 from utils.core.map_info import MapInfo
 
 
-def write_map_file(root, version, filename, name="1-1 空间站「黑塔」", author="tester"):
+def write_map_content(root, version, filename, data):
     folder = root / "map" / version
     folder.mkdir(parents=True, exist_ok=True)
     import json
 
-    (folder / filename).write_text(
-        json.dumps(
-            {"name": name, "author": author, "start": [], "map": []},
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
+    path = folder / filename
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def write_map_file(root, version, filename, name="1-1 空间站「黑塔」", author="tester"):
+    return write_map_content(
+        root,
+        version,
+        filename,
+        {"name": name, "author": author, "start": [], "map": []},
     )
-    return folder / filename
 
 
 class TestExtractKeys:
@@ -172,3 +176,109 @@ class TestMapInfoProperties:
 
     def test_map_version_is_cached_when_config_unchanged(self, info):
         assert info.map_version is info.map_version
+
+
+class TestReadMapDataValidation:
+    """`read_map_data` 读完地图就交给 `core/schema.py` 校验。
+
+    结果**只记录、不抛出**——633 张图里坏一张，不该让整个程序起不来。
+    """
+
+    @staticmethod
+    def _validation_records(log_records, level=None):
+        return [
+            r
+            for r in log_records
+            if "地图校验" in r["message"]
+            and (level is None or r["level"].name == level)
+        ]
+
+    def test_valid_map_logs_nothing(self, isolated_cwd, log_records):
+        write_map_file(isolated_cwd, "default", "map_1-1_0.json")
+
+        MapInfo.read_maps("default")
+
+        assert self._validation_records(log_records) == []
+
+    def test_modifier_as_first_key_is_logged_as_error(self, isolated_cwd, log_records):
+        """这个错今天不报——分发表只是静默把 "drag" 当成图片路径去查。"""
+        write_map_content(
+            isolated_cwd,
+            "default",
+            "map_1-1_0.json",
+            {
+                "name": "1-1 空间站「黑塔」",
+                "author": "tester",
+                "start": [{"drag": 1.5, "picture\\x.png": 1.0}],
+                "map": [],
+            },
+        )
+
+        MapInfo.read_maps("default")
+
+        errors = self._validation_records(log_records, "ERROR")
+        assert len(errors) == 1
+        assert "map_1-1_0.json" in errors[0]["message"], "要指明是哪个文件"
+        assert "修饰键" in errors[0]["message"]
+
+    def test_unknown_step_key_is_logged_as_warning(self, isolated_cwd, log_records):
+        """`{"w ": 1.0}` 多了个空格，会被当成移动键让角色往不存在的方向走。"""
+        write_map_content(
+            isolated_cwd,
+            "default",
+            "map_1-1_0.json",
+            {
+                "name": "1-1 空间站「黑塔」",
+                "author": "tester",
+                "start": [],
+                "map": [{"w ": 1.0}],
+            },
+        )
+
+        MapInfo.read_maps("default")
+
+        warnings = self._validation_records(log_records, "WARNING")
+        assert len(warnings) == 1
+        assert "未知步骤键" in warnings[0]["message"]
+
+    def test_broken_structure_is_logged_before_it_raises(
+        self, isolated_cwd, log_records
+    ):
+        """缺 `name` 今天就会 KeyError（process_json_files 直接取它）。
+
+        校验的价值是：抛之前日志里先写明「哪个文件缺哪个字段」。
+        """
+        write_map_content(
+            isolated_cwd,
+            "default",
+            "map_1-1_0.json",
+            {"author": "tester", "start": [], "map": []},
+        )
+
+        with pytest.raises(KeyError):
+            MapInfo.read_maps("default")
+
+        assert any(
+            "map_1-1_0.json" in r["message"] and "缺少必需字段" in r["message"]
+            for r in log_records
+        )
+
+
+class TestShippedMapLibrary:
+    """随代码发布的整库地图必须零 error —— 这是校验器的第二道闸。
+
+    与 `tools/validate_maps.py`（CI 里的那道）不同，这条走的是**真实读盘路径**：
+    `read_maps` → `read_map_data` → `validate_map`，所以真实地图里的所有步骤键
+    形状都被覆盖一遍，而不只是测试里手写的那几种。
+    """
+
+    def test_every_shipped_map_passes_validation(self, repo_root, log_records):
+        for version in MapInfo.read_maps_versions():
+            MapInfo.read_maps(version)
+
+        errors = [
+            r["message"]
+            for r in log_records
+            if r["level"].name == "ERROR" and "地图校验" in r["message"]
+        ]
+        assert errors == []

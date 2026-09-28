@@ -2,6 +2,7 @@ import os
 
 from utils.config.config import ConfigurationManager
 from utils.core.log import log
+from utils.core.schema import validate_map
 from utils.core.singleton import SingletonMeta
 
 
@@ -123,9 +124,21 @@ class MapInfo(metaclass=SingletonMeta):
     @staticmethod
     def read_map_data(map_version: str, map_file: str, map_dir: str) -> dict:
         """
-        读取单个地图文件的数据
+        读取单个地图文件的数据，读完立刻校验（`core/schema.py`）
+
+        校验结果**只记录、不抛出**：633 张图里坏一张，不该让整个程序起不来。
+        会崩的结构性错误（缺 name / start / map）随后照样会在 process_json_files
+        里抛出来 —— 但那时日志里已经写明是哪个文件、缺的是哪个字段。
         """
-        return ConfigurationManager.read_json_file(f"{map_dir}/{map_version}/{map_file}")
+        where = f"{map_version}/{map_file}"
+        map_data = ConfigurationManager.read_json_file(
+            f"{map_dir}/{map_version}/{map_file}")
+        for issue in validate_map(map_data, filename=where):
+            if issue.level == "error":
+                log.error(f"地图校验：{issue}")
+            else:
+                log.warning(f"地图校验：{issue}")
+        return map_data
 
     @staticmethod
     def extract_keys(map_file: str) -> tuple:

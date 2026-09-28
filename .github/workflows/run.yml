@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '**.py'
+      - 'map/**.json'
 permissions:
   contents: write
 jobs:
@@ -30,6 +31,11 @@ jobs:
       # 测试全部使用替身，不需要游戏窗口；失败的用例（xfail）是被记录的真实缺陷。
       - name: Run tests
         run: python -m pytest tests/ -q
+
+      # 地图包来自第三方，手写错的 JSON 要一路跑进游戏才炸。校验器有 error 时
+      # 退出码为 1，这一步本身就是一道门；warning（未知步骤键）不拦。
+      - name: Validate map JSON
+        run: python tools/validate_maps.py
 
   build:
     name: Build
