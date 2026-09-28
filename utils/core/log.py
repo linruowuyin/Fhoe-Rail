@@ -84,7 +84,12 @@ def get_ver() -> str:
             version = file.read().strip()
             if version:  # 只在version不为空时返回
                 return version
-    except (FileNotFoundError, IOError):
+    except (OSError, UnicodeError):
+        # UnicodeError 也必须兜住：这个函数跑在 loguru 的 patcher 里，从这里抛出去的
+        # 异常会从**每一个** log.*() 调用点冒出来 —— 程序崩在任意一条日志处，而且
+        # 错误本身没法被记下来（记录日志正是坏掉的东西）。
+        # 触发条件现实存在：version.txt 被记事本存成 UTF-16、或写入了非法 UTF-8。
+        # （IOError 就是 OSError 的别名，原来那两个都在这里覆盖了。）
         pass
 
     # 如果version.txt不存在或为空，使用map文件夹修改时间作为版本号

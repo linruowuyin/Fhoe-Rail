@@ -45,6 +45,46 @@ class TestGetVer:
         get_ver()
         assert log_records == []
 
+    def test_undecodable_version_file_does_not_escape(self, isolated_cwd, log_records):
+        """写坏编码的 version.txt 不能把每一次日志调用都拖崩。
+
+        get_ver 跑在 loguru 的 patcher 里：从这里抛出去的异常会从**每一个**
+        log.*() 调用点冒出来，而且那时错误本身也没法被记下来（记录日志正是坏掉的
+        东西）。所以非 UTF-8 的字节也必须被吞掉、回落到兜底版本号。
+        """
+        (isolated_cwd / "version.txt").write_bytes(b"\xff\xfe\x00v")  # 非法 UTF-8
+
+        assert get_ver() == "00000000"
+        assert log_records == []
+
+
+class TestVersionHotReload:
+    """`get_ver` 每条记录都重读 version.txt —— 这是**刻意**的，不是漏了缓存。
+
+    存在的理由是版本号热更新：发布包版本从 250911 改成 250912 时，正在跑的进程
+    后续日志立刻用新版本号。这条测试就是那个意图的守护者：谁把 `get_ver` 改成
+    「只在别的条件下才失效」的缓存（比如纯 TTL），这里会红。
+    """
+
+    def test_a_version_change_shows_up_on_the_next_record(self, version_file):
+        from utils.core.log import logger
+
+        # loguru 在没有任何 handler 时会跳过整条记录（patcher 也不执行），
+        # 所以必须挂一个才能观察到 VER。
+        recorded = []
+        handler_id = logger.add(
+            lambda message: recorded.append(message.record), level="DEBUG"
+        )
+        try:
+            version_file("v1")
+            log.info("first")
+            version_file("v2")
+            log.info("second")
+        finally:
+            logger.remove(handler_id)
+
+        assert [record["VER"] for record in recorded] == ["v1", "v2"]
+
 
 class TestGetFolderModifiedTime:
     def test_returns_month_day_hour_minute(self, tmp_path):
@@ -76,8 +116,10 @@ class TestUpdateExtra:
 class TestLoggingCost:
     @pytest.mark.xfail(
         strict=True,
-        reason="loguru 的 patcher 对每条日志都调用 get_ver()，每次都 open('version.txt')；"
-        "version.txt 是构建产物、进程内不变，应缓存",
+        reason="每条被输出的日志都会 open('version.txt') 一次（实测约 37µs）。这是"
+        "**刻意的**：为了版本号热更新不能简单缓存 —— 见 TestVersionHotReload。"
+        "真要优化只能上 mtime 缓存（保留热重载语义）；那时这条会 XPASS，"
+        "删标记之前先确认热重载那条还是绿的。",
     )
     def test_logging_does_not_read_version_file_per_record(self, monkeypatch, isolated_cwd):
         (isolated_cwd / "version.txt").write_text("v1", encoding="utf-8")
