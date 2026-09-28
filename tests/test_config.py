@@ -189,9 +189,30 @@ class TestConfigFileProperty:
 
     def test_refreshes_after_file_changes_on_disk(self, cfg, tmp_path):
         assert cfg.config_file["map_version"] == "default"
-        time.sleep(0.01)  # 确保 mtime 前进，避免同一时间戳内比较失效
+        time.sleep(0.01)  # 让新写入的文件拿到一个与旧值不同的 mtime
         write_config(tmp_path / "config.json", {**cfg.config_file, "map_version": "HuangQuan"})
         assert cfg.config_file["map_version"] == "HuangQuan"
+
+    def test_untouched_file_is_never_reread(self, cfg, tmp_path):
+        """文件一个字都没改，反复访问也不该重读 —— 那个测试偶发的回归测试。
+
+        旧实现记的是 `time.time()`，再拿文件 mtime 和它比大小：两把尺子精度不同
+        （Windows 时钟约 15.6ms，NTFS 的 mtime 是 100ns），于是「mtime 比刚记下的
+        时刻更新」会**偶发**成立，被误判成「文件又变了」而重读 —— 重读是整个替换
+        内存里那份 dict，会把刚写进去的键冲掉（`KeyError: 'cached'`）。
+
+        判断依据换成「mtime 对 mtime」之后与时钟无关。旧实现下这条会以很高概率
+        失败（几十次访问足够撞上时钟量化那一格）。
+        """
+        path = tmp_path / "config.json"
+        cfg.config_file["cached"] = True
+
+        for _ in range(50):
+            assert cfg.config_file["cached"] is True
+
+        assert cfg._last_mtime == path.stat().st_mtime, (
+            "记下的必须是文件 mtime，不能是读钟得到的时刻"
+        )
 
     def test_does_not_reread_when_file_unchanged(self, cfg, monkeypatch):
         cfg.config_file  # 建立缓存

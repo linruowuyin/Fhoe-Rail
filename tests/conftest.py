@@ -118,7 +118,7 @@ def set_config(isolated_cwd):
         data.update(values)
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         manager._config = None
-        manager._last_updated = None
+        manager._last_mtime = None
 
     return _set
 

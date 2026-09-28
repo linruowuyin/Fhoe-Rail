@@ -25,7 +25,7 @@ def set_config_file(root, **values):
     data.update(values)
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     selector_module.cfg._config = None
-    selector_module.cfg._last_updated = None
+    selector_module.cfg._last_mtime = None
 
 
 def read_config_file(root, key):
@@ -38,10 +38,10 @@ def fresh_selector(monkeypatch):
         selector_module.MapInfo, "read_maps", staticmethod(lambda map_version: ([], {}))
     )
     selector_module.cfg._config = None
-    selector_module.cfg._last_updated = None
+    selector_module.cfg._last_mtime = None
     yield
     selector_module.cfg._config = None
-    selector_module.cfg._last_updated = None
+    selector_module.cfg._last_mtime = None
 
 
 @pytest.fixture

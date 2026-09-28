@@ -28,8 +28,6 @@ class Calculated:
         self.img = Img()
         self.monthly_pass = MonthlyPass()
         self.mouse_event = MouseEvent()
-        self._config = None
-        self._last_updated = None
         self.handle = Handle()
         self.asu = ASU()
         self.blackscreen = BlackScreen()
