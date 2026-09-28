@@ -47,8 +47,16 @@ START_PICTURE_PREFIX = "picture\\"
 
 #: `start` 条目上的**修饰键**。它们和步骤键挤在同一个字典里，由
 #: `allow_map_drag` / `allow_scene_drag` / `allow_multi_click` /
-#: `allow_retry_in_map` 从整个条目上读，而不是当步骤处理。
-MODIFIER_KEYS = {"drag", "drag_exact", "drag_offset", "scene", "clicks", "forbid_retry"}
+#: `allow_retry_in_map` / `allow_click_offset` 从整个条目上读，而不是当步骤处理。
+MODIFIER_KEYS = {
+    "drag",
+    "drag_exact",
+    "drag_offset",
+    "scene",
+    "clicks",
+    "forbid_retry",
+    "click_offset",
+}
 
 #: `process_single_map_handle` 里显式分派的键
 MAP_KEYS = {
@@ -256,7 +264,18 @@ def _check_start_entry(entry, path) -> list:
                     f"未知的修饰键；已知的有 {sorted(MODIFIER_KEYS)}",
                 )
             )
+        elif extra == "click_offset":
+            issues += _check_click_offset(entry[extra], f"{path}.{extra}")
     return issues
+
+
+def _check_click_offset(value, path) -> list:
+    """`click_offset` 必须是 [dx, dy] 两个数字 —— 否则运行时会在下标/加法处抛异常。"""
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return [Issue("error", path, f"应为 [dx, dy] 两个数字，实际是 {value!r}")]
+    if not all(_is_number(item) for item in value):
+        return [Issue("error", path, f"dx/dy 必须是数字，实际是 {value!r}")]
+    return []
 
 
 def _check_floor(value, path) -> list:

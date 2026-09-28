@@ -25,6 +25,9 @@ def game_map(make_instance, monkeypatch):
         planet=None,
         map_statu_minimize=False,
         allowlist_mode=False,
+        # 替身也要有闸门（真实 Map.__init__ 里默认为 no-op）：返回「被暂停的秒数」
+        pause_gate=lambda: 0.0,
+        click_offset=(0, 0),
     )
 
 
@@ -110,6 +113,23 @@ class TestAllowFlags:
     def test_forbid_retry_disables_it(self, game_map):
         game_map.allow_retry_in_map({"forbid_retry": True})
         assert game_map.allow_retry_in_map_switch is False
+
+    def test_click_offset_defaults_to_no_shift(self, game_map):
+        game_map.allow_click_offset({})
+        assert game_map.click_offset == (0, 0)
+
+    def test_click_offset_is_loaded(self, game_map):
+        """静态锚点与可点热区不重合时声明这个键（例如向右 60 像素）。"""
+        game_map.allow_click_offset(
+            {"picture\\orientation_7.png": 1.5, "click_offset": [60, 0]}
+        )
+        assert game_map.click_offset == (60, 0)
+
+    def test_click_offset_resets_on_the_next_step(self, game_map):
+        """上一条步骤的偏移不能带到下一条 —— 否则后面所有点击都会整体偏掉。"""
+        game_map.allow_click_offset({"click_offset": [60, 0]})
+        game_map.allow_click_offset({"picture\\x.png": 1.5})
+        assert game_map.click_offset == (0, 0)
 
 
 class TestSkipChecks:
@@ -280,3 +300,126 @@ class TestFindTransferPoint:
         )
 
         assert set(thresholds) <= {0.95, 0.94}
+
+
+class TestPauseGate:
+    """拖地图找点位那类循环里的暂停闸门。
+
+    闸门是 `Map.pause_gate`，由 MapOperations 在跑图前接到 `Pause.wait_if_paused`。
+    两个要点：**能停**，以及**暂停的秒数必须从墙钟死线里扣掉**。
+    """
+
+    @staticmethod
+    def _transfer_point_rounds(game_map, monkeypatch, gate):
+        """跑一次 find_transfer_point，返回循环轮数（每轮会调一次 _move_default）。"""
+        monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
+        game_map.img = SimpleNamespace(have_screenshot=lambda *a, **k: False)
+        rounds = []
+        game_map._move_default = lambda target, threshold: rounds.append(threshold)
+        game_map.pause_gate = gate
+
+        clock = SimpleNamespace(now=0.0)
+
+        def fake_time():
+            clock.now += 10.0  # 每读一次时间就前进 10 秒
+            return clock.now
+
+        monkeypatch.setattr(map_module.time, "time", fake_time)
+        game_map.find_transfer_point("key.png", timeout=60)
+        return len(rounds)
+
+    def test_deadline_is_extended_by_the_paused_seconds(self, game_map, monkeypatch):
+        """闸门报的暂停秒数要加回 start_time。
+
+        不补偿的症状：一暂停，恢复后立刻超时、报「传送点查找失败」，地图开始漏点 ——
+        而且只在暂停过的路径上出现，人工测极难归因到暂停功能。
+        """
+        without_pause = self._transfer_point_rounds(game_map, monkeypatch, lambda: 0.0)
+        with_pause = self._transfer_point_rounds(game_map, monkeypatch, lambda: 8.0)
+
+        assert without_pause == 5, "每轮净消耗 10 秒，60 秒预算正好 5 轮"
+        assert with_pause > without_pause * 3, (
+            f"扣掉暂停的 8 秒后每轮净消耗 2 秒，轮数应远多于 {without_pause} 轮，"
+            f"实际 {with_pause} 轮"
+        )
+
+    def test_gate_runs_once_per_drag_attempt(self, game_map, monkeypatch):
+        """闸门要插在最内层（每次拖拽之前），而不是只在外层 while。
+
+        只放外层 while 的话，按一次键要等完两个方向 × 3 次拖拽（十几秒）；
+        断言闸门次数与拖拽次数相等，等于把「最内层」钉住。
+        """
+        monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
+        monkeypatch.setattr(map_module.Img, "invert", staticmethod(lambda image: "INV"))
+        game_map.img = SimpleNamespace(have_screenshot=lambda *a, **k: False)
+        drags = []
+        game_map.mouse_event = SimpleNamespace(
+            mouse_drag=lambda *a, **k: drags.append(a)
+        )
+        gates = []
+        game_map.pause_gate = lambda: (gates.append(1), 0.0)[1]
+
+        clock = SimpleNamespace(now=0.0)
+
+        def fake_time():
+            clock.now += 35.0  # 只够跑完一圈外层（2 个方向 × 3 次拖拽）
+            return clock.now
+
+        monkeypatch.setattr(map_module.time, "time", fake_time)
+        game_map.find_scene("key.png", timeout=60)
+
+        assert len(drags) == 6, "一圈外层 = 2 个方向 × 3 次拖拽"
+        assert len(gates) == 7, (
+            "构成为「外层 while 的补偿闸门 1 次 + 最内层每次拖拽前 1 次」；"
+            "若闸门只插在外层 while，这里只会是 1 次"
+        )
+
+
+class TestHandlePlanetClickOffset:
+    """修饰键 → handle_planet → click_target 的完整链路。
+
+    场景：星球节点的**静态部分**可识别，但可点热区在它右边 60 像素
+    （动态的那块才是热区）。
+    """
+
+    @staticmethod
+    def _prepare(game_map, monkeypatch, interface_answers=()):
+        monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
+        game_map.allow_click_offset(
+            {"picture\\orientation_7.png": 1.5, "click_offset": [60, 0]}
+        )
+        game_map.check_planet = lambda key: False
+        game_map.find_transfer_point = lambda *a, **k: None
+        game_map.blackscreen = SimpleNamespace(check_blackscreen=lambda: False)
+        # 这两个由 allow_map_drag 设置，start 循环里每条步骤都会先调它
+        game_map.drag_offset = None
+        game_map.drag_exact = None
+        answers = iter(interface_answers)
+        clicks = []
+
+        def click_target(*args, **kwargs):
+            clicks.append(kwargs)
+            return True
+
+        game_map.img = SimpleNamespace(
+            click_target=click_target,
+            on_interface=lambda **kwargs: next(answers, True),
+        )
+        return clicks
+
+    def test_declared_offset_reaches_click_target(self, game_map, monkeypatch):
+        clicks = self._prepare(game_map, monkeypatch)
+
+        game_map.handle_planet("picture\\orientation_7.png")
+
+        assert clicks[0]["click_offset"] == (60, 0)
+        assert game_map.planet == "picture\\orientation_7.png"
+
+    def test_retry_click_also_carries_the_offset(self, game_map, monkeypatch):
+        """重试那一击同样要带偏移 —— 只改第一击的话，重试会落回锚点，白点 7 次
+        （日志里那次连点 7 次全失败就是这个形状）。"""
+        clicks = self._prepare(game_map, monkeypatch, interface_answers=[False])
+
+        game_map.handle_planet("picture\\orientation_7.png")
+
+        assert [call["click_offset"] for call in clicks] == [(60, 0), (60, 0)]

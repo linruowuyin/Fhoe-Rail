@@ -99,6 +99,26 @@ class TestStartEntries:
         assert "修饰键" in issues[0].message
 
 
+class TestClickOffsetModifier:
+    """`click_offset` 是「静态锚点 → 可点热区」的平移量。
+
+    形状错必须在进游戏前拦住：运行时它只是两个下标加法，错了不报错、只会点偏。
+    """
+
+    def test_click_offset_is_a_known_modifier(self):
+        entry = {"picture\\x.png": 1.5, "click_offset": [60, 0]}
+        assert validate_map(make_map(start=[entry])) == []
+
+    @pytest.mark.parametrize("value", [[60], [60, 0, 0], 60, ["60", 0], None])
+    def test_malformed_click_offset_is_an_error(self, value):
+        entry = {"picture\\x.png": 1.5, "click_offset": value}
+
+        issues = validate_map(make_map(start=[entry]))
+
+        assert levels(issues) == ["error"]
+        assert "click_offset" in issues[0].path
+
+
 class TestFloorStep:
     def test_valid_floor_passes(self):
         assert validate_map(make_map(start=[{"floor": [[0, 1, 2], 1]}])) == []

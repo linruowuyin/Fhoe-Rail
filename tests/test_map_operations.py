@@ -119,6 +119,28 @@ def set_config_on_disk(root, **values):
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
+class PauseStub:
+    """Pause 的替身。
+
+    真实 Pause 会注册全局热键、还可能在暂停时抓屏弹窗，所以测试一律用它替掉。
+    `answers` 是 check_pause 依次返回的值（用完就返回 False）；`waits` 记录闸门被调用次数。
+    """
+
+    def __init__(self, *answers):
+        self.answers = list(answers)
+        self.waits = 0
+        self.checks = 0
+        self.pending_key = None
+
+    def check_pause(self, dev, last_point=""):
+        self.checks += 1
+        return self.answers.pop(0) if self.answers else False
+
+    def wait_if_paused(self):
+        self.waits += 1
+        return 0.0
+
+
 @pytest.fixture
 def operations(make_instance, isolated_cwd, monkeypatch):
     monkeypatch.setattr(operations_module.time, "sleep", lambda seconds: None)
@@ -142,12 +164,14 @@ def operations(make_instance, isolated_cwd, monkeypatch):
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
             allow_retry_in_map=lambda start: None,
+            allow_click_offset=lambda start: None,
             allow_drap_map_switch=False,
             allow_scene_drag_switch=False,
             allow_retry_in_map_switch=True,
             multi_click=1,
         ),
         handle=SimpleNamespace(f_key_error=False),
+        pause=PauseStub(),
         img=SimpleNamespace(),
         mouse_event=SimpleNamespace(last_search_allow_retry=False),
         calculated=SimpleNamespace(),
@@ -317,6 +341,7 @@ class TestProcessSingleMapStart:
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
             allow_retry_in_map=lambda start: None,
+            allow_click_offset=lambda start: None,
         )
 
         operations.process_single_map_start(0, "map_1-1_0.json")
@@ -339,6 +364,7 @@ class TestProcessSingleMapStart:
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
             allow_retry_in_map=lambda start: None,
+            allow_click_offset=lambda start: None,
         )
 
         operations.process_single_map_start(0, "map_1-1_0.json")
@@ -466,6 +492,12 @@ class TestRetryFlagPlumbing:
 
 
 class TestProcessMap:
+    """process_map 自己构造 Pause —— 真实那只会注册全局热键，所以这里一律替掉。"""
+
+    @pytest.fixture(autouse=True)
+    def stub_pause(self, monkeypatch):
+        monkeypatch.setattr(operations_module, "Pause", lambda dev=False: PauseStub())
+
     def test_unknown_start_map_is_reported(self, operations, log_records):
         operations.map_info = SimpleNamespace(map_version="default", map_list=[])
 
@@ -492,6 +524,15 @@ class TestProcessMap:
         operations.process_map("1-1_0", single_map=True)
 
         assert processed == ["map_1-1_0.json"]
+
+    def test_map_gets_the_pause_gate(self, operations):
+        """跑图前把闸门接到 Map 上 —— flows/map.py 的循环才能停（那里不 import ui/）。"""
+        operations.map_info = SimpleNamespace(map_version="default", map_list=[])
+
+        operations.process_map("9-9_9")
+
+        assert callable(operations.map.pause_gate)
+        assert operations.map.pause_gate() == 0.0
 
 
 class CalculatedRecorder:
@@ -579,6 +620,8 @@ class TestStartStepDispatch:
             operations.calculated = calculated
             operations.mouse_event = mouse
             operations.img = img
+            # 检查点返回非 F7 的键时会切窗口（见 _pause_checkpoint）
+            operations.window = SimpleNamespace(switch_window=lambda: None)
             operations.process_single_map_start(0, "map_1-1_0.json")
             return SimpleNamespace(
                 handle=handle,
@@ -715,20 +758,33 @@ class TestStartStepDispatch:
     def test_teleport_click_counter_increments(self, run):
         assert run({"picture\\unknown_point.png": 1}).statu.teleport_click_count == 1
 
+    def test_pause_checkpoints_cover_the_whole_start_phase(self, run, operations):
+        """start 阶段以前一次检查都没有，按 F8 会被静默丢弃。
+
+        （那时 Pause 还建在 handle 阶段：第一张图根本没注册热键，之后的图按下的
+        F8 又被下一张图新建的 Pause 把事件对象换掉了。）
+        """
+        run([{"w": 1.0}, {"w": 1.0}])
+
+        # 重试循环 1 次 + start 每一步 1 次
+        assert operations.pause.checks == 3
+
+    def test_f9_in_the_start_phase_reruns_the_map(self, run, operations):
+        """F9 的重跑意图要在 start 阶段生效，而不是被吞掉。"""
+        operations.pause = PauseStub("F9")
+
+        result = run({"w": 1.5})
+
+        assert result.calculated.calls == ["run_mapload_check"], (
+            "F9 应触发「重新传送至地图」的加载检查"
+        )
+
 
 class TestHandleStepDispatch:
     """process_single_map_handle 里 map 条目的键值分发表。"""
 
     @pytest.fixture
-    def run(self, operations, monkeypatch):
-        monkeypatch.setattr(
-            operations_module,
-            "Pause",
-            lambda dev=False: SimpleNamespace(
-                check_pause=lambda dev, last_point: False
-            ),
-        )
-
+    def run(self, operations):
         def _run(entry):
             write_map(
                 operations.root,
@@ -798,14 +854,7 @@ class TestHandleStepDispatch:
         result = run({"fighting": 1})
         assert result.handle.combat.fighting_count == 1
 
-    def test_multi_entry_map_runs_every_step(self, operations, monkeypatch):
-        monkeypatch.setattr(
-            operations_module,
-            "Pause",
-            lambda dev=False: SimpleNamespace(
-                check_pause=lambda dev, last_point: False
-            ),
-        )
+    def test_multi_entry_map_runs_every_step(self, operations):
         write_map(
             operations.root,
             "default",
@@ -831,14 +880,7 @@ class TestHandleStepDispatch:
             "handle_move",
         ]
 
-    def test_f_key_error_breaks_out_and_is_recorded(self, operations, monkeypatch):
-        monkeypatch.setattr(
-            operations_module,
-            "Pause",
-            lambda dev=False: SimpleNamespace(
-                check_pause=lambda dev, last_point: False
-            ),
-        )
+    def test_f_key_error_breaks_out_and_is_recorded(self, operations):
         write_map(
             operations.root,
             "default",
@@ -866,16 +908,9 @@ class TestHandleStepDispatch:
         assert operations.map_statu.map_f_key_error == ["1-1 空间站「黑塔」"]
         assert not handle.called("handle_await"), "F 键出错后应中断这张地图剩余步骤"
 
-    def test_dev_restart_on_f9_switches_window(self, operations, monkeypatch):
+    def test_dev_restart_on_f9_switches_window(self, operations):
         # 只在第一次检查时返回 F9：否则 while dev_restart 会永远转下去
-        answers = iter(["F9", False, False, False])
-        monkeypatch.setattr(
-            operations_module,
-            "Pause",
-            lambda dev=False: SimpleNamespace(
-                check_pause=lambda dev, last_point: next(answers, False)
-            ),
-        )
+        operations.pause = PauseStub("F9")
         write_map(
             operations.root,
             "default",

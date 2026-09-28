@@ -12,7 +12,8 @@
       "picture\\orientation_1.png": 1.5
     },
     {
-      "picture\\orientation_7.png": 1.5
+      "picture\\orientation_7.png": 1.5,
+      "click_offset": [60, 0]
     },
     {
       "picture\\map_6-3.png": 1.5,

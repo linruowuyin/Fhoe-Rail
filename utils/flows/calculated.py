@@ -1,6 +1,5 @@
 import os
 import time
-from datetime import datetime
 
 
 from utils.vision.blackscreen import BlackScreen
@@ -19,7 +18,6 @@ from utils.core.thresholds import (
 from utils.vision.mini_asu import ASU
 from utils.flows.monthly_pass import MonthlyPass
 from utils.drivers.mouse_event import MouseEvent
-from utils.ui.pause import Pause
 from utils.drivers.window import Window
 
 

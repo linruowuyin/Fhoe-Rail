@@ -232,12 +232,19 @@ class Matcher:
     # ------------------------------------------------------------------
 
     def click_target_above_threshold(
-        self, target, threshold, offset, clicks=1, delay=0.05
+        self, target, threshold, offset, clicks=1, delay=0.05, click_offset=(0, 0)
     ):
-        """匹配度超过阈值就点击，返回 (是否点击, 匹配值)。"""
+        """匹配度超过阈值就点击，返回 (是否点击, 匹配值)。
+
+        :param click_offset: 落点相对**匹配中心**的平移 (dx, dy)。给「可识别的静态
+            部分与可点热区不重合」的按钮用（地图 JSON 的 `click_offset` 修饰键）。
+        """
         result = self.scan_screenshot(target, offset)
         if result["max_val"] > threshold:
             points = self.img_center_point(result, target.shape)
+            if click_offset != (0, 0):
+                log.debug(f"落点加偏移 {click_offset}")
+                points = (points[0] + click_offset[0], points[1] + click_offset[1])
             self.mouse.click(points, result["max_val"], clicks, delay)
             return True, result["max_val"]
         return False, result["max_val"]
@@ -252,12 +259,14 @@ class Matcher:
         retry_in_map: bool = True,
         clicks=1,
         delay=0.05,
+        click_offset=(0, 0),
     ):
         """点击指定图片。
 
         :param flag: True 表示一定要找到（会一直重试到 timeout）
         :param retry_in_map: 超时时是否允许调用方重试整张地图；
             写入 `self.last_search_allow_retry` 供 `flows/map_operations` 读取
+        :param click_offset: 落点相对匹配中心的平移 (dx, dy)，见 click_target_above_threshold
         :return: 是否点击成功
         """
         original_target = image_library.get_img(target_path)
@@ -269,14 +278,14 @@ class Matcher:
 
         while time.time() - start_time < timeout:
             click_it, img_search_val = self.click_target_above_threshold(
-                original_target, threshold, offset, clicks, delay
+                original_target, threshold, offset, clicks, delay, click_offset
             )
             if click_it:
                 return True
             if time.time() - start_time > 1:
                 # 超过 1 秒仍未命中，同时试颜色反转图
                 click_it, _ = self.click_target_above_threshold(
-                    inverted_target, threshold, offset, clicks, delay
+                    inverted_target, threshold, offset, clicks, delay, click_offset
                 )
                 if click_it:
                     log.info("阴阳变转")

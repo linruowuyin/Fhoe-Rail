@@ -19,7 +19,6 @@ from utils.core.thresholds import (
     ORIENTATION_ICON,
     PLANET,
     PLANET_CLICK,
-    POINT_SEARCH,
     SCENE_MIN,
     SCENE_SEARCH,
     STAR_MAP,
@@ -38,6 +37,15 @@ class Map:
         self.blackscreen = BlackScreen()
         self.map_info = MapInfo()
         self.open_map_btn = "m"
+
+        # 暂停闸门：由 MapOperations 在跑图前接上 Pause.wait_if_paused。默认 no-op，
+        # 这样 Map 在测试里仍能独立构造，也不向 ui/ 产生依赖边（传的是函数对象）。
+        # 返回值是「被暂停的秒数」，带墙钟死线的循环要把它加回 start_time。
+        self.pause_gate = lambda: 0.0
+
+        # 点击偏移：匹配到锚点后把落点整体平移 (dx, dy)。给「可识别的静态部分与
+        # 可点热区不重合」的按钮用，由地图 JSON 的 `click_offset` 修饰键逐条声明。
+        self.click_offset = (0, 0)
 
         self.allowlist_mode = False
         self.map_statu_minimize = False  # 地图最小化
@@ -64,6 +72,8 @@ class Map:
 
         # 主逻辑
         while attempts < max_attempts:
+            # start_time 还要给 _wait_for_main_interface 判断 3 秒窗口，所以一并补偿
+            start_time += self.pause_gate()
             log.info(f"尝试打开地图 (尝试次数: {attempts + 1}/{max_attempts})")
             KeyboardEvent.keyboard_press(self.open_map_btn)
             time.sleep(0.05)
@@ -100,6 +110,8 @@ class Map:
         target = Img.get_img(key)
 
         while time.time() - start_time < timeout:
+            # 暂停的时间必须从死线里扣掉，否则一暂停就会误判「超时」而放弃这次查找
+            start_time += self.pause_gate()
             if self._is_target_found(target, threshold):
                 log.info(f"传送点已找到，匹配度：{threshold:.2f}")
                 return
@@ -136,6 +148,7 @@ class Map:
         for direction_name, direction_coords in self._directions().items():
             log.info(f"尝试 {direction_name} ，当前阈值：{threshold:.2f}")
             for _ in range(3):
+                self.pause_gate()
                 if not self._is_target_found(target, threshold):
                     self.mouse_event.mouse_drag(*direction_coords)
                 else:
@@ -147,15 +160,19 @@ class Map:
         """
         log.info("开始按照设置相对移动地图")
         for _ in range(offset[0]):  # 向左
+            self.pause_gate()
             log.info("地图左移")
             self.mouse_event.mouse_drag(*self._directions()["left"])
         for _ in range(offset[1]):  # 向上
+            self.pause_gate()
             log.info("地图上移")
             self.mouse_event.mouse_drag(*self._directions()["up"])
         for _ in range(offset[2]):  # 向右
+            self.pause_gate()
             log.info("地图右移")
             self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(offset[3]):  # 向下
+            self.pause_gate()
             log.info("地图下移")
             self.mouse_event.mouse_drag(*self._directions()["down"])
 
@@ -165,12 +182,15 @@ class Map:
         """
         log.info("开始按照设置精确移动地图，先定位到地图左上角后移动到目标位置")
         for _ in range(exact[0]):  # 向左+向上
+            self.pause_gate()
             log.info("地图左上移")
             self.mouse_event.mouse_drag(*self._directions()["up_left"])
         for _ in range(exact[1]):  # 向右
+            self.pause_gate()
             log.info("地图右移")
             self.mouse_event.mouse_drag(*self._directions()["right"])
         for _ in range(exact[2]):  # 向下
+            self.pause_gate()
             log.info("地图下移")
             self.mouse_event.mouse_drag(*self._directions()["down"])
 
@@ -194,6 +214,8 @@ class Map:
             and time.time() - start_time < timeout
             and threshold >= min_threshold
         ):
+            # 暂停的时间必须从死线里扣掉，否则一暂停就会误判「超时」而放弃这次查找
+            start_time += self.pause_gate()
             # 设置向下、向上的移动数值
             directions = [(1700, 900, 1700, 300), (1700, 300, 1700, 900)]
             for index, direction in enumerate(directions):
@@ -201,6 +223,9 @@ class Map:
                     f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}"
                 )
                 for _ in range(3):
+                    # 闸门放最内层而不是外层 while：这里一轮「匹配 + 1 秒拖拽」约 2.5 秒，
+                    # 放外层要等完两个方向 × 3 次拖拽（约十几秒）才响应按键
+                    self.pause_gate()
                     if not self.img.have_screenshot(
                         target_list, (0, 0, 0, 0), threshold
                     ):
@@ -256,6 +281,18 @@ class Map:
         self.allow_retry_in_map_switch = not bool(
             start.get("forbid_retry", False)
         )  # 默认允许自动重试查找地图点位
+
+    def allow_click_offset(self, start):
+        """点击偏移修饰键：`{"picture\\x.png": 1.5, "click_offset": [60, 0]}`
+
+        修饰键必须写在步骤键之后（`core/schema.py` 会拦顺序错）。
+        没声明时复位，避免上一条步骤的偏移带到下一条。
+
+        **目前消费它的是 `handle_planet`（星球节点）** —— 别的图片步骤声明了也不会生效，
+        要用在别处，在对应 handler 的 `click_target(...)` 上传 `click_offset=self.click_offset`。
+        """
+        click_offset = start.get("click_offset")
+        self.click_offset = tuple(click_offset) if click_offset else (0, 0)
 
     def check_allowlist_maps(self, map_data_name):
         """检查并跳过非白名单地图"""
@@ -328,6 +365,8 @@ class Map:
         else:
             orientation_delay = 2
             while True:
+                # 这个循环没有硬上限（只有黑屏消失才退），卡住时最需要能停
+                self.pause_gate()
                 self.img.click_target(
                     key, ORIENTATION_ICON, retry_in_map=self.allow_retry_in_map_switch
                 )
@@ -348,7 +387,9 @@ class Map:
             self.find_transfer_point(
                 key, threshold=PLANET, offset=self.drag_offset, exact=self.drag_exact
             )
-            if self.img.click_target(key, PLANET_CLICK, delay=0.1):
+            if self.img.click_target(
+                key, PLANET_CLICK, delay=0.1, click_offset=self.click_offset
+            ):
                 time.sleep(5)
                 img = Img.get_img("./picture/kaituoli_1.png")
                 delay_time = 0.5
@@ -360,6 +401,8 @@ class Map:
                     offset=(1580, 0, 0, -910),
                     allow_log=False,
                 ):
+                    # 这个循环也没有硬上限（只有星轨航图出现或黑屏才退）
+                    self.pause_gate()
                     if self.blackscreen.check_blackscreen():
                         self.planet = key
                         break
@@ -368,7 +411,9 @@ class Map:
                     log.info(
                         f"检测到未成功点击星球，尝试重试点击星球，鼠标点击间隔时间 {delay_time}"
                     )
-                    self.img.click_target(key, PLANET_CLICK, delay=delay_time)
+                    self.img.click_target(
+                        key, PLANET_CLICK, delay=delay_time, click_offset=self.click_offset
+                    )
                     time.sleep(5)
                 else:
                     self.planet = key
@@ -403,6 +448,7 @@ class Map:
         处理返回按钮的识别和点击逻辑，用于偶现的卡二级地图，此时使用m键无法关闭地图
         """
         for _ in range(5):
+            self.pause_gate()
             result_back = self.img.scan_screenshot(
                 target_back, offset=(1830, 0, 0, -975)
             )
@@ -419,6 +465,7 @@ class Map:
         """
         try:
             while self.img.on_main_interface(timeout=0.0, allow_log=False):
+                start_time += self.pause_gate()
                 if time.time() - start_time > 3:
                     return
                 if not speed_open:

@@ -81,6 +81,11 @@ class MapOperations:
 
         single_map 为 True 时只处理 start 指定的地图，不继续执行后续路线。
         """
+        # 暂停整轮只构造一次：热键从跑图一开始就注册好，事件对象也不会每张地图被换掉。
+        # （曾经 Pause 建在 handle 阶段，于是在 start 阶段按 F8 会被静默丢弃）
+        self.pause = Pause(dev=dev)
+        self.map.pause_gate = self.pause.wait_if_paused  # 供 flows/map.py 的循环闸门调用
+
         # 检查是否自动使用秘技消耗品
         config = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False)
         if config.get('auto_use_technique_consumable', False):
@@ -106,6 +111,9 @@ class MapOperations:
             self.map_statu.next_map_drag = False  # 初始化下一张图拖动为否
 
             for index, map_json in enumerate(map_list):
+                # 地图之间只暂停：此时还没有「当前地图」可以重跑，所以丢掉 F9/F10 的意图
+                self.pause.wait_if_paused()
+                self.pause.pending_key = None
                 self.process_single_map(index, map_json, dev)
                 if self.map_statu.skip_this_map:
                     continue  # process_single_map 内部已 return，此处为防御性保留
@@ -173,6 +181,13 @@ class MapOperations:
         retry_cnt = 0
         while retry and retry_cnt < self.retry_cnt_max:
             retry = False
+            # 用户要求的重跑不消耗 retry_cnt（那是给自动重试的），否则连按两次会被
+            # 当成查找失败而跳过这张图
+            if self._pause_checkpoint(dev=dev):
+                retry = True
+                map_data = self.cfg.read_json_file(
+                    f"map/{self.map_info.map_version}/{map_base}.json")
+                continue
             # 选择地图
             self.map_statu.start_map_name = map_data_name if index == 0 else self.map_statu.start_map_name
             self.map_statu.end_map_name = map_data_name if index > 0 else self.map_statu.end_map_name
@@ -184,6 +199,12 @@ class MapOperations:
             self.map_statu.temp_point = ""  # 用于输出传送前的点位
             self.map_statu.normal_run = False  # 初始化跑步模式为默认
             for start in map_data['start']:
+                # start 阶段的检查点：这里以前一次检查都没有，按 F8 会被静默丢弃
+                if self._pause_checkpoint(dev=dev):
+                    retry = True
+                    map_data = self.cfg.read_json_file(
+                        f"map/{self.map_info.map_version}/{map_base}.json")
+                    break
                 key = list(start.keys())[0]
                 log.info(key)
                 value = start[key]
@@ -196,6 +217,7 @@ class MapOperations:
                 self.map.allow_scene_drag(start)  # 是否强制允许拖动右侧场景初始化
                 self.map.allow_multi_click(start)  # 多次点击
                 self.map.allow_retry_in_map(start)  # 是否允许重试
+                self.map.allow_click_offset(start)  # 点击偏移（可点热区不在静态锚点上时用）
                 if key == "check":  # 判断周几
                     if value == 1:
                         value = [0, 1, 2, 3, 4, 5, 6]
@@ -337,13 +359,29 @@ class MapOperations:
                     self.map_statu.map_f_key_error.append(map_data_name)
                     break
 
+    def _pause_checkpoint(self, dev: bool, last_point: str = "") -> bool:
+        """暂停检查点：暂停时在此停住；返回 True 表示用户要求重跑本图。
+
+        放在 start / 重试 / handle 三个循环的体首，所以任何阶段按 F8 都能停住。
+        F9/F10 无论在哪一层按下（包括深层循环里，见 `Pause.pending_key`），
+        都会由最近的检查点消费并触发重跑。
+        """
+        press_key = self.pause.check_pause(dev=dev, last_point=last_point)
+        if not press_key or press_key == "F7":
+            return False
+        self.window.switch_window()
+        time.sleep(1)
+        if press_key == "F9":
+            self.img.click_target("picture\\transfer.png", TRANSFER_ICON)
+            self.calculated.run_mapload_check()
+        return True
+
     def process_single_map_handle(self, map_json, normal_run, dev=False, last_point=""):
         """
         处理单张地图的详细信息
         """
         # self.asu.screen = self.img.take_screenshot()[0]
         # self.ang = self.asu.get_now_direc()
-        self.pause = Pause(dev=dev)
         map_base = map_json.split('.')[0]
         map_data = self.cfg.read_json_file(
             f"map/{self.map_info.map_version}/{map_base}.json")
@@ -366,24 +404,11 @@ class MapOperations:
             last_key = ""
             self.handle.movement.last_step_run = False  # 初始化上一次为走路
             for map_index, map_value in enumerate(map_data["map"]):
-                press_key = self.pause.check_pause(
-                    dev=dev, last_point=last_point)
-                if press_key:
-                    if press_key == 'F7':
-                        pass
-                    else:
-                        dev_restart = True  # 检测到需要重开
-                        self.window.switch_window()
-                        time.sleep(1)
-                        if press_key == 'F9':
-                            self.img.click_target(
-                                "picture\\transfer.png", TRANSFER_ICON)
-                            self.calculated.run_mapload_check()
-                        if press_key == 'F10':
-                            pass
-                        map_data = self.cfg.read_json_file(
-                            f"map/{self.map_info.map_version}/{map_base}.json")  # 重新读取最新地图文件
-                        break
+                if self._pause_checkpoint(dev=dev, last_point=last_point):
+                    dev_restart = True  # 检测到需要重开
+                    map_data = self.cfg.read_json_file(
+                        f"map/{self.map_info.map_version}/{map_base}.json")  # 重新读取最新地图文件
+                    break
 
                 # 当前地图执行步骤
                 map_progress_info = f"{map_index + 1}/{total_map_count} {map_value}"

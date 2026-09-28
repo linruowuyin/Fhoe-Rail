@@ -91,6 +91,38 @@ class TestClickTargetAboveThreshold:
         assert mouse.clicked == []
 
 
+class TestClickOffset:
+    """静态锚点与可点热区不重合时，落点整体平移（地图 JSON 的 click_offset 修饰键）。"""
+
+    @staticmethod
+    def _matcher_with_match(matcher):
+        instance, mouse = matcher
+        instance.scan_screenshot = lambda prepared, offset=(0, 0, 0, 0): {
+            "max_val": 0.95,
+            "max_loc": (11, 22),
+        }
+        return instance, mouse
+
+    def test_click_point_is_shifted_by_the_offset(self, matcher):
+        instance, mouse = self._matcher_with_match(matcher)
+
+        ok, _ = instance.click_target_above_threshold(
+            np.zeros((4, 4, 3), np.uint8), 0.9, (0, 0, 0, 0), click_offset=(60, 0)
+        )
+
+        assert ok is True
+        assert mouse.clicked == [(13 + 60, 24)], "匹配中心 (13,24) 再向右 60"
+
+    def test_no_offset_keeps_the_match_center(self, matcher):
+        instance, mouse = self._matcher_with_match(matcher)
+
+        instance.click_target_above_threshold(
+            np.zeros((4, 4, 3), np.uint8), 0.9, (0, 0, 0, 0)
+        )
+
+        assert mouse.clicked == [(13, 24)]
+
+
 class TestClickTarget:
     @pytest.fixture
     def instance(self, matcher, monkeypatch):
@@ -145,7 +177,7 @@ class TestClickTarget:
         """原图匹配不上时，1 秒后改用颜色反转图（“阴阳变转”）。"""
         calls = []
 
-        def fake(target, threshold, offset, clicks, delay):
+        def fake(target, threshold, offset, clicks, delay, click_offset=(0, 0)):
             calls.append(target)
             return len(calls) == 2, 0.5
 
@@ -154,6 +186,22 @@ class TestClickTarget:
 
         assert instance.click_target("x.png", 0.9, timeout=10) is True
         assert len(calls) == 2
+
+    def test_inverted_pass_also_carries_the_offset(self, instance, monkeypatch):
+        """原图没中改用反色图，第二击也要带偏移 —— 否则它会落回锚点。"""
+        offsets = []
+
+        def fake(target, threshold, offset, clicks, delay, click_offset=(0, 0)):
+            offsets.append(click_offset)
+            return len(offsets) == 2, 0.5
+
+        instance.click_target_above_threshold = fake
+        monkeypatch.setattr(matcher_module, "time", FakeTime([0, 0, 2]))
+
+        assert (
+            instance.click_target("x.png", 0.9, timeout=10, click_offset=(60, 0)) is True
+        )
+        assert offsets == [(60, 0), (60, 0)]
 
     def test_timeout_writes_the_retry_flag_onto_the_mouse(self, instance):
         """超时是唯一会写重试标志的路径，且标志必须落在读取方持有对象上。

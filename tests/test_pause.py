@@ -163,11 +163,6 @@ class TestCheckPause:
 
         assert pause_module.viewer.destroyed == 1
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="dev=False 且 last_point 为空时，循环体只剩 `press = True`，没有 time.sleep，"
-        "按下 F8 会把一个 CPU 核心跑满",
-    )
     def test_does_not_burn_cpu_while_paused(self, keyboard):
         pause = Pause(dev=False)
         pause.pause_event.set()
@@ -182,6 +177,81 @@ class TestCheckPause:
         cpu_used = time.process_time() - cpu_before
 
         assert cpu_used < 0.1
+
+
+class TestWaitIfPaused:
+    """闸门：给 flows 层「拖地图找点位」那类循环用（见 map.py 的 pause_gate）。"""
+
+    def test_returns_zero_when_not_paused(self, keyboard):
+        assert Pause(dev=False).wait_if_paused() == 0.0
+
+    def test_returns_the_paused_seconds(self, keyboard):
+        pause = Pause(dev=False)
+        pause.pause_event.set()
+        resume = threading.Timer(0.3, pause.continue_in_map, args=(None,))
+        resume.start()
+
+        started = time.time()
+        try:
+            paused = pause.wait_if_paused()
+        finally:
+            resume.join()
+
+        assert pause.pause_event.is_set() is False
+        assert 0.2 <= paused <= time.time() - started
+
+    def test_does_not_touch_the_debug_viewer(self, keyboard):
+        """闸门只负责停住；弹调试图片是 check_pause 的语义，不要混进来。"""
+        pause = Pause(dev=False)
+        pause.pause_event.set()
+        resume = threading.Timer(0.05, pause.continue_in_map, args=(None,))
+        resume.start()
+
+        try:
+            pause.wait_if_paused()
+        finally:
+            resume.join()
+
+        assert pause_module.viewer.shown == []
+        assert pause_module.viewer.destroyed == 0
+
+
+class TestPendingKey:
+    """深层循环里按下的 F9/F10：那里的闸门只会恢复运行，意图要留给下一个检查点。"""
+
+    def test_f9_pressed_inside_a_deep_loop_reaches_the_next_checkpoint(self, keyboard):
+        pause = Pause(dev=True)
+        pause.pause_event.set()
+
+        pause.continue_and_restart(None)  # 相当于在 find_scene 里按了 F9
+
+        assert pause.pause_event.is_set() is False
+        assert pause.pending_key == "F9"
+        assert pause.check_pause(dev=True, last_point="") == "F9"
+
+    def test_pending_key_is_consumed_only_once(self, keyboard):
+        pause = Pause(dev=True)
+        pause.pending_key = "F10"
+
+        assert pause.check_pause(dev=True, last_point="") == "F10"
+        assert pause.pending_key is None
+        assert pause.check_pause(dev=True, last_point="") is False
+
+    def test_f9_that_resumes_a_pause_is_not_delivered_twice(self, keyboard):
+        """暂停中按 F9：意图已由 last_key_pressed 带出，pending_key 必须清掉，
+        否则下一个检查点会再触发一次重跑。"""
+        pause = Pause(dev=True)
+        pause.pause_event.set()
+        resume = threading.Timer(0.05, pause.continue_and_restart, args=(None,))
+        resume.start()
+
+        try:
+            assert pause.check_pause(dev=True, last_point="") == "F9"
+        finally:
+            resume.join()
+
+        assert pause.pending_key is None
+        assert pause.check_pause(dev=True, last_point="") is False
 
 
 class TestShowImg:
