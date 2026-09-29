@@ -439,33 +439,45 @@
   .modal-mask.open { display: flex; }
   .modal {
     background: var(--bg-1); border: 1px solid var(--border-strong);
-    border-radius: var(--radius); max-width: 900px; width: 100%; max-height: 88vh; overflow-y: auto;
+    border-radius: var(--radius); max-width: 900px; width: 100%; max-height: 88vh; overflow: hidden;
     padding: 24px 28px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); position: relative;
+    display: flex; flex-direction: column;
   }
-  .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  /* 头部（标题 / 徽章 / 按钮）常驻，内容区自己滚 —— 否则长地图要一路拉到最下面才能保存 */
+  #modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-shrink: 0; }
   .modal-head h3 { font-size: 20px; font-weight: 600; }
   .modal-close { cursor: pointer; font-size: 22px; color: var(--txt-dim); background: none; border: none; padding: 4px 8px; border-radius: 8px; }
   .modal-close:hover { color: var(--txt); background: var(--bg-2); }
   .steps { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
   .step-row {
-    display: flex; gap: 10px; font-size: 15.5px; font-family: var(--font-mono);
+    display: flex; flex-wrap: wrap; gap: 10px; font-size: 15.5px; font-family: var(--font-mono);
     background: var(--bg-2); border-radius: 6px; padding: 5px 9px;
     color: var(--txt-dim); word-break: break-all;
   }
   .step-row .k { color: var(--cyan); flex-shrink: 0; }
   .step-row .v { color: var(--pink); }
-  .edit-row { display: flex; gap: 6px; align-items: center; background: var(--bg-2); border-radius: 6px; padding: 4px 8px; margin-bottom: 4px; }
+  .edit-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg-2); border-radius: 6px; padding: 4px 8px; margin-bottom: 4px; }
   .edit-row .ek { width: 160px; font-family: var(--font-mono); font-size: 15.5px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: var(--cyan); }
-  .edit-row .ev { flex: 1; font-family: var(--font-mono); font-size: 15.5px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: var(--pink); }
+  .edit-row .ev { flex: 1; min-width: 120px; font-family: var(--font-mono); font-size: 15.5px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: var(--pink); }
   .edit-row .edel { cursor: pointer; color: var(--txt-dim); background: none; border: none; font-size: 17px; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
   .edit-row .edel:hover { color: var(--red); background: rgba(255,0,0,.1); }
+  /* 修饰键（drag / scene / click_offset…）：此前编辑器只认步骤键，保存时把它们整条丢掉 */
+  .edit-row .emods { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .edit-row .emod { display: flex; gap: 3px; align-items: center; background: var(--bg-1); border: 1px dashed var(--border); border-radius: 4px; padding: 1px 5px; }
+  .edit-row .emod .mk { font-family: var(--font-mono); font-size: 14.5px; background: transparent; border: none; color: var(--cyan); padding: 2px 0; cursor: pointer; }
+  .edit-row .emod .mv { width: 96px; font-family: var(--font-mono); font-size: 14.5px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 3px; padding: 2px 4px; color: var(--pink); }
+  .edit-row .emod .mdel { cursor: pointer; color: var(--txt-dim); background: none; border: none; font-size: 13px; padding: 0 2px; border-radius: 3px; }
+  .edit-row .emod .mdel:hover { color: var(--red); background: rgba(255,0,0,.1); }
+  .edit-row .eaddmod { font-size: 12.5px; padding: 2px 7px; cursor: pointer; background: none; border: 1px dashed var(--border); border-radius: 4px; color: var(--txt-faint); flex-shrink: 0; }
+  .edit-row .eaddmod:hover { color: var(--cyan); border-color: var(--cyan); }
   .edit-field { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .edit-field label { font-size: 15.5px; color: var(--txt-dim); width: 50px; flex-shrink: 0; }
   .edit-field input { flex: 1; font-size: 16px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; color: var(--txt); }
   .edit-section-title { font-size: 14px; color: var(--txt-faint); margin: 14px 0 6px; display: flex; align-items: center; gap: 8px; }
+  .edit-hint { font-size: 13px; line-height: 1.7; color: var(--txt-faint); background: var(--bg-2); border-radius: 6px; padding: 7px 10px; margin: 10px 0 4px; }
   .btn-add { font-size: 13px; padding: 3px 10px; cursor: pointer; background: var(--bg-2); border: 1px dashed var(--border); border-radius: 4px; color: var(--txt-dim); }
   .btn-add:hover { color: var(--cyan); border-color: var(--cyan); }
-  .edit-actions { display: flex; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
   .cmd-suggest { position: absolute; left: 0; top: 100%; background: var(--bg-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); max-height: 180px; overflow-y: auto; z-index: 1000; display: none; min-width: 120px; }
   .cmd-suggest div { padding: 4px 10px; cursor: pointer; font-size: 15px; }
   .cmd-suggest div:hover { background: var(--bg-3); color: var(--cyan); }
@@ -667,6 +679,8 @@
         <button class="modal-close" id="modal-open-btn" style="display:none" title="打开地图文件">📂</button>
         <button class="modal-close" id="modal-run-btn" style="display:none" title="运行此地图">▶</button>
         <button class="modal-close" id="modal-edit-btn" style="display:none" title="编辑">✏️</button>
+        <button class="btn" id="modal-save-btn" style="display:none">💾 保存</button>
+        <button class="btn ghost" id="modal-cancel-btn" style="display:none">取消</button>
         <button class="modal-close" id="modal-close">✕</button>
       </div>
     </div>
@@ -769,11 +783,13 @@ async function loadNotes() {
 }
 function showNoteImage(name) {
   $("#modal-mask").classList.add("open");
+  setEditBtns(false);
   $("#modal-title").textContent = "新图注意";
   $("#modal-id").textContent = name;
   $("#modal-author").textContent = "";
   $("#modal-body").innerHTML =
     `<img src="/notes-img?name=${encodeURIComponent(name)}" style="max-width:100%;border-radius:10px;display:block;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.5)">`;
+  $("#modal-body").scrollTop = 0;
 }
 
 /* ---------------- 指挥台 ---------------- */
@@ -1081,15 +1097,29 @@ let currentMapData = null, currentMapFile = null, currentMapVersion = null, mapE
 
 const START_CMDS = ["main","map","scene","await","floor","space","drag","drag_offset","view_set","view_reset","view_rotate","forbid_retry","need_allow_map_buy","need_allow_memory_token","need_allow_snack_buy","clicks","picture\\"];
 const MAP_CMDS = ["w","a","s","d","b","fighting","f","e","esc","check"];
+// 修饰键（core/schema.py 的 MODIFIER_KEYS）：和步骤键挤在同一条目里、必须写在步骤键之后，
+// 且只在 start 条目上合法 —— 行进（map）条目多带一个键会被校验器判 error。
+const MOD_KEYS = ["click_offset", "drag", "drag_exact", "drag_offset", "scene", "clicks", "forbid_retry"];
+
+// 编辑态的「保存 / 取消」放弹窗头部：长地图要滚很久才到底，按钮跟在底部等于每次保存都要拉一趟
+const setEditBtns = on => {
+  for (const id of ["#modal-save-btn", "#modal-cancel-btn"]) $(id).style.display = on ? "" : "none";
+  const save = $("#modal-save-btn");
+  save.textContent = "💾 保存";
+  save.disabled = false;
+};
 
 function renderMapReadOnly() {
   mapEditing = false;
   mapDirty = false;
+  setEditBtns(false);
   const data = currentMapData;
   $("#modal-title").textContent = data.name || currentMapFile;
   $("#modal-author").textContent = "作者：" + (data.author || "未知");
+  const valStr = v => (v === null || v === undefined) ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
   const stepRow = s => {
-    const k = Object.keys(s)[0], v = s[k];
+    const keys = Object.keys(s);
+    const k = keys[0], v = s[k];
     const tag = (k === "fighting" && v === 1) ? '<span class="badge b-red" style="margin-left:6px">战斗</span>'
       : (k === "fighting" && v === 2) ? '<span class="badge b-amber" style="margin-left:6px">除障</span>'
       : k === "view_rotate" ? '<span class="badge b-violet" style="margin-left:6px">转视角</span>'
@@ -1107,7 +1137,10 @@ function renderMapReadOnly() {
       : k === "blackscreen" ? '<span class="badge b-dim" style="margin-left:6px">黑屏检测</span>' : "";
     const picMatch = k.match(/^picture\\(.+\.\w+)$/);
     const picAttr = picMatch ? ` data-pic="${esc(picMatch[1])}"` : "";
-    return `<div class="step-row"><span class="k"${picAttr}>${esc(k)}</span><span class="v">${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>${tag}</div>`;
+    // 修饰键要在界面上露出来：不然用户看不出某一步带修饰键，也发现不了保存会把它丢掉
+    const mods = keys.slice(1).map(mk =>
+      `<span class="badge b-dim" style="margin-left:6px">${esc(mk)} ${esc(valStr(s[mk]))}</span>`).join("");
+    return `<div class="step-row"><span class="k"${picAttr}>${esc(k)}</span><span class="v">${esc(valStr(v))}</span>${tag}${mods}</div>`;
   };
   const startSteps = (data.start || []).map(stepRow).join("");
   const totalSteps = (data.map || []).length;
@@ -1118,6 +1151,7 @@ function renderMapReadOnly() {
     <div style="font-size: 14px;color:var(--txt-faint);margin:14px 0 6px">🚶 行进步骤（共 ${totalSteps}）</div>
     <div class="steps">${allSteps || '<div class="empty">无</div>'}</div>
   `;
+  $("#modal-body").scrollTop = 0;
   $("#modal-open-btn").style.display = "";
   $("#modal-open-btn").onclick = async () => {
     try {
@@ -1143,32 +1177,40 @@ function renderMapEditor() {
   $("#modal-edit-btn").style.display = "none";
   $("#modal-open-btn").style.display = "none";
   $("#modal-run-btn").style.display = "none";
+  setEditBtns(true);
   mapEditing = true;
   mapDirty = false;
   const data = currentMapData;
-  const valStr = v => typeof v === "object" ? JSON.stringify(v) : String(v);
-  const renderSection = (arr, secName) =>
-    arr.map((s, i) => {
-      const k = Object.keys(s)[0], v = s[k];
-      return `<div class="edit-row" data-sec="${secName}">
-        <input class="ek" value="${esc(k)}" data-field="k">
-        <input class="ev" value="${esc(valStr(v))}" data-field="v">
-        <button class="edel" data-action="del">✕</button>
-      </div>`;
-    }).join("");
+  const valStr = v => (v === null || v === undefined) ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v));
+  // 修饰键：把条目里「步骤键之外」的键渲染成可编辑行，保存时原样写回（步骤键必须仍在首位）
+  const modSelect = cur => {
+    const names = MOD_KEYS.includes(cur) ? MOD_KEYS : [cur, ...MOD_KEYS];
+    return `<select class="mk">${names.map(n => `<option${n === cur ? " selected" : ""}>${esc(n)}</option>`).join("")}</select>`;
+  };
+  const modHTML = (mk, mv) => `<span class="emod">${modSelect(mk)}<input class="mv" value="${esc(valStr(mv))}"><button class="mdel" data-action="delmod" title="删除该修饰键">✕</button></span>`;
+  const modsHTML = s => Object.keys(s).slice(1).map(mk => modHTML(mk, s[mk])).join("");
+  const rowHTML = (sec, k = "", v = "", mods = "") => `<div class="edit-row" data-sec="${sec}">
+      <input class="ek" value="${esc(k)}" data-field="k">
+      <input class="ev" value="${esc(v)}" data-field="v">
+      <span class="emods">${mods}</span>
+      ${sec === "start" ? '<button class="eaddmod" data-action="addmod" title="给这一步加修饰键">+ 修饰键</button>' : ""}
+      <button class="edel" data-action="del" title="删除这一步">✕</button>
+    </div>`;
+  const sectionHTML = (arr, sec) => (arr || []).map(s => {
+    const k = Object.keys(s)[0];
+    return rowHTML(sec, k, valStr(s[k]), modsHTML(s));
+  }).join("");
   $("#modal-body").innerHTML = `
     <div class="edit-field"><label>名称</label><input id="edit-name" value="${esc(data.name || "")}"></div>
     <div class="edit-field"><label>作者</label><input id="edit-author" value="${esc(data.author || "")}"></div>
+    <div class="edit-hint">保存会按统一格式重排整个文件（4 空格缩进、短数组内联）。仓库里的地图原本混着 2 空格 / 4 空格 / Tab，所以某个文件第一次保存时 diff 会偏大，之后同一文件再改就只剩你动的那几行。</div>
     <div class="edit-section-title">📦 起始步骤（<span id="cnt-start">${(data.start||[]).length}</span>）</div>
-    <div id="edit-start">${renderSection(data.start || [], "start")}</div>
+    <div id="edit-start">${sectionHTML(data.start, "start")}</div>
     <button class="btn-add" data-action="add" data-sec="start">+ 添加步骤</button>
     <div class="edit-section-title">🚶 行进步骤（<span id="cnt-map">${(data.map||[]).length}</span>）</div>
-    <div id="edit-map">${renderSection(data.map || [], "map")}</div>
-    <button class="btn-add" data-action="add" data-sec="map">+ 添加步骤</button>
-    <div class="edit-actions">
-      <button class="btn" id="btn-save">💾 保存</button>
-      <button class="btn ghost" id="btn-cancel">取消</button>
-    </div>`;
+    <div id="edit-map">${sectionHTML(data.map, "map")}</div>
+    <button class="btn-add" data-action="add" data-sec="map">+ 添加步骤</button>`;
+  $("#modal-body").scrollTop = 0;
   const attachCmdSuggest = input => {
     const sec = input.closest(".edit-row").dataset.sec;
     const cmds = sec === "start" ? START_CMDS : MAP_CMDS;
@@ -1193,29 +1235,36 @@ function renderMapEditor() {
   };
   $$("#modal-body .edit-row .ek").forEach(attachCmdSuggest);
   const updateCount = sec => { const c = $("#cnt-" + sec); if (c) c.textContent = $("#edit-" + sec).children.length; };
-  $$("#modal-body .btn-add").forEach(btn => btn.addEventListener("click", () => {
-    mapDirty = true;
-    const sec = btn.dataset.sec;
-    const container = $("#edit-" + sec);
-    const row = document.createElement("div");
-    row.className = "edit-row";
-    row.dataset.sec = sec;
-    row.innerHTML = `<input class="ek" value="" data-field="k"><input class="ev" value="" data-field="v"><button class="edel" data-action="del">✕</button>`;
-    container.appendChild(row);
+  const addRow = sec => {
+    $("#edit-" + sec).insertAdjacentHTML("beforeend", rowHTML(sec));
+    const row = $("#edit-" + sec).lastElementChild;
     attachCmdSuggest(row.querySelector(".ek"));
-    row.querySelector(".edel").addEventListener("click", () => { row.remove(); updateCount(sec); mapDirty = true; });
     row.querySelector(".ek").focus();
     updateCount(sec);
-  }));
-  $$("#modal-body .edit-row .edel").forEach(btn => btn.addEventListener("click", () => {
-    const row = btn.closest(".edit-row");
-    const sec = row.dataset.sec;
-    row.remove();
-    updateCount(sec);
     mapDirty = true;
-  }));
-  $("#btn-save").addEventListener("click", saveMapEdit);
-  $("#btn-cancel").addEventListener("click", renderMapReadOnly);
+  };
+  const addMod = row => {
+    const used = [...row.querySelectorAll(".mk")].map(s => s.value);
+    const pick = MOD_KEYS.find(n => !used.includes(n)) || MOD_KEYS[0];
+    row.querySelector(".emods").insertAdjacentHTML("beforeend", modHTML(pick, ""));
+    row.querySelector(".emods").lastElementChild.querySelector(".mv").focus();
+    mapDirty = true;
+  };
+  // 行内按钮走事件委托。本函数会被重复进入（每次点 ✏️ 一次），所以用赋值而不是
+  // addEventListener —— 否则监听会一层层叠上去，点一次删除会连删好几行。
+  $("#modal-body").onclick = e => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === "add") return addRow(btn.dataset.sec);
+    const row = btn.closest(".edit-row");
+    if (!row) return;
+    if (action === "del") { const sec = row.dataset.sec; row.remove(); updateCount(sec); mapDirty = true; }
+    else if (action === "addmod") addMod(row);
+    else if (action === "delmod") { btn.closest(".emod").remove(); mapDirty = true; }
+  };
+  $("#modal-save-btn").onclick = saveMapEdit;
+  $("#modal-cancel-btn").onclick = cancelMapEdit;
   // 监听任何输入变化，标记为已修改
   $("#modal-body").querySelectorAll("input, textarea").forEach(el => {
     el.addEventListener("input", () => { mapDirty = true; });
@@ -1225,23 +1274,40 @@ function renderMapEditor() {
 async function saveMapEdit() {
   const name = $("#edit-name").value.trim();
   const author = $("#edit-author").value.trim();
+  const parseVal = raw => {
+    const t = raw.trim();
+    try { return JSON.parse(t); } catch {
+      const num = Number(t);
+      return (t !== "" && !isNaN(num)) ? num : t;
+    }
+  };
+  const badMods = [];
   const collect = sec => {
     const steps = [];
     $("#edit-" + sec).querySelectorAll(".edit-row").forEach(row => {
       const k = row.querySelector('[data-field="k"]').value.trim();
-      const vRaw = row.querySelector('[data-field="v"]').value.trim();
       if (!k) return;
-      let v;
-      try { v = JSON.parse(vRaw); } catch {
-        const num = Number(vRaw);
-        v = (vRaw !== "" && !isNaN(num)) ? num : vRaw;
-      }
-      steps.push({ [k]: v });
+      const step = { [k]: parseVal(row.querySelector('[data-field="v"]').value) };
+      // 修饰键按原始顺序写回。步骤键必须留在第一位：map_operations 用 keys[0] 取步骤键，
+      // 顺序错了会把修饰键当成步骤键走错分支（core/schema.py 专门拦这个）。
+      row.querySelectorAll(".emod").forEach(mod => {
+        const mk = mod.querySelector(".mk").value;
+        const raw = mod.querySelector(".mv").value;
+        const mv = parseVal(raw);
+        // 已知修饰键的值都是数字或数组；解析成字符串说明写法坏了 —— 运行时要么静默点错地方，
+        // 要么在游戏里才崩，所以这里先问一句
+        if (typeof mv === "string") badMods.push(`${mk} = ${raw.trim() || "(空)"}`);
+        else if (mk === "click_offset" && !(Array.isArray(mv) && mv.length === 2 && mv.every(x => typeof x === "number")))
+          badMods.push(`${mk} = ${JSON.stringify(mv)}（应为 [dx, dy] 两个数字）`);
+        step[mk] = mv;
+      });
+      steps.push(step);
     });
     return steps;
   };
   const data = Object.assign({}, currentMapData, { name, author, start: collect("start"), map: collect("map") });
-  const btn = $("#btn-save");
+  if (badMods.length && !confirm("这些修饰键的值不像合法写法：\n\n" + badMods.join("\n") + "\n\n仍然保存？")) return;
+  const btn = $("#modal-save-btn");
   btn.textContent = "保存中…"; btn.disabled = true;
   try {
     await api("/api/map", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ file: currentMapFile, version: currentMapVersion, data }) });
@@ -1256,11 +1322,23 @@ async function saveMapEdit() {
   }
 }
 
+function cancelMapEdit() {
+  if (mapDirty && !confirm("有未保存的修改，确定放弃？")) return;
+  renderMapReadOnly();
+}
+
+function closeModal() {
+  mapEditing = false;
+  mapDirty = false;
+  setEditBtns(false);
+  $("#modal-mask").classList.remove("open");
+}
+
 $("#modal-close").addEventListener("click", () => {
   if (mapEditing && mapDirty && !confirm("有未保存的修改，确定关闭？")) return;
-  $("#modal-mask").classList.remove("open");
+  closeModal();
 });
-$("#modal-mask").addEventListener("click", (e) => { if (e.target === e.currentTarget && !mapEditing) $("#modal-mask").classList.remove("open"); });
+$("#modal-mask").addEventListener("click", (e) => { if (e.target === e.currentTarget && !mapEditing) closeModal(); });
 
 /* 地图步骤中 picture 图片悬浮预览 */
 (function(){
