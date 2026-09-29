@@ -5,6 +5,7 @@ import json
 import pytest
 
 from tools.convert import find_json_files_with_character, replace_word_in_json_files
+from utils.core.json_io import is_canonical
 
 
 def write_json(path, data):
@@ -46,12 +47,14 @@ class TestReplaceWordInJsonFiles:
             "picture\\new_name.png"
         )
 
-    def test_writes_indented_output(self, tmp_path):
+    def test_rewrites_in_the_canonical_format(self, tmp_path):
         target = tmp_path / "m.json"
-        write_json(target, {"a": 1})
+        write_json(target, {"name": "x", "start": [{"click_offset": [60, 0]}], "map": []})
         replace_word_in_json_files([str(target)], "unused", "unused")
+
         text = target.read_text(encoding="utf-8")
-        assert "\n    " in text, "重写时统一为 indent=4，会整份重新格式化"
+        assert is_canonical(text), "重写必须走 utils/core/json_io.py（CLAUDE.md R22）"
+        assert '"click_offset": [60,0]' in text, "短数组不能拆行"
 
     def test_handles_empty_file_list(self):
         replace_word_in_json_files([], "a", "b")  # 不应抛出

@@ -16,6 +16,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'false'
+          # 下面的「改动地图格式」要跟基线 diff，浅克隆拿不到基线提交
+          fetch-depth: 0
 
       - name: Set up python
         uses: actions/setup-python@v5
@@ -36,6 +38,14 @@ jobs:
       # 退出码为 1，这一步本身就是一道门；warning（未知步骤键）不拦。
       - name: Validate map JSON
         run: python tools/validate_maps.py
+
+      # 地图写盘格式（R22）：4 空格 + 短数组内联 + 末尾不加换行。
+      # **只拦本次改动的地图**：全库 633 张里 471 张是历史格式（大多来自上游），
+      # 卡全库等于要求一次性重排 471 个文件 —— PR 会被纯空白改动淹没，之后上游
+      # 每改一张图还会跟本地冲突。github.event.before 在新分支首次推送时是 40 个 0，
+      # 工具会自动退回默认分支的 merge-base。
+      - name: Check changed map JSON format
+        run: python tools/format_maps.py --base "${{ github.event.before }}"
 
   build:
     name: Build

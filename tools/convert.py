@@ -25,14 +25,30 @@ def find_json_files_with_character(directory, character):
 
     return found_files
 
+def load_dumps_map():
+    """取地图写盘用的序列化器（CLAUDE.md R22）。
+
+    按路径运行时 sys.path[0] 是 tools/ 而不是仓库根，所以要显式补上；补 sys.path
+    是模块级副作用，会被 tests/test_architecture.py 的棘轮拦下，所以和
+    tools/validate_maps.py 一样放在函数里。
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from utils.core.json_io import dumps_map
+
+    return dumps_map
+
+
 def replace_word_in_json_files(files, original_word, replacement_word):
+    dumps_map = load_dumps_map()
     for file in files:
         with open(file, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        
+
         with open(file, 'w', encoding='utf-8') as f:
-            updated_data = json.dumps(data, ensure_ascii=False, indent=4).replace(original_word, replacement_word)
-            f.write(updated_data)
+            # 替换发生在整段文本上，所以要先按规范序列化再 replace
+            f.write(dumps_map(data).replace(original_word, replacement_word))
 
 if __name__ == "__main__":
     search_character = input("请输入旧字段：")

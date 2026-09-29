@@ -119,7 +119,10 @@ Fhoe-Rail/
 │  │  ├─ notify.py            #   多渠道通知
 │  │  ├─ map_info.py          #   地图元数据解析
 │  │  ├─ map_statu.py         #   单轮运行状态容器
-│  │  └─ map_move.py          #   地图拖动坐标常量表
+│  │  ├─ map_move.py          #   地图拖动坐标常量表
+│  │  ├─ schema.py            #   地图 JSON 校验器
+│  │  ├─ json_io.py           #   地图 JSON 写盘格式（R22）
+│  │  └─ thresholds.py        #   识图阈值常量表（R11）
 │  ├─ config/                 # 配置读写 + 完整性修复
 │  │  └─ config.py
 │  ├─ drivers/                # 【适配层】唯一允许碰 win32/pyautogui/pynput 的地方
@@ -159,6 +162,8 @@ Fhoe-Rail/
 │  ├─ update_file.py          #   资源更新
 │  ├─ install_requirements.py #   依赖安装（bat / WebUI 按路径调用）
 │  ├─ shutdown.py             #   倒计时关机 GUI（GUI 收在 main() 内，见 §3.5 R16）
+│  ├─ validate_maps.py        #   地图 JSON 校验（CI 门）
+│  ├─ format_maps.py          #   地图写盘格式：检查 / --write 重排（CI 门，R22）
 │  └─ convert_to_webp.py / map_res_list.py / map_simplify.py / test.py
 │
 ├─ data/                      # 运行时资源：map/ picture/
@@ -378,6 +383,27 @@ ALT/SHIFT 被释放前要比较初始状态，避免把用户自己按住的键�
 **R21 — 游戏更新会打碎一切：维护一份「冒烟检测器」清单。**
 版本更新后第一件事是跑冒烟：主界面、传送点、F 图标等关键检测器是否还能匹配、
 匹配度余量还剩多少。这应该在启动时或 `--debug` 下自动跑，而不是等用户报告漏怪。
+
+**R22 — 地图 JSON 只有一个写盘格式：`core/json_io.py::dumps_map`。**
+实测 633 个地图文件里，用 `json.dump(indent=4)` 原样重写只有 165 个按行内容不变：
+缩进有 4 / 2 / 顶格 / 7 空格四种，221 个文件里还混着 Tab（手改留下的 `\t\t},`）。
+混排到这种程度，「保存时保留原格式」根本做不到——没有任何缩进设置能还原
+「一半空格一半 Tab」。所以写盘一律重排成规范形式：**4 空格缩进 + 短数组内联 +
+末尾不加换行**。短数组内联是 633 个文件里唯一没有例外的写法（113 处）；
+`json.dump` 会把 `"click_offset": [60,0]` 拆成 5 行、`"floor": [[1,2,3],1]`
+拆成 9 行，这才是保存后 diff 变脏的大头。代价是某个文件**第一次**被重写会重排
+整份，收益是之后同一文件再改就只剩真正改动的那几行（实测连写三次，后两次零 diff）。
+
+三个写入方 —— webui 保存、`ui/record.py` 录制、`tools/convert.py` 批量替换 ——
+都调这一个序列化器，**别再各写一套**。`tests/test_map_json_format.py` 钉住这个
+契约（内联规则 + 整库收敛 + 三个写入方必须都引用它）。
+
+门在 CI：`.github/workflows/run.yml` 的 `Check changed map JSON format` →
+`tools/format_maps.py`，**只拦本次改动的地图**。全库 633 张里 471 张是历史格式
+（大多来自上游），卡全库等于要求一次性重排 471 个文件 —— PR 会被纯空白改动淹没，
+之后上游每改一张图还会跟本地冲突。所以：碰过的图必须规范，没碰的一张都不动。
+非规范时按提示跑 `python tools/format_maps.py --write`（在 webui 里把那张图
+保存一次也等效）。`tests/test_format_maps.py` 钉住「只查改动的」这条门规。
 
 ---
 

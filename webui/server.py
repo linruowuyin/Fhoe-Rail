@@ -49,6 +49,9 @@ else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)  # 使 utils.* 可直接 import（用于通知测试等）
+# 地图写盘格式（CLAUDE.md R22）。放在这里而不是文件开头：按路径运行
+# `python webui/server.py` 时 sys.path[0] 是 webui/，得先补上仓库根才 import 得到。
+from utils.core.json_io import dumps_map
 WEBUI_DIR = os.path.join(BASE_DIR, "webui")
 NOTES_DIR = os.path.join(BASE_DIR, "新图注意事项")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
@@ -1052,7 +1055,7 @@ class Handler(BaseHTTPRequestHandler):
                 _backup_file(fpath)
                 tmp = fpath + ".tmp"
                 with open(tmp, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
+                    f.write(dumps_map(data))
                 os.replace(tmp, fpath)
                 self._send(200, {"ok": True, "saved": True})
             except Exception as e:

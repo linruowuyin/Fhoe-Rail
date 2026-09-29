@@ -11,7 +11,6 @@ import os
 import sys
 import ctypes
 
-import orjson
 import win32api
 import win32con
 from pynput import keyboard
@@ -19,6 +18,7 @@ from pynput import mouse
 from pynput.mouse import Controller as mouseController
 
 from utils.config.config import ConfigurationManager
+from utils.core.json_io import dumps_map
 
 def record_main():
     cfg = ConfigurationManager()
@@ -215,8 +215,9 @@ def record_main():
                 normal_save_dict["map"].append(
                     {"mouse_move": round(element_save['mouse_move_dxy'][0], 2)})  # Round the mouse_move to 2 decimal places
 
-        with open(f'output{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.json', 'wb') as f:
-            f.write(orjson.dumps(normal_save_dict, option=orjson.OPT_INDENT_2))
+        # newline=""：别让 Windows 把 \n 翻成 \r\n，录制产出的行尾符保持原样
+        with open(f'output{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.json', 'w', encoding='utf-8', newline='') as f:
+            f.write(dumps_map(normal_save_dict))
 
     mouse_listener = mouse.Listener(on_click=on_click)  # , on_move=on_move
     mouse_listener.start()

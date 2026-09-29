@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 import utils.ui.record as record_module
+from utils.core.json_io import is_canonical
 
 
 class FakeKeyboardListener:
@@ -241,6 +242,15 @@ class TestOutputFormat:
     def test_f9_writes_the_file(self, recorder):
         recorder.release(FakePynputKeyboard.Key.f9)
         assert list(Path(recorder.root).glob("output*.json"))
+
+    def test_written_file_is_in_the_canonical_format(self, recorder):
+        # 录制产出也是地图 JSON，跟 webui 保存、convert.py 走同一个序列化器（R22）
+        recorder.release(FakePynputKeyboard.Key.right)
+        press_and_release(recorder, "w")
+        recorder.release(FakePynputKeyboard.Key.f9)
+
+        text = sorted(Path(recorder.root).glob("output*.json"))[-1].read_text(encoding="utf-8")
+        assert is_canonical(text)
 
     def test_mouse_move_is_aggregated_into_one_entry(self, recorder):
         recorder.release(FakePynputKeyboard.Key.right)
