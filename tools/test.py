@@ -3,7 +3,7 @@ import time
 import ctypes
 import sys
 import traceback
-from utils.log import log, webhook_and_log
+from utils.core.log import log, webhook_and_log
 
 
 def main():
@@ -11,7 +11,7 @@ def main():
         log.info("脚本将于5秒后运行,请确保你的游戏置顶")
         time.sleep(5)
         get_width()
-        from utils.mouse_event import MouseEvent
+        from utils.drivers.mouse_event import MouseEvent
         mouse_event = MouseEvent()
         mouse_event.relative_click((96, 9))
         webhook_and_log("脚本已经完成运行")

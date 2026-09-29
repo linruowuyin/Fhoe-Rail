@@ -4,7 +4,7 @@ import win32gui
 import win32print
 
 from utils.config.config import ConfigurationManager
-from utils.log import log
+from utils.core.log import log
 
 def get_width():
     hwnd = win32gui.GetForegroundWindow()  # 根据当前活动窗口获取句柄

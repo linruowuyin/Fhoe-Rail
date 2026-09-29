@@ -51,7 +51,7 @@ if errorlevel 6 (
     pause
     goto :end
 ) else (
-    %PYTHON_BIN% utils/install_requirements.py
+    %PYTHON_BIN% tools/install_requirements.py
     echo.
     goto :start_script
 )

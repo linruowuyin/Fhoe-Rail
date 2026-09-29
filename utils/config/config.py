@@ -1,11 +1,9 @@
 import json
 import os
-import sys
-import time
 
 import orjson
-from utils.singleton import SingletonMeta
-from utils.log import log
+from utils.core.singleton import SingletonMeta
+from utils.core.log import log
 
 
 class ConfigurationManager(metaclass=SingletonMeta):
@@ -25,7 +23,8 @@ class ConfigurationManager(metaclass=SingletonMeta):
             log.error(f"初始化配置文件时出现错误: {e}")
 
         self._config = None
-        self._last_updated = None
+        # 上次读到的**文件 mtime**（不是「读的时刻」）—— 见 _config_needs_update
+        self._last_mtime = None
 
     @property
     def config_file(self):
@@ -41,20 +40,31 @@ class ConfigurationManager(metaclass=SingletonMeta):
         """
         更新配置文件
         """
-        self._config = ConfigurationManager.read_json_file(
-            ConfigurationManager.CONFIG_FILE_NAME
-        )
-        self._last_updated = time.time()
+        path = ConfigurationManager.CONFIG_FILE_NAME
+        # 先记 mtime、再读内容：若文件恰好在两者之间被改，记下的是**旧**戳，
+        # 下次访问就会重读（安全的失败方向）。反过来的顺序会永久漏掉那次更新。
+        self._last_mtime = os.path.getmtime(path)
+        self._config = ConfigurationManager.read_json_file(path)
 
     def _config_needs_update(self):
         """
         检查配置是否需要更新
+
+        比较的是**同一个文件前后两次的 mtime**，全程不碰系统时钟。
+
+        早先这里记的是 `time.time()`，然后拿文件 mtime 去和它比大小 —— 这是两把
+        精度不同的尺子：Windows 上 `time.time()` 的粒度约 15.6ms，而 NTFS 的 mtime
+        是 100ns。于是刚读完文件就可能出现「mtime 比刚记下的时刻更新」，被误判成
+        「文件又变了」而白读一遍 —— 重读是**整个替换**内存里那份 dict，会把别处
+        刚写进去的键冲掉（测试里偶发的 `KeyError: 'cached'` 就是它）。
         """
-        if self._last_updated is None:
+        if self._last_mtime is None:
             return True
 
-        file_modified_time = os.path.getmtime(ConfigurationManager.CONFIG_FILE_NAME)
-        return file_modified_time > self._last_updated
+        return (
+            os.path.getmtime(ConfigurationManager.CONFIG_FILE_NAME)
+            != self._last_mtime
+        )
 
     @classmethod
     def save_config(cls, config: dict):
@@ -260,7 +270,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
     @classmethod
     def main_start_rewrite(cls, setting):
         """写入需要询问的配置"""
-        # from utils.setting import Setting
+        # from utils.ui.setting import Setting
         setting.set_config(slot="start_rewrite")
         cls.ensure_config_complete()
 

@@ -8,8 +8,13 @@ Fhoe-Rail WebUI 本地服务（零依赖，仅标准库）
 然后浏览器访问 http://127.0.0.1:8666
 按 Ctrl+C 停止服务。
 
+端口被自家 WebUI 占着时会自动接管（请旧实例优雅退出后接管，见 bind_port_with_takeover）；
+占用者是别的程序、或本工具不带 /api/ping 的老版本时只报错退出 —— 不会替你去杀进程。
+
 端点:
     GET  /                  -> WebUI 页面
+    GET  /api/ping          -> 身份 + 关停令牌 + 有没有在跑锄地（供新实例接管用）
+    POST /api/shutdown      -> 优雅关停本实例（需 X-Fhoe-Token 头；body {stop_run} 一并停锄地）
     GET  /api/config        -> 读取 config.json
     POST /api/config        -> 保存 config.json（请求体为完整 JSON 对象）
     GET  /api/maps          -> 地图树（按版本 -> 星球 -> 地图）
@@ -24,10 +29,13 @@ import base64
 import json
 import os
 import re
+import secrets
+import socket
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import webbrowser
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -49,11 +57,27 @@ else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)  # 使 utils.* 可直接 import（用于通知测试等）
+# 地图写盘格式（CLAUDE.md R22）。放在这里而不是文件开头：按路径运行
+# `python webui/server.py` 时 sys.path[0] 是 webui/，得先补上仓库根才 import 得到。
+from utils.core.json_io import dumps_map
+# 展示名（版本 / 星球 / 区域）只有一处维护，见 CLAUDE.md R23 —— 以前这里有一份、
+# ui/map_selector.py 有一份、setting.py 的提示语里还有一份，default_lite 就是这么漏的。
+from utils.core.map_names import (
+    PLANET_EMOJI,
+    PLANET_NAMES,
+    VERSION_NAMES,
+    area_key,
+    area_label,
+)
 WEBUI_DIR = os.path.join(BASE_DIR, "webui")
 NOTES_DIR = os.path.join(BASE_DIR, "新图注意事项")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 LOG_PATH = os.path.join(BASE_DIR, "logs", "日志文件.log")
 PORT = 8666
+#: 关停端点（/api/shutdown）的令牌：启动时随机生成，只能通过本机请求 /api/ping 读到。
+#: 有它才能做「新实例接管旧实例」，同时拦住浏览器里随便一个网页把你的面板关掉 ——
+#: 跨源读不到 /api/ping 的响应（CORS），所以猜不到这个值。
+_SHUTDOWN_TOKEN = secrets.token_hex(16)
 
 
 def find_user_python():
@@ -71,21 +95,6 @@ def find_user_python():
 
 
 PYTHON_BIN = find_user_python()
-
-PLANET_NAMES = {
-    "1": "黑塔",
-    "2": "雅利洛",
-    "3": "罗浮",
-    "4": "匹诺康尼",
-    "5": "翁法罗斯",
-    "6": "二相乐园",
-}
-
-VERSION_NAMES = {
-    "default": "默认",
-    "HuangQuan": "黄泉专用",
-    "technique": "秘技版",
-}
 
 # logo 缓存：{(类型): bytes}
 _logo_cache = {}
@@ -504,6 +513,9 @@ def build_map_tree():
                     "label": f"{main}-{side}-{seq}",
                     "name": name,
                     "author": author,
+                    # 区域（"主控舱段"）从名字里的「区域-序号」派生，前端按它分第三级
+                    "area": area_key(name),
+                    "area_label": area_label(name),
                 }
             )
         tree[version] = planets
@@ -555,7 +567,7 @@ RUN_MODES = {
         "desc": "录制地图（F9 保存，录制中请操作游戏）",
     },
     "install": {
-        "args": ["utils/install_requirements.py"],
+        "args": ["tools/install_requirements.py"],
         "desc": "安装/检查依赖（pip）",
     },
 }
@@ -707,6 +719,18 @@ def run_status():
         }
 
 
+def run_brief():
+    """只回答「有没有在跑锄地」，不带那 500 行输出缓冲 —— 给 /api/ping 用。"""
+    with _RUN["lock"]:
+        proc = _RUN["proc"]
+        running = proc is not None and proc.poll() is None
+        return {
+            "running": running,
+            "pid": proc.pid if running else None,
+            "mode": _RUN["mode"] if running else None,
+        }
+
+
 def run_stop():
     """停止锄地进程"""
     with _RUN["lock"]:
@@ -816,6 +840,19 @@ class Handler(BaseHTTPRequestHandler):
             self._send(403, {"error": "forbidden: 仅允许本机访问"})
             return
         try:
+            if path == "/api/ping":
+                # 占用这个端口的是不是自家 WebUI —— 新实例靠它决定敢不敢接管
+                self._send(
+                    200,
+                    {
+                        "app": "fhoe-rail-webui",
+                        "port": self.server.server_address[1],
+                        "pid": os.getpid(),
+                        "token": _SHUTDOWN_TOKEN,
+                        "run": run_brief(),
+                    },
+                )
+                return
             if path == "/" or path == "/index.html":
                 with open(os.path.join(WEBUI_DIR, "index.html"), "rb") as f:
                     html = f.read()
@@ -853,6 +890,7 @@ class Handler(BaseHTTPRequestHandler):
                     {
                         "tree": build_map_tree(),
                         "planet_names": PLANET_NAMES,
+                        "planet_emoji": PLANET_EMOJI,
                         "version_names": VERSION_NAMES,
                     },
                 )
@@ -1052,7 +1090,7 @@ class Handler(BaseHTTPRequestHandler):
                 _backup_file(fpath)
                 tmp = fpath + ".tmp"
                 with open(tmp, "w", encoding="utf-8") as f:
-                    json.dump(data, f, ensure_ascii=False, indent=4)
+                    f.write(dumps_map(data))
                 os.replace(tmp, fpath)
                 self._send(200, {"ok": True, "saved": True})
             except Exception as e:
@@ -1092,7 +1130,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, run_stop())
         elif parsed.path == "/api/notify/test":
             try:
-                from utils.notify import Notify
+                from utils.core.notify import Notify
 
                 ok = Notify().send_test()
                 self._send(
@@ -1106,6 +1144,21 @@ class Handler(BaseHTTPRequestHandler):
                 )
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
+        elif parsed.path == "/api/shutdown":
+            try:
+                if self.headers.get("X-Fhoe-Token", "") != _SHUTDOWN_TOKEN:
+                    self._send(403, {"ok": False, "error": "forbidden: 缺少本机令牌"})
+                    return
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                body = {}
+                if length:
+                    body = json.loads(self.rfile.read(length).decode("utf-8"))
+                stopped = run_stop() if body.get("stop_run") else None
+                self._send(200, {"ok": True, "stopped": stopped})
+                # 先把响应发出去，再让 serve_forever 收工（在别的线程里调用）
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
+            except Exception as e:
+                self._send(400, {"ok": False, "error": str(e)})
         else:
             self._send(404, {"error": "not found"})
 
@@ -1119,6 +1172,106 @@ class Server(ThreadingHTTPServer):
     allow_reuse_address = False
 
 
+# ============ 新实例接管旧实例 ============
+# 以前端口被占只报错让用户自己去关（「忘了关上一个」很常见）。现在：占用者若是
+# **自家 WebUI**（认 /api/ping 的 app 标识 + 它给的令牌），就请它优雅退出再接管端口。
+# 认不出来的占用者 —— 别的程序、或本工具更老、不带 /api/ping 的版本 —— 一律只报错
+# 退出，绝不替用户杀进程。
+
+
+def port_is_free(port=PORT):
+    """端口是否空闲。用一次真实 bind 判断：Server 关掉了 allow_reuse_address，
+    所以这里的口径跟 Server 一致。"""
+    with socket.socket() as probe:
+        try:
+            probe.bind(("127.0.0.1", port))
+        except OSError:
+            return False
+    return True
+
+
+def probe_webui(port=PORT, timeout=1.5):
+    """占用端口的是不是自家 WebUI：是则返回它的 /api/ping 结果，否则 None。"""
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/ping", timeout=timeout
+        ) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return None
+    if isinstance(data, dict) and data.get("app") == "fhoe-rail-webui":
+        return data
+    return None
+
+
+def ask_old_instance_to_quit(old, port=PORT, stop_run=False, wait=5.0):
+    """请旧实例退出，并等它把端口放掉。放掉了返回 True。"""
+    payload = json.dumps({"stop_run": bool(stop_run)}).encode("utf-8")
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/api/shutdown",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-Fhoe-Token": old.get("token", ""),
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=wait) as resp:
+            resp.read()
+    except Exception:
+        return False
+    deadline = time.time() + wait
+    while time.time() < deadline:
+        if port_is_free(port):
+            return True
+        time.sleep(0.2)
+    return False
+
+
+def bind_port_with_takeover(port=PORT):
+    """绑定端口；被自家旧实例占着就请它退出后重试一次。返回 HTTPServer。"""
+    try:
+        return Server(("127.0.0.1", port), Handler)
+    except OSError:
+        pass
+
+    old = probe_webui(port)
+    if not old:
+        print(f"[错误] 端口 {port} 已被占用，但认不出是 Fhoe-Rail WebUI。")
+        print("        （占用者可能是别的程序，也可能是本工具不带 /api/ping 的老版本。）")
+        print("解决: 关掉占用它的程序; 若是老版本 WebUI，在它的窗口里按 Enter 退出后重试;")
+        print("      也可以改 webui/server.py 里的 PORT。")
+        raise SystemExit(1)
+
+    run_info = old.get("run") or {}
+    print(
+        f"发现旧实例: PID {old.get('pid')} 占着端口 {port}"
+        + (f"，正在运行锄地（{run_info.get('mode')}）" if run_info.get("running") else "，没在跑锄地")
+    )
+
+    stop_run = False
+    if run_info.get("running"):
+        # 停掉一趟正在跑的锄地 = 游戏里那趟白跑，所以只在能问的时候才问
+        if not sys.stdin.isatty():
+            print("[错误] 旧实例正在跑锄地，非交互环境下不接管（免得白白中断那趟）。")
+            print("解决: 先停掉锄地，或在旧实例窗口里按 Enter 退出后重试。")
+            raise SystemExit(1)
+        input("按 Enter 让它停下并接管端口（想保留这趟锄地请按 Ctrl+C）...")
+        stop_run = True
+
+    if not ask_old_instance_to_quit(old, port=port, stop_run=stop_run):
+        print("[错误] 旧实例没有按时退出。解决: 在它的窗口里按 Enter 手动关闭后重试。")
+        raise SystemExit(1)
+
+    try:
+        server = Server(("127.0.0.1", port), Handler)
+    except OSError as e:
+        print(f"[错误] 旧实例已退出，但端口 {port} 仍绑不上: {e}")
+        raise SystemExit(1)
+    print("旧实例已退出，本次接管该端口。")
+    return server
+
+
 def main():
     print("=" * 50)
     print("  Fhoe-Rail WebUI")
@@ -1126,18 +1279,7 @@ def main():
     print("  请用浏览器打开: http://127.0.0.1:%d" % PORT)
     print("  按 Enter 结束服务（或 Ctrl+C）")
     print("=" * 50)
-    try:
-        server = Server(("127.0.0.1", PORT), Handler)
-    except OSError as e:
-        print(f"[错误] 端口 {PORT} 已被占用: {e}")
-        print(
-            "可能原因: WebUI 已在运行(请直接打开 http://127.0.0.1:%d)，或该端口被其他程序占用。"
-            % PORT
-        )
-        print(
-            "解决: 关闭已运行的 WebUI 窗口后重试; 或修改 webui/server.py 中的 PORT 换一个端口。"
-        )
-        sys.exit(1)
+    server = bind_port_with_takeover()
     threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
 
     def _enter_watcher():

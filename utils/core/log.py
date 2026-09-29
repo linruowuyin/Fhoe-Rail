@@ -1,0 +1,191 @@
+"""
+Author: Night-stars-1 nujj1042633805@gmail.com
+Date: 2023-05-12 23:22:54
+LastEditors: Night-stars-1 nujj1042633805@gmail.com
+LastEditTime: 2023-05-14 01:22:36
+FilePath: Honkai-Star-Rail-beta-2.4h/Download/Zip/Honkai-Star-Rail-beta-2.7/tools/log.py
+Description:
+
+Copyright (c) 2023 by ${git_name_email}, All Rights Reserved.
+"""
+
+import os
+import sys
+import datetime
+
+# 防止cp932等非中文编码导致UnicodeEncodeError
+os.environ["PYTHONIOENCODING"] = "utf-8"
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name)
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+import requests
+
+# ============================================================
+# 系统语言兼容：日文(cp932)等非 UTF-8 代码页系统下，print()/loguru 输出中文会抛
+# UnicodeEncodeError 导致崩溃（见 issue #428）。此处统一将 stdout/stderr 重配置为
+# UTF-8 + errors='replace'，所有 import 本模块的入口脚本自动获得兼容性。
+# （fhoe.py 顶部也有同样的配置，二者幂等，先后执行均安全。）
+# ============================================================
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        pass
+
+from loguru import logger
+from utils.core.requests import post
+
+# 日志配置
+log = logger
+LOG_DIR = "logs"
+PATH_LOG = os.path.join(LOG_DIR, "日志文件.log")
+
+
+def get_folder_modified_time(folder_path):
+    """获取文件夹的修改时间
+
+    Args:
+        folder_path (str): 文件夹路径
+
+    Returns:
+        tuple: 修改时间的月日时分，如果获取失败则返回None
+    """
+    try:
+        modified_time = os.path.getmtime(folder_path)
+        modified_datetime = datetime.datetime.fromtimestamp(modified_time)
+
+        month = modified_datetime.month
+        day = modified_datetime.day
+        hour = modified_datetime.hour
+        minute = modified_datetime.minute
+
+        return month, day, hour, minute
+    except Exception:
+        # 注意：这里不能调用 log.error，loguru 的 patcher 会调用 update_extra → get_ver →
+        # 本函数，形成无限递归导致 import 卡死（cwd 不在项目根时相对路径会失败）
+        return None
+
+
+def get_ver() -> str:
+    """获取当前版本号
+
+    首先尝试从version.txt文件读取版本号，如果读取失败或版本号为空，
+    则根据map文件夹的最后修改时间生成版本号。
+
+    Returns:
+        str: 版本号字符串，格式为MMDDHHMM（月日时分）
+    """
+    try:
+        with open("version.txt", "r", encoding="utf-8") as file:
+            version = file.read().strip()
+            if version:  # 只在version不为空时返回
+                return version
+    except (OSError, UnicodeError):
+        # UnicodeError 也必须兜住：这个函数跑在 loguru 的 patcher 里，从这里抛出去的
+        # 异常会从**每一个** log.*() 调用点冒出来 —— 程序崩在任意一条日志处，而且
+        # 错误本身没法被记下来（记录日志正是坏掉的东西）。
+        # 触发条件现实存在：version.txt 被记事本存成 UTF-16、或写入了非法 UTF-8。
+        # （IOError 就是 OSError 的别名，原来那两个都在这里覆盖了。）
+        pass
+
+    # 如果version.txt不存在或为空，使用map文件夹修改时间作为版本号
+    try:
+        result = get_folder_modified_time("map")
+        if result:
+            month, day, hour, minute = result
+            return f"{month:02d}{day:02d}{hour:02d}{minute:02d}"
+    except Exception:
+        pass  # 同上：不打日志，避免 loguru patcher 无限递归
+
+    return "00000000"  # 当所有获取版本号的方式都失败时返回默认值
+
+
+def update_extra(record):
+    """更新日志记录的额外信息
+
+    Args:
+        record (dict): 日志记录字典
+    """
+    module = record["module"]
+    function = record["function"]
+    line = record["line"]
+    version = get_ver()
+    record["new_module"] = f"{module}.{function}:{line}"
+    record["VER"] = f"{version}"
+
+
+def webhook_and_log(message):
+    """发送webhook消息并记录日志
+
+    Args:
+        message (str): 要发送的消息
+    """
+    log.info(message)
+    from utils.config.config import ConfigurationManager  # Circular import
+
+    cfg = ConfigurationManager()
+    url = cfg.read_json_file(filename=cfg.CONFIG_FILE_NAME, path=False).get(
+        "webhook_url"
+    )
+    if url == "" or url is None:
+        return
+    try:
+        post(url, json={"content": message})
+    except Exception as e:
+        log.error(f"Webhook发送失败: {e}")
+
+
+def fetch_php_file_content():
+    """获取PHP接口内容
+
+    Returns:
+        str: 接口返回的文本内容，如果获取失败则返回空字符串
+    """
+    php_urls = [
+        "https://wanghun.top/api/tgrj.php",
+        "http://api.ay15.cn/api/tiangou/api.php?charset=utf-8",
+    ]
+
+    for url in php_urls:
+        try:
+            response = requests.get(url, timeout=1)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.Timeout:
+            return ""
+        except (requests.exceptions.RequestException, requests.exceptions.HTTPError):
+            pass
+
+    return ""
+
+
+# 配置日志记录器
+log = logger.patch(update_extra)
+
+logger.remove()
+log.add(
+    sys.stdout,
+    level="INFO",
+    colorize=True,
+    format="{time:HH:mm:ss.SSS} - "
+    "<cyan>{module}.{function}:{line}</cyan> - " + "<cyan>{VER}</cyan> - "
+    "<level>{message}</level>",
+)
+
+log.add(
+    PATH_LOG,
+    format="{time:HH:mm:ss.SSS} - "
+    "{level:<6} \t| "
+    "<cyan>{new_module:<40}</cyan> \t- " + "<cyan>{VER}</cyan> - " + "{message}",
+    rotation="0:00",
+    enqueue=True,
+    serialize=False,
+    encoding="utf-8",
+    retention="7 days",
+)
+
+log.info("=" * 60)

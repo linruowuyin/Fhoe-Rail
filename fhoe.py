@@ -20,7 +20,7 @@ import traceback
 import pyuac
 
 # 日文系统(cp932)下中文输出会崩,统一把 stdout/stderr 改成 UTF-8
-# 要在 import utils.log 之前执行
+# 要在 import utils.core.log 之前执行
 for _stream in (sys.stdout, sys.stderr):
     try:
         _stream.reconfigure(encoding="utf-8", errors="replace")
@@ -29,14 +29,14 @@ for _stream in (sys.stdout, sys.stderr):
 
 from get_width import check_mult_screen
 from utils.config.config import ConfigurationManager
-from utils.log import fetch_php_file_content, log
-from utils.map_utils.map_operations import MapOperations
-from utils.map_utils.map_info import MapInfo
-from utils.map_utils.map_selector import choose_map, choose_map_debug
-from utils.notify import Notify, get_error_summary
-from utils.setting import Setting
-from utils.time_utils import TimeUtils
-from utils.window import Window
+from utils.core.log import fetch_php_file_content, log
+from utils.flows.map_operations import MapOperations
+from utils.core.map_info import MapInfo
+from utils.ui.map_selector import choose_map, choose_map_debug
+from utils.core.notify import Notify, get_error_summary
+from utils.ui.setting import Setting
+from utils.core.time_utils import TimeUtils
+from utils.drivers.window import Window
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
@@ -148,7 +148,7 @@ def main():
                 cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True
             )  # 启用一次白名单模式
         elif sys.argv[1] == "--record":
-            from utils.record import record_main
+            from utils.ui.record import record_main
 
             record_main()
             return
@@ -156,7 +156,7 @@ def main():
             # 测试模式：单独测试某个功能
             cfg.main_start()
             Window().switch_window()
-            # from utils.handle import Handle
+            # from utils.flows.handle import Handle
             # handle = Handle()
             # handle.auto_use_technique_consumable()
             return

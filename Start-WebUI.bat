@@ -18,7 +18,8 @@ if errorlevel 1 (
     echo.
     echo [ERROR] WebUI failed to start. Check:
     echo   - Python 3 installed and runnable
-    echo   - Port 8666 not occupied by another program
+    echo   - Port 8666 held by another program (a running Fhoe-Rail WebUI is taken over automatically)
+    echo   - If held by an older WebUI build: press ENTER in its window to quit, then retry
     echo.
     pause
 )

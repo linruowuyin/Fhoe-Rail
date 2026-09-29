@@ -4,9 +4,49 @@ on:
   push:
     paths:
       - '**.py'
+      - 'map/**.json'
 permissions:
   contents: write
 jobs:
+  test:
+    name: Test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'false'
+          # 下面的「改动地图格式」要跟基线 diff，浅克隆拿不到基线提交
+          fetch-depth: 0
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.5'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-timeout
+
+      # 测试全部使用替身，不需要游戏窗口；失败的用例（xfail）是被记录的真实缺陷。
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      # 地图包来自第三方，手写错的 JSON 要一路跑进游戏才炸。校验器有 error 时
+      # 退出码为 1，这一步本身就是一道门；warning（未知步骤键）不拦。
+      - name: Validate map JSON
+        run: python tools/validate_maps.py
+
+      # 地图写盘格式（R22）：4 空格 + 短数组内联 + 末尾不加换行。
+      # **只拦本次改动的地图**：全库 633 张里 471 张是历史格式（大多来自上游），
+      # 卡全库等于要求一次性重排 471 个文件 —— PR 会被纯空白改动淹没，之后上游
+      # 每改一张图还会跟本地冲突。github.event.before 在新分支首次推送时是 40 个 0，
+      # 工具会自动退回默认分支的 merge-base。
+      - name: Check changed map JSON format
+        run: python tools/format_maps.py --base "${{ github.event.before }}"
+
   build:
     name: Build
     runs-on: windows-latest
@@ -30,7 +70,7 @@ jobs:
       - name: Generate program
         run: |
           pyinstaller -D --distpath .\dist\ -i .\logo.ico --contents-directory libraries -n "Fhoe-Rail" fhoe.py -y
-          pyinstaller -D --distpath .\dist\webui\ -i .\logo.ico --contents-directory libraries -n "webui-server" webui\server.py -y --paths . --hidden-import onepush --hidden-import winotify --hidden-import PIL --hidden-import utils.notify --hidden-import utils.config.config --hidden-import utils.log
+          pyinstaller -D --distpath .\dist\webui\ -i .\logo.ico --contents-directory libraries -n "webui-server" webui\server.py -y --paths . --hidden-import onepush --hidden-import winotify --hidden-import PIL --hidden-import utils.core.notify --hidden-import utils.config.config --hidden-import utils.core.log
           # WebUI 启动器 exe(替代 Start-WebUI.bat;launcher_libraries 避免与主程序 libraries 重名)
           pyinstaller -D --distpath .\dist\launcher\ -i .\logo.ico --contents-directory launcher_libraries -n "Start-WebUI" webui\start_webui.py -y
 
