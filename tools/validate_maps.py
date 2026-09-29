@@ -66,6 +66,17 @@ def iter_map_files(version=None):
 
 
 def main(argv) -> int:
+    # 打印中文前先把 stdout/stderr 掰成 UTF-8：GitHub 的 Windows runner 上它默认是
+    # cp1252，中文编不出来会直接 UnicodeEncodeError、让整个 CI 步骤红掉；用户的
+    # 日文/其它非 UTF-8 控制台同理（见 issue #428，utils/core/log.py 与 fhoe.py
+    # 里有同样的处理）。
+    # 放在 main 里而不是模块级：import 期副作用会被 tests/test_architecture.py 拦。
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
     schema = load_schema()
     names = load_map_names()
 
