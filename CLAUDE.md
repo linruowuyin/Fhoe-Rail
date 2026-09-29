@@ -122,6 +122,7 @@ Fhoe-Rail/
 │  │  ├─ map_move.py          #   地图拖动坐标常量表
 │  │  ├─ schema.py            #   地图 JSON 校验器
 │  │  ├─ json_io.py           #   地图 JSON 写盘格式（R22）
+│  │  ├─ map_names.py         #   版本 / 星球 / 区域的中文展示名（R23）
 │  │  └─ thresholds.py        #   识图阈值常量表（R11）
 │  ├─ config/                 # 配置读写 + 完整性修复
 │  │  └─ config.py
