@@ -437,6 +437,11 @@
     z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px;
   }
   .modal-mask.open { display: flex; }
+  /* 弹窗打开时锁住背后的页面：不然滚轮在弹窗上（尤其头部那圈空白）会滚到下层的图鉴列表。
+     锁 html 而不是 body —— 本页 body 自带 overflow-x: hidden，它的 overflow 不再传播到
+     视口，真正滚动的是 html（实测锁 body 时 window.scrollTo 照样能滚）。
+     别再加滚动条宽度补偿：实测锁 html 本身零偏移，补 padding 反而会偏 3px。 */
+  html.modal-open { overflow: hidden; }
   .modal {
     background: var(--bg-1); border: 1px solid var(--border-strong);
     border-radius: var(--radius); max-width: 900px; width: 100%; max-height: 88vh; overflow: hidden;
@@ -444,7 +449,8 @@
     display: flex; flex-direction: column;
   }
   /* 头部（标题 / 徽章 / 按钮）常驻，内容区自己滚 —— 否则长地图要一路拉到最下面才能保存 */
-  #modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  /* overscroll-behavior: 滚到两端时不把滚轮甩给下层页面 */
+  #modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; flex-shrink: 0; }
   .modal-head h3 { font-size: 20px; font-weight: 600; }
   .modal-close { cursor: pointer; font-size: 22px; color: var(--txt-dim); background: none; border: none; padding: 4px 8px; border-radius: 8px; }
@@ -782,7 +788,7 @@ async function loadNotes() {
   }
 }
 function showNoteImage(name) {
-  $("#modal-mask").classList.add("open");
+  openModal();
   setEditBtns(false);
   $("#modal-title").textContent = "新图注意";
   $("#modal-id").textContent = name;
@@ -1077,7 +1083,7 @@ function renderMaps() {
 $("#map-search")?.addEventListener("input", renderMaps);
 
 async function showMapDetail(file, version) {
-  $("#modal-mask").classList.add("open");
+  openModal();
   $("#modal-title").textContent = "地图详情";
   $("#modal-id").textContent = (VERSION_NAMES[version] || version) + " / " + file;
   $("#modal-author").textContent = "加载中…";
@@ -1331,7 +1337,13 @@ function closeModal() {
   mapEditing = false;
   mapDirty = false;
   setEditBtns(false);
+  document.documentElement.classList.remove("modal-open");
   $("#modal-mask").classList.remove("open");
+}
+
+function openModal() {
+  document.documentElement.classList.add("modal-open");
+  $("#modal-mask").classList.add("open");
 }
 
 $("#modal-close").addEventListener("click", () => {
