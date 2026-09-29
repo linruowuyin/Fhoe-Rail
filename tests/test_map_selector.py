@@ -76,12 +76,19 @@ class TestChooseMap:
 
         assert choose_map(map_info) == ("1-1_0", True)
 
-    def test_invalid_main_map_is_rewritten_in_config(self, map_info, isolated_cwd):
+    def test_invalid_main_map_falls_back_without_touching_config(
+        self, map_info, isolated_cwd
+    ):
+        """回退只作用于本次运行，不写回配置。
+
+        写回去等于「用户没改设置，设置却被改了」——切回原来的地图版本跑完整锄大地
+        时，起点和顺序都变了，而且很难联想到是上次跑了别的版本造成的。
+        """
         set_config_file(isolated_cwd, main_map="42")
 
         assert choose_map(map_info) == ("1-1_0", True)
-        assert read_config_file(isolated_cwd, "main_map") == "1", (
-            "回退结果应写回配置，避免每次启动都重新回退"
+        assert read_config_file(isolated_cwd, "main_map") == "42", (
+            "回退不该改配置；用户在菜单里主动选「优先星球」的那处写入才该落盘"
         )
 
     def test_picks_the_first_side_map_of_the_planet(self, map_info, isolated_cwd):

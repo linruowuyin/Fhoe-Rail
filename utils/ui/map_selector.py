@@ -28,10 +28,10 @@ def choose_map(map_info: MapInfo):
         fallback_main_map = min(list(map_info.map_list_map.keys()), key=int)
         log.warning(
             f"main_map '{main_map}' 在地图版本 '{map_version}' 不可用，"
-            f"自动回退为 '{fallback_main_map}'。"
+            f"本次运行回退为 '{fallback_main_map}'（不修改配置）。"
         )
         main_map = fallback_main_map
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "main_map", main_map)
+        # 只在本进程内回退，不要写回配置：否则会污染用户的「优先星球」并跨版本残留
         main_map_dict = map_info.map_list_map.get(main_map)
         if main_map_dict is None:
             raise ValueError(
