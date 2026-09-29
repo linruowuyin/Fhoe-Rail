@@ -1,0 +1,80 @@
+{
+    "name": "艾迪恩代币-1",
+    "author": "lrwy",
+    "start": [
+        {
+            "need_allow_map_buy": 1
+        },
+        {
+            "check": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ]
+        },
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_5.png": 1.5
+        },
+        {
+            "picture\\map_4-0.png": 2,
+            "scene": 1
+        },
+        {
+            "picture\\map_4-1_point_0.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        },
+        {
+            "w": 9.5
+        },
+        {
+            "f": 15
+        },
+        {
+            "space": 1.5
+        },
+        {
+            "await": 1.5
+        },
+        {
+            "picture\\buy.png": 1.5
+        },
+        {
+            "picture\\dialogue_skip.png": 1.5			
+        },
+        {
+            "picture\\token.png": 1.5
+        },
+        {
+            "picture\\max.png": 1
+        },
+        {
+            "picture\\round.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "fighting": 2
+        },
+        {
+            "esc": 1
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}

@@ -1,0 +1,97 @@
+{
+    "name": "收集记忆代币-1",
+    "author": "smjes3",
+    "start": [
+        {
+            "need_allow_memory_token": 1
+        },
+        {
+            "check": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ]
+        },
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_6.png": 1.5
+        },
+        {
+            "picture\\map_5-0.png": 1.5,
+            "scene": 1
+        },
+        {
+            "picture\\map_5-0_point_1.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\transfer.png": 1.5
+        },
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_5-0_point_2.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "w": 1.6
+        },
+        {
+            "a": 1.8
+        },
+        {
+            "a": 1.8
+        },
+        {
+            "await": 3
+        },
+        {
+            "w": 1.45
+        },
+        {
+            "a": 1.6
+        },
+        {
+            "w": 0.57
+        },
+        {
+            "f": 15
+        },
+        {
+            "await": 3
+        },
+        {
+            "space": 1.5
+        },
+        {
+            "await": 3
+        },
+        {
+            "space": 1.5
+        },
+        {
+            "await": 3
+        },
+        {
+            "esc": 1
+        }
+    ]
+}

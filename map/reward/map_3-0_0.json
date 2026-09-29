@@ -1,0 +1,107 @@
+{
+  "name": "零食材料-1",
+  "author": "喵不可言",
+  "start": [
+    {
+      "need_allow_snack_buy": 1
+    },
+    {	  
+      "map": 1
+    },
+    {
+      "picture\\fanhui_1.png": 1.5
+    },
+    {
+      "picture\\orientation_1.png": 1.5
+    },
+    {
+      "picture\\orientation_4.png": 1.5	  
+    },
+    {
+      "picture\\map_3-0.png": 1.5
+    },
+    {
+      "picture\\map_3-0_point_1.png": 1.5
+    },
+    {
+      "picture\\transfer.png": 1.5
+    },
+    {
+      "d": 6.13
+    },
+    {
+      "s": 9.74
+    },
+    {
+      "d": 1.62
+    },
+    {
+      "w": 1.16
+    },
+    {
+      "f": 15
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 1.5
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 1.5
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 1.5
+    },
+    {
+      "picture\\buy.png": 1.5
+    },
+    {
+      "await": 2
+    },
+    {
+      "space": 1.5
+    },
+    {
+      "await": 4
+    },
+    {
+      "picture\\liuti.png": 1.5
+    },
+    {
+      "picture\\max.png": 1
+    },
+    {
+      "picture\\round.png": 1.5
+    },
+    {
+      "picture\\finish_fighting4.png": 1.5	  
+    },
+    {
+      "picture\\zhongzi.png": 1.5
+    },
+    {
+      "picture\\max.png": 1
+    },
+    {
+      "picture\\round.png": 1.5
+    },
+    {
+      "picture\\finish_fighting4.png": 1.5	  
+    } 
+],
+  "map": [
+    {
+      "esc": 1
+    },
+    {
+      "fighting": 2
+    }
+  ]
+}
