@@ -381,15 +381,14 @@
   .tab:hover { color: var(--txt); border-color: var(--border-strong); }
   .tab.active { background: var(--violet); border-color: var(--violet); color: #fff; }
 
-  /* 图鉴页的冻结头（版本 / 星球 / 搜索）：用不透明底色，否则地图卡片会从下面透出来 */
-  .maps-toolbar {
-    position: sticky; top: 0; z-index: 20;
-    margin: 0 -4px 14px; padding: 10px 4px 12px;
-    background: var(--bg-1);
-    border-bottom: 1px solid var(--border);
-  }
+  /* 图鉴页：标题 / 版本页签 / 星球页签 / 搜索 四行**不滚**，只有卡片区自己滚。
+     不用 sticky + 底色（那样必须拿不透明底色挡住滚上来的卡片，很丑），也不用 CSS 算
+     视口高度（窄屏顶部导航条占掉一截，算不准）—— 卡片区高度由 fitMapsScroll() 在
+     渲染后按实际位置量出来；JS 没跑到就退化成整页滚动，不会坏。 */
+  .maps-toolbar { margin-bottom: 10px; }
   .maps-toolbar .tabs { margin-bottom: 8px; }
   .maps-toolbar .tabs#planet-tabs { margin-bottom: 10px; }
+  #maps-content { overflow-y: auto; }
 
   .planet-block { margin-bottom: 16px; }
   .planet-head { font-size: 15.5px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
@@ -619,10 +618,10 @@
 
     <!-- 地图图鉴 -->
     <section id="page-maps" style="display:none">
-      <h1 class="page-title"><span class="spark">✦</span> 地图图鉴</h1>
-      <p class="page-desc">浏览全部锄地路线 · 点击任意地图查看路线详情</p>
-      <!-- 冻结头：版本 / 星球 / 搜索 三行常驻，只让下面的地图卡片滚 -->
+      <!-- 固定头部（不滚动）：标题 / 版本页签 / 星球页签 / 搜索 —— 只有下面的卡片区滚 -->
       <div class="maps-toolbar">
+        <h1 class="page-title"><span class="spark">✦</span> 地图图鉴</h1>
+        <p class="page-desc">浏览全部锄地路线 · 点击任意地图查看路线详情</p>
         <div class="tabs" id="map-tabs"></div>
         <div class="tabs" id="planet-tabs"></div>
         <input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size: 15px;outline:none">
@@ -1090,6 +1089,19 @@ function renderPlanetTabs() {
   }));
 }
 
+/** 量出图鉴卡片区的可用高度，让上面那四行「冻结」。
+ *  不用 CSS 视口单位算：窄屏顶部有导航条占掉一截、窗口高度也会变，算出来不准。
+ *  没跑到（或 JS 出错）就退化成整页滚动，不会坏。 */
+function fitMapsScroll() {
+  const page = $("#page-maps"), content = $("#maps-content");
+  if (!page || !content || page.style.display === "none") return;
+  const top = content.getBoundingClientRect().top;
+  const main = document.querySelector(".main");
+  const padBottom = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+  content.style.height = Math.max(120, Math.round(window.innerHeight - top - padBottom)) + "px";
+}
+window.addEventListener("resize", fitMapsScroll);
+
 function renderMaps() {
   const planets = mapData[currentVersion] || {};
   const allKeys = Object.keys(planets).sort((a, b) => a - b);
@@ -1152,6 +1164,7 @@ function renderMaps() {
     head.addEventListener("click", () => head.parentElement.classList.toggle("collapsed"));
   });
   $$("#maps-content .map-item").forEach(item => item.addEventListener("click", () => showMapDetail(item.dataset.file, item.dataset.version)));
+  fitMapsScroll();   // 头部高度受页签换行影响，渲染完再量一次
 }
 $("#map-search")?.addEventListener("input", renderMaps);
 
