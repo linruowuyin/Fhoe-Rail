@@ -180,6 +180,9 @@ pyrightconfig.json
 
 # 待复核的缺陷清单（复核后决定是否入库）
 /KNOWN_DEFECTS.md
+
+# 跨会话交接说明（本地用，不入库）
+/HANDOFF.md
 /.claude/
 test.bat
 
