@@ -388,6 +388,15 @@
   .planet-block.collapsed .fold { transform: rotate(-90deg); }
   .planet-block.collapsed .map-list { display: none; }
   .planet-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--violet); }
+  /* 区域（"主控舱段"）—— 星球下面的第二级，名字从地图名的「区域-序号」派生 */
+  .area-block { margin: 0 0 14px; }
+  .area-head { font-size: 14px; color: var(--txt-dim); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .area-head:hover { color: var(--txt); }
+  .area-head .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+  .area-head .count { color: var(--txt-faint); }
+  .area-head .fold { margin-left: auto; color: var(--txt-faint); font-size: 12px; transition: transform .15s; }
+  .area-block.collapsed .fold { transform: rotate(-90deg); }
+  .area-block.collapsed .map-list { display: none; }
   .map-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
   .map-item {
     background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -914,7 +923,7 @@ async function loadRun() {
   const pickPlanet = $("#pick-planet");
   const pickMap = $("#pick-map");
 
-  // 星球名称从后端 /api/maps 的 planet_names 获取，不再前端硬编码
+  // 星球名称/emoji 从后端 /api/maps 取，不再前端硬编码（R23）
 
   // 选图模式：版本 → 星球 → 地图 三级联动
   const MODE_HINTS = {
@@ -927,7 +936,7 @@ async function loadRun() {
   };
   async function fillMapPicker() {
     if (!mapData) {
-      try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); } catch (e) { return; }
+      try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); Object.assign(PLANET_EMOJI, _r.planet_emoji || {}); } catch (e) { return; }
     }
     const versions = Object.keys(mapData);
     const v = versions.includes("default") ? "default" : versions[0];
@@ -1023,7 +1032,7 @@ async function loadMaps() {
   if (!mapData) {
     $("#maps-content").innerHTML = '<div class="loading">正在装载星图…</div>';
     try {
-      const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {});
+      const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); Object.assign(PLANET_EMOJI, _r.planet_emoji || {});
     } catch (e) {
       $("#maps-content").innerHTML = `<div class="error-box">加载失败：${esc(e.message)}。<br>请用 <span class="kbd">Start-WebUI.bat</span> 或 <span class="kbd">python webui/server.py</span> 启动服务后访问。</div>`;
       return;
@@ -1043,13 +1052,30 @@ async function loadMaps() {
   renderMaps();
 }
 
-const PLANET_EMOJI = {"1":"🛰️","2":"❄️","3":"🚢","4":"🌙","5":"🏛️","6":"🎡"};
+const PLANET_EMOJI = {};   // 由 /api/maps 的 planet_emoji 填充（R23：展示名只在后端一处维护）
 function renderMaps() {
   const planets = mapData[currentVersion] || {};
   const keys = Object.keys(planets).sort((a, b) => a - b);
   if (!keys.length) { $("#maps-content").innerHTML = '<div class="empty">该版本没有地图数据</div>'; return; }
   const q = ($("#map-search")?.value || "").trim().toLowerCase();
   let shown = 0;
+  // 一条路线卡片（原来内联在下面，抽出来是因为现在要按区域分两处渲染）
+  const mapCard = m => `
+          <div class="map-item" data-file="${esc(m.file)}" data-version="${esc(currentVersion)}">
+            <div class="m-name"><span>${esc(m.name || "未命名路线")}</span><span class="m-id">${esc(m.id)}</span></div>
+            <div class="m-author">路线作者：${esc(m.author || "未知")}</div>
+          </div>`;
+  // 按区域分组（区域名由后端的 map_names 从地图名派生）。保持首次出现的顺序，
+  // 也就是地图编号顺序；只有一个区域时不显示这一级，免得白占一行。
+  const areasOf = maps => {
+    const buckets = new Map();
+    maps.forEach(m => {
+      const label = m.area_label || "未分类";
+      if (!buckets.has(label)) buckets.set(label, []);
+      buckets.get(label).push(m);
+    });
+    return [...buckets];
+  };
   $("#maps-content").innerHTML = keys.map(main => {
     const maps = planets[main].filter(m => {
       if (!q) return true;
@@ -1060,22 +1086,29 @@ function renderMaps() {
     });
     if (!maps.length) return "";
     shown += maps.length;
+    const areas = areasOf(maps);
+    const body = areas.length > 1
+      ? areas.map(([label, list]) => `
+        <div class="area-block">
+          <div class="area-head"><span class="dot"></span>${esc(label)}<span class="count">· ${list.length} 张</span><span class="fold">▾</span></div>
+          <div class="map-list">${list.map(mapCard).join("")}</div>
+        </div>`).join("")
+      : `<div class="map-list">${maps.map(mapCard).join("")}</div>`;
     return `
       <div class="planet-block" data-planet="${main}">
         <div class="planet-head"><span class="dot"></span> ${PLANET_EMOJI[main] || "🌍"} ${esc(main)} ${esc(planetNames[main] || "")} · ${maps.length} 张路线 <span class="fold">▾</span></div>
-        <div class="map-list">${maps.map(m => `
-          <div class="map-item" data-file="${esc(m.file)}" data-version="${esc(currentVersion)}">
-            <div class="m-name"><span>${esc(m.name || "未命名路线")}</span><span class="m-id">${esc(m.id)}</span></div>
-            <div class="m-author">路线作者：${esc(m.author || "未知")}</div>
-          </div>`).join("")}
-        </div>`;
+        ${body}
+      </div>`;
   }).join("") || (q ? '<div class="empty">没有匹配「' + esc(q) + '」的地图</div>' : '<div class="empty">该版本没有地图数据</div>');
   if (q) {
     const total = Object.values(planets).reduce((a, b) => a + b.length, 0);
     $("#maps-content").insertAdjacentHTML("afterbegin", `<div style="font-size: 14px;color:var(--txt-faint);margin-bottom:10px">搜索「${esc(q)}」：命中 ${shown} / ${total} 张</div>`);
   }
-  // 星球折叠/展开（点击标题栏切换）
+  // 星球/区域折叠展开（点击标题栏切换）
   $$("#maps-content .planet-head").forEach(head => {
+    head.addEventListener("click", () => head.parentElement.classList.toggle("collapsed"));
+  });
+  $$("#maps-content .area-head").forEach(head => {
     head.addEventListener("click", () => head.parentElement.classList.toggle("collapsed"));
   });
   $$("#maps-content .map-item").forEach(item => item.addEventListener("click", () => showMapDetail(item.dataset.file, item.dataset.version)));
@@ -1459,7 +1492,7 @@ async function loadConfig() {
   el.innerHTML = '<div class="loading">正在读取配置…</div>';
   try {
     if (!mapData) {
-      try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); } catch (e) { /* 地图数据加载失败不阻塞配置编辑 */ }
+      try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); Object.assign(PLANET_EMOJI, _r.planet_emoji || {}); } catch (e) { /* 地图数据加载失败不阻塞配置编辑 */ }
     }
     configData = await api("/api/config");
     renderConfigForm();

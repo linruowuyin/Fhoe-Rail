@@ -60,6 +60,15 @@ if BASE_DIR not in sys.path:
 # 地图写盘格式（CLAUDE.md R22）。放在这里而不是文件开头：按路径运行
 # `python webui/server.py` 时 sys.path[0] 是 webui/，得先补上仓库根才 import 得到。
 from utils.core.json_io import dumps_map
+# 展示名（版本 / 星球 / 区域）只有一处维护，见 CLAUDE.md R23 —— 以前这里有一份、
+# ui/map_selector.py 有一份、setting.py 的提示语里还有一份，default_lite 就是这么漏的。
+from utils.core.map_names import (
+    PLANET_EMOJI,
+    PLANET_NAMES,
+    VERSION_NAMES,
+    area_key,
+    area_label,
+)
 WEBUI_DIR = os.path.join(BASE_DIR, "webui")
 NOTES_DIR = os.path.join(BASE_DIR, "新图注意事项")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
@@ -86,21 +95,6 @@ def find_user_python():
 
 
 PYTHON_BIN = find_user_python()
-
-PLANET_NAMES = {
-    "1": "黑塔",
-    "2": "雅利洛",
-    "3": "罗浮",
-    "4": "匹诺康尼",
-    "5": "翁法罗斯",
-    "6": "二相乐园",
-}
-
-VERSION_NAMES = {
-    "default": "默认",
-    "HuangQuan": "黄泉专用",
-    "technique": "秘技版",
-}
 
 # logo 缓存：{(类型): bytes}
 _logo_cache = {}
@@ -519,6 +513,9 @@ def build_map_tree():
                     "label": f"{main}-{side}-{seq}",
                     "name": name,
                     "author": author,
+                    # 区域（"主控舱段"）从名字里的「区域-序号」派生，前端按它分第三级
+                    "area": area_key(name),
+                    "area_label": area_label(name),
                 }
             )
         tree[version] = planets
@@ -893,6 +890,7 @@ class Handler(BaseHTTPRequestHandler):
                     {
                         "tree": build_map_tree(),
                         "planet_names": PLANET_NAMES,
+                        "planet_emoji": PLANET_EMOJI,
                         "version_names": VERSION_NAMES,
                     },
                 )

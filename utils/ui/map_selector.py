@@ -1,6 +1,7 @@
 import questionary
 from utils.config.config import ConfigurationManager
 from utils.core.log import log
+from utils.core.map_names import planet_label
 from utils.core.time_utils import TimeUtils
 from utils.core.map_info import MapInfo
 from utils.ui.setting import Setting
@@ -8,19 +9,10 @@ from utils.ui.setting import Setting
 cfg = ConfigurationManager()
 setting = Setting()
 
-PLANET_LABELS = {
-    "1": "黑塔",
-    "2": "雅利洛",
-    "3": "罗浮",
-    "4": "匹诺康尼",
-    "5": "翁法罗斯",
-    "6": "二相乐园",
-}
-
 
 def _build_main_map_opts(map_info: MapInfo) -> dict:
     keys = sorted(map_info.map_list_map.keys(), key=int)
-    return {f"{key} {PLANET_LABELS.get(key, '未知星球')}": key for key in keys}
+    return {f"{key} {planet_label(key, '未知星球')}": key for key in keys}
 
 
 def choose_map(map_info: MapInfo):

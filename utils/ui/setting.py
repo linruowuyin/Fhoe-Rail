@@ -6,6 +6,7 @@ import questionary
 from utils.config.config import ConfigurationManager
 from utils.core.log import log
 from utils.core.map_info import MapInfo
+from utils.core.map_names import version_label
 from utils.core.time_utils import TimeUtils
 from utils.core.singleton import SingletonMeta
 
@@ -167,8 +168,11 @@ class Setting(metaclass=SingletonMeta):
             log.error(f"地图数据加载失败: {e}")
         default_questions = [
             {
-                "title": "选择地图版本，default疾跑，HuangQuan黄泉专用，SilverWolfLv999银狼LV.999专用",
-                "choices": {version: version for version in map_versions},
+                # 版本中文名统一在 utils/core/map_names.py（R23）。这里原来手写了一段
+                # 「default疾跑，HuangQuan黄泉专用，SilverWolfLv999银狼LV.999专用」——
+                # 提到目录里已经不存在的 SilverWolfLv999，且少了 technique/default_lite。
+                "title": "选择地图版本",
+                "choices": {version_label(v, v): v for v in map_versions},
                 "config_key": "map_version",
             },
             {

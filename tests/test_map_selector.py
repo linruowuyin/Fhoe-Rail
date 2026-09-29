@@ -12,7 +12,6 @@ import pytest
 
 import utils.ui.map_selector as selector_module
 from utils.ui.map_selector import (
-    PLANET_LABELS,
     _build_main_map_opts,
     _h_allowlist,
     choose_map,
@@ -55,14 +54,6 @@ def map_info():
             "2": {"1_0": ["2-1 残响回廊", "2-1 2"]},
         }
     )
-
-
-class TestPlanetLabels:
-    def test_labels_cover_the_shipped_planets(self):
-        assert set(PLANET_LABELS) == {"1", "2", "3", "4", "5", "6"}
-
-    def test_labels_are_non_empty(self):
-        assert all(PLANET_LABELS.values())
 
 
 class TestBuildMainMapOpts:

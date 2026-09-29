@@ -405,6 +405,23 @@ ALT/SHIFT 被释放前要比较初始状态，避免把用户自己按住的键�
 非规范时按提示跑 `python tools/format_maps.py --write`（在 webui 里把那张图
 保存一次也等效）。`tests/test_format_maps.py` 钉住「只查改动的」这条门规。
 
+**R23 — 展示名（版本 / 星球 / 区域）只在 `core/map_names.py` 一处维护。**
+以前这些中文名散在四处：`webui/server.py` 的 `PLANET_NAMES` / `VERSION_NAMES`、
+`ui/map_selector.py` 的 `PLANET_LABELS`（逐字重复一份）、`ui/setting.py` 提示语里手写
+的一段（提到目录里**已经不存在**的 `SilverWolfLv999`）、README 的表格，外加前端
+`index.html` 的 `PLANET_EMOJI`。漏项就是这么来的：磁盘上有 `default_lite`，表里没有，
+图鉴标签和指挥台一直显示裸目录名。
+
+- 新增版本目录 / 星球编号后，去 `core/map_names.py` 补一条。`tools/validate_maps.py`
+  会检查覆盖（缺了 exit 1，CI 拦），`tests/test_map_names.py` 还盯住「库里有几个
+  版本/星球，表里就得有几个」—— 就是这条能拦住 `default_lite` 那种漏项。
+- **区域**（"主控舱段"）不用登记：633 张图的 `name` 100% 是「区域-序号」，从名字里
+  派生；写歪的（如「绥  园」多打了个空格）在 `AREA_NAMES` 里覆盖显示名。名字不符合
+  这个形状时校验器只提醒（它会在图鉴里自成一类）。
+- 前端不再有名字表：星球名与 emoji 都由 `/api/maps` 下发。
+- README 里那张版本表是**给人看的文档**，保留手写 —— 但改版本中文名时要一起改
+  （它是四处副本里唯一保留的一处，因为带说明文字）。
+
 ---
 
 ## §4 测试
