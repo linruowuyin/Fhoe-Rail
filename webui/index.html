@@ -381,6 +381,16 @@
   .tab:hover { color: var(--txt); border-color: var(--border-strong); }
   .tab.active { background: var(--violet); border-color: var(--violet); color: #fff; }
 
+  /* 图鉴页的冻结头（版本 / 星球 / 搜索）：用不透明底色，否则地图卡片会从下面透出来 */
+  .maps-toolbar {
+    position: sticky; top: 0; z-index: 20;
+    margin: 0 -4px 14px; padding: 10px 4px 12px;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--border);
+  }
+  .maps-toolbar .tabs { margin-bottom: 8px; }
+  .maps-toolbar .tabs#planet-tabs { margin-bottom: 10px; }
+
   .planet-block { margin-bottom: 16px; }
   .planet-head { font-size: 15.5px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
   .planet-head:hover { color: var(--txt); }
@@ -611,8 +621,12 @@
     <section id="page-maps" style="display:none">
       <h1 class="page-title"><span class="spark">✦</span> 地图图鉴</h1>
       <p class="page-desc">浏览全部锄地路线 · 点击任意地图查看路线详情</p>
-      <div class="tabs" id="map-tabs"></div>
-      <div style="margin-bottom:14px"><input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size: 15px;outline:none"></div>
+      <!-- 冻结头：版本 / 星球 / 搜索 三行常驻，只让下面的地图卡片滚 -->
+      <div class="maps-toolbar">
+        <div class="tabs" id="map-tabs"></div>
+        <div class="tabs" id="planet-tabs"></div>
+        <input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size: 15px;outline:none">
+      </div>
       <div id="maps-content"><div class="loading">正在装载星图…</div></div>
     </section>
 
@@ -1027,7 +1041,8 @@ async function pollRun() {
 }
 
 /* ---------------- 地图图鉴 ---------------- */
-let mapData = null, currentVersion = null, planetNames = {};
+let mapData = null, currentVersion = null, planetNames = {}, currentPlanet = "全部";
+const PLANET_EMOJI = {};   // 由 /api/maps 的 planet_emoji 填充（R23：展示名只在后端一处维护）
 async function loadMaps() {
   if (!mapData) {
     $("#maps-content").innerHTML = '<div class="loading">正在装载星图…</div>';
@@ -1047,15 +1062,39 @@ async function loadMaps() {
     currentVersion = t.dataset.v;
     // 修复：切换版本时同步更新页签高亮（原来只更新内容，active 始终停在 default）
     $$("#map-tabs .tab").forEach(x => x.classList.toggle("active", x === t));
+    renderPlanetTabs();   // 版本换了，星球那一行跟着换（选中的星球不存在就退回「全部」）
     renderMaps();
   }));
+  renderPlanetTabs();
   renderMaps();
 }
 
-const PLANET_EMOJI = {};   // 由 /api/maps 的 planet_emoji 填充（R23：展示名只在后端一处维护）
-function renderMaps() {
+/** 第二级页签：星球（全部 + 每个星球，带张数）。星球名/emoji 来自后端（R23）。 */
+function renderPlanetTabs() {
   const planets = mapData[currentVersion] || {};
   const keys = Object.keys(planets).sort((a, b) => a - b);
+  // 保存地图后会重新 loadMaps：能保留就保留当前选中的星球，不存在才退回「全部」
+  if (currentPlanet !== "全部" && !keys.includes(currentPlanet)) currentPlanet = "全部";
+  const rows = [["全部", keys.reduce((a, k) => a + planets[k].length, 0)]]
+    .concat(keys.map(k => [k, planets[k].length]));
+  $("#planet-tabs").innerHTML = rows.map(([key, n]) => {
+    const label = key === "全部"
+      ? "全部"
+      : `${PLANET_EMOJI[key] || "🌍"} ${key} ${planetNames[key] || ""}`.trim();
+    return `<div class="tab${key === currentPlanet ? " active" : ""}" data-p="${esc(key)}">${esc(label)} <span style="opacity:.6">(${n})</span></div>`;
+  }).join("");
+  $$("#planet-tabs .tab").forEach(t => t.addEventListener("click", () => {
+    currentPlanet = t.dataset.p;
+    $$("#planet-tabs .tab").forEach(x => x.classList.toggle("active", x === t));
+    renderMaps();
+  }));
+}
+
+function renderMaps() {
+  const planets = mapData[currentVersion] || {};
+  const allKeys = Object.keys(planets).sort((a, b) => a - b);
+  // 星球页签是过滤器：选了某个星球就只渲染它（「全部」就是以前的行为）
+  const keys = currentPlanet === "全部" ? allKeys : allKeys.filter(k => k === currentPlanet);
   if (!keys.length) { $("#maps-content").innerHTML = '<div class="empty">该版本没有地图数据</div>'; return; }
   const q = ($("#map-search")?.value || "").trim().toLowerCase();
   let shown = 0;
@@ -1094,14 +1133,15 @@ function renderMaps() {
           <div class="map-list">${list.map(mapCard).join("")}</div>
         </div>`).join("")
       : `<div class="map-list">${maps.map(mapCard).join("")}</div>`;
+    const single = currentPlanet !== "全部";
     return `
       <div class="planet-block" data-planet="${main}">
-        <div class="planet-head"><span class="dot"></span> ${PLANET_EMOJI[main] || "🌍"} ${esc(main)} ${esc(planetNames[main] || "")} · ${maps.length} 张路线 <span class="fold">▾</span></div>
+        ${single ? "" : `<div class="planet-head"><span class="dot"></span> ${PLANET_EMOJI[main] || "🌍"} ${esc(main)} ${esc(planetNames[main] || "")} · ${maps.length} 张路线 <span class="fold">▾</span></div>`}
         ${body}
       </div>`;
   }).join("") || (q ? '<div class="empty">没有匹配「' + esc(q) + '」的地图</div>' : '<div class="empty">该版本没有地图数据</div>');
   if (q) {
-    const total = Object.values(planets).reduce((a, b) => a + b.length, 0);
+    const total = keys.reduce((a, k) => a + planets[k].length, 0);   // 只算当前星球范围内的总数
     $("#maps-content").insertAdjacentHTML("afterbegin", `<div style="font-size: 14px;color:var(--txt-faint);margin-bottom:10px">搜索「${esc(q)}」：命中 ${shown} / ${total} 张</div>`);
   }
   // 星球/区域折叠展开（点击标题栏切换）
