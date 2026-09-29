@@ -42,6 +42,7 @@ VERSION_NAMES = {
     "HuangQuan": "黄泉专用",
     "technique": "秘技版",
     "default_lite": "精简版",
+    "reward": "特殊物品领取",
 }
 
 #: 区域显示名覆盖。键是**规范化后**的区域名（连续空白折成一个空格），

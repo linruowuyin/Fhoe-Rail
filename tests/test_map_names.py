@@ -91,7 +91,7 @@ class TestValidatorCatchesMissingNames:
 
         assert validate.main([]) == 1
         out = capsys.readouterr().out
-        assert "633 个地图文件" in out, "得真的读到整库，不然这条测试是假通过"
+        assert "638 个地图文件" in out, "得真的读到整库，不然这条测试是假通过"
         assert "没有登记中文名" in out
         assert "default_lite" in out
 
@@ -100,7 +100,7 @@ class TestValidatorCatchesMissingNames:
 
         assert validate.main([]) == 0
         out = capsys.readouterr().out
-        assert "633 个地图文件，0 个有错误" in out
+        assert "638 个地图文件，0 个有错误" in out
 
 
 class TestAreaKey:
