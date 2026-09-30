@@ -229,10 +229,6 @@ def main():
                 notify.send_end(summary)
             except Exception as e:
                 log.warning(f"结束通知发送失败: {e}")
-            shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
-                "auto_shutdown", 0
-            )
-            shutdown_computer(shutdown_type)
             if not single_map_mode and cfg.read_json_file(
                 cfg.CONFIG_FILE_NAME, False
             ).get("allow_run_next_day", False):
@@ -256,8 +252,11 @@ def main():
                         map_instance.process_map(start_map, start_in_mid, dev=dev)
                     else:
                         log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
-            # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
-            # shutdown_computer(shutdown_type)
+            # 关机/注销必须排在跨日连锄之后：两者同时开启时，先关机等于把跨日等待整段废掉
+            shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
+                "auto_shutdown", 0
+            )
+            shutdown_computer(shutdown_type)
             if dev:  # 开发者模式自动重选地图
                 main()
         finally:
