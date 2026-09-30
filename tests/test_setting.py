@@ -66,11 +66,6 @@ class TestGetQuestionsForSlot:
         titles = [q["title"] for q in questions]
         assert len(set(titles)) == len(titles), "重复标题会让菜单项无法区分"
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="菜单里的 auto_use_technique_consumable 不在 ConfigurationManager.config_keys() 中，"
-        "因此它既不在默认配置里，也不会被 ensure_config_complete 补齐（config_fix 却会写它）",
-    )
     def test_every_config_key_exists_in_defaults(self, setting):
         keys = {q["config_key"] for q in setting.get_questions_for_slot("start")}
         assert keys <= set(ConfigurationManager.config_keys())

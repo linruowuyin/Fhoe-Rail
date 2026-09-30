@@ -171,6 +171,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "allow_map_buy": False,
             "allow_snack_buy": False,
             "allow_memory_token": False,
+            "auto_use_technique_consumable": False,
             "refresh_hour": 4,
             "refresh_minute": 0,
             "forbid_map": [],
@@ -281,7 +282,8 @@ class ConfigurationManager(metaclass=SingletonMeta):
         # HuangQuan 地图版本强制开启购买战斗E道具
         if config["map_version"] == "HuangQuan":
             config["allow_fight_e_buy_prop"] = True
-        # SilverWolfLv999 地图版本强制开启自动使用秘技消耗品
+        # 预置：map/SilverWolfLv999/ 还没建，这一段现在进不去（CLAUDE.md R24）。
+        # 版本目录建好后自动生效，属于有意留的骨架，不要当死代码删。
         if config["map_version"] == "SilverWolfLv999":
             config["auto_use_technique_consumable"] = True
         cls.save_config(config)
