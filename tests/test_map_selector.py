@@ -180,6 +180,15 @@ class TestSideMapMenu:
         use_questionary(monkeypatch, ["1-1 1", "【返回】"])
         assert _h_side_map(map_info, "1") == "back"
 
+    def test_cancel_at_second_level_returns_back(self, map_info, monkeypatch):
+        """Ctrl-C / Esc 返回 None；曾经会让下一级的 next() 抛 StopIteration。"""
+        use_questionary(monkeypatch, [None])
+        assert _h_side_map(map_info, "1") == "back"
+
+    def test_cancel_at_third_level_returns_back(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["1-1 1", None])
+        assert _h_side_map(map_info, "1") == "back"
+
     def test_unknown_planet_returns_none_without_asking(self, monkeypatch):
         fake = use_questionary(monkeypatch, [])
         assert _h_side_map(SimpleNamespace(map_list_map={}), "9") is None

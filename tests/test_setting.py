@@ -190,6 +190,19 @@ class TestSetConfigFlow:
         setting.set_config()
         assert saved_config(isolated_cwd) == before, "「返回」不该写盘"
 
+    def test_cancel_at_the_main_menu_returns_instead_of_crashing(
+        self, setting, monkeypatch, isolated_cwd
+    ):
+        """用户按 Ctrl-C / Esc 时 questionary 返回 None。
+
+        曾经这里直接 `answer.split("------")`，于是
+        `AttributeError: 'NoneType' object has no attribute 'split'` —— 整个设置菜单崩。
+        """
+        before = saved_config(isolated_cwd)
+        use_questionary(monkeypatch, [None])
+        setting.set_config()
+        assert saved_config(isolated_cwd) == before
+
     def test_normal_key_is_written_and_saved(self, setting, monkeypatch, isolated_cwd):
         setting.config = dict(saved_config(isolated_cwd))
         use_questionary(
@@ -218,6 +231,19 @@ class TestSetConfigFlow:
 
 
 class TestSpecialConfigFlow:
+    def test_cancel_breaks_out_instead_of_crashing(
+        self, setting, monkeypatch, isolated_cwd
+    ):
+        """同一个 None：曾经落进 `current_choices[None]` 抛 KeyError。"""
+        setting.config = {"forbid_map": ["1-1"]}
+        use_questionary(
+            monkeypatch, [menu_answer(setting, "forbid_map"), None, "【返回】"]
+        )
+        setting.set_config()
+        # 取消必须什么都不做：既不能崩，也不能顺手增删条目。
+        # （set_config 结束时会把重新读到的配置整份存盘，所以这里比的是文件里的原值）
+        assert saved_config(isolated_cwd)["forbid_map"] == []
+
     def test_removing_an_entry_writes_it_through(self, setting, monkeypatch, isolated_cwd):
         setting.config = {"forbid_map": ["1-1", "2-1"]}
         use_questionary(
