@@ -4,6 +4,10 @@ import datetime
 from utils.config.config import ConfigurationManager
 from utils.core.log import log
 
+# 跨日连锄：要等超过这么久（4 小时）就不等了 —— 等待期间用户多半也不在
+CROSS_DAY_MAX_WAIT = 4 * 3600
+# 等待时多留一分钟，别踩着刷新点进游戏
+CROSS_DAY_GRACE = 60
 
 
 class TimeUtils:
@@ -96,6 +100,23 @@ class TimeUtils:
         """
         candidate = moment.replace(hour=hour, minute=minute, second=0, microsecond=0)
         return candidate if candidate > moment else candidate + datetime.timedelta(days=1)
+
+    @staticmethod
+    def cross_day_wait(
+        now: datetime.datetime,
+        hour: int,
+        minute: int,
+        max_wait: float = CROSS_DAY_MAX_WAIT,
+    ):
+        """
+        从 now 起，等到下一个刷新点还需要多少秒。
+
+        要等超过 `max_wait` 就返回 **None** —— 表示不值得等（这一趟就不连锄了）。
+        返回的秒数里多留了 `CROSS_DAY_GRACE`，别踩着刷新点进游戏。
+        """
+        next_refresh = TimeUtils.next_refresh_after(now, hour, minute)
+        wait_time = (next_refresh - now).total_seconds() + CROSS_DAY_GRACE
+        return wait_time if wait_time <= max_wait else None
 
     def has_crossed_refresh(self, start: datetime.datetime, end: datetime.datetime) -> bool:
         """

@@ -12,6 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from utils.core.time_utils import CROSS_DAY_GRACE, CROSS_DAY_MAX_WAIT
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -56,12 +58,18 @@ class FakeTimeMgr:
     def next_refresh_after(self, moment, hour, minute):
         return moment + datetime.timedelta(seconds=self.next_in_seconds)
 
+    def cross_day_wait(self, now, hour, minute, max_wait=CROSS_DAY_MAX_WAIT):
+        """形状照抄真的那个：多留一份余量，超上限就返回 None。"""
+        wait_time = self.next_in_seconds + CROSS_DAY_GRACE
+        return wait_time if wait_time <= max_wait else None
+
 
 class FakeClock:
     def __init__(self, order):
         self.order = order
 
     def now(self):
+        self.order.append("now")
         return datetime.datetime(2026, 1, 1, 3, 0)
 
     def sleep(self, seconds):
@@ -209,6 +217,64 @@ class TestRunOnceBasics:
         """关不关由 shutdown_computer 自己按类型判断，编排层不做二次判断。"""
         order = _run(fhoe_mod, flags={"auto_shutdown": 0})
         assert ("shutdown", 0) in order
+
+
+def _cross_day(fhoe_mod, *, flags=None, crossed=False, next_in_seconds=3600,
+               single_map_mode=False):
+    """直接跑 _cross_day，返回按发生顺序记录的事件表。"""
+    order = []
+    fhoe_mod._cross_day(
+        FakeMapOps(order),
+        "1-1_0",
+        False,
+        False,
+        datetime.datetime(2026, 1, 1, 3, 0),
+        datetime.datetime(2026, 1, 1, 5, 0),
+        single_map_mode=single_map_mode,
+        cfg=FakeCfg(**(flags or {})),
+        time_mgr=FakeTimeMgr(crossed, next_in_seconds),
+        clock=FakeClock(order),
+    )
+    return order
+
+
+class TestCrossDay:
+    """跨日连锄的执行段。
+
+    「要不要等、等多久」是纯计算，在 `TimeUtils.cross_day_wait` 里单独测；这里只钉子
+    它接到 map_instance 上的顺序。
+    """
+
+    def test_does_nothing_when_the_switch_is_off(self, fhoe_mod):
+        assert _cross_day(fhoe_mod, flags={"allow_run_next_day": False}) == []
+
+    def test_single_map_mode_skips_it(self, fhoe_mod):
+        order = _cross_day(
+            fhoe_mod, flags={"allow_run_next_day": True}, single_map_mode=True
+        )
+        assert order == []
+
+    def test_crossed_refresh_runs_again_without_waiting(self, fhoe_mod):
+        order = _cross_day(fhoe_mod, flags={"allow_run_next_day": True}, crossed=True)
+        assert order == [("process_map", "1-1_0")], "已跨过刷新点：不等、也不回主界面"
+
+    def test_not_crossed_goes_back_then_waits_then_runs(self, fhoe_mod):
+        order = _cross_day(fhoe_mod, flags={"allow_run_next_day": True}, crossed=False)
+        assert order == ["back_to_main", "now", ("sleep", 3660), ("process_map", "1-1_0")]
+
+    def test_gives_up_when_the_wait_is_too_long(self, fhoe_mod):
+        order = _cross_day(
+            fhoe_mod,
+            flags={"allow_run_next_day": True},
+            crossed=False,
+            next_in_seconds=20000,
+        )
+        assert order == ["back_to_main", "now"], "等太久就只回主界面：不睡，也不再跑"
+
+    def test_now_is_read_after_going_back_to_main(self, fhoe_mod):
+        """back_to_main 本身要花两秒；顺序反了等待时长会差两秒。"""
+        order = _cross_day(fhoe_mod, flags={"allow_run_next_day": True}, crossed=False)
+        assert order.index("back_to_main") < order.index("now")
 
 
 def _dispatch(fhoe_mod, monkeypatch, mode, map_arg=None):

@@ -6,7 +6,7 @@ import pytest
 
 import utils.core.time_utils as time_utils_module
 from utils.config.config import ConfigurationManager
-from utils.core.time_utils import TimeUtils
+from utils.core.time_utils import CROSS_DAY_GRACE, TimeUtils
 
 
 @pytest.fixture
@@ -142,6 +142,27 @@ class TestNextRefreshAfter:
         """m >= rm 但 h < rh 时仍取当天 —— 把 `and` 改成 `or` 会错成次日。"""
         moment = datetime.datetime(2026, 1, 1, 3, 45)
         assert TimeUtils.next_refresh_after(moment, 4, 30) == datetime.datetime(2026, 1, 1, 4, 30)
+
+
+class TestCrossDayWait:
+    """跨日连锄的等待时长。纯计算：不读 config、不看真实时钟。"""
+
+    def test_waits_until_the_next_refresh(self):
+        now = datetime.datetime(2026, 1, 1, 3, 0)
+        # 刷新点 04:00，等 1 小时，另加一分钟余量
+        assert TimeUtils.cross_day_wait(now, 4, 0) == 3600 + CROSS_DAY_GRACE
+
+    def test_gives_up_when_the_wait_exceeds_the_cap(self):
+        now = datetime.datetime(2026, 1, 1, 5, 0)
+        # 当天 04:00 已过，下一个是次日 04:00 —— 23 小时，远超 4 小时上限
+        assert TimeUtils.cross_day_wait(now, 4, 0) is None
+
+    def test_exactly_at_the_cap_still_waits(self):
+        now = datetime.datetime(2026, 1, 1, 0, 0)
+        # 00:00 起算，下一个刷新点是次日 00:00，正好 24 小时
+        exact = 24 * 3600 + CROSS_DAY_GRACE
+        assert TimeUtils.cross_day_wait(now, 0, 0, max_wait=exact) == exact
+        assert TimeUtils.cross_day_wait(now, 0, 0, max_wait=exact - 1) is None
 
 
 class TestGetValidHour:

@@ -230,6 +230,56 @@ def shutdown_computer(shutdown_type):
         log.info("shutdown_type参数不正确")
 
 
+def _cross_day(
+    map_instance,
+    start_map,
+    start_in_mid,
+    dev,
+    start_time,
+    end_time,
+    *,
+    single_map_mode=False,
+    cfg=cfg,
+    time_mgr=time_mgr,
+    clock=SYSTEM_CLOCK,
+):
+    """跨日连锄：这一趟跑完之后，要不要等到刷新点再跑一趟。
+
+    三种结局：
+
+      * 这一趟已经把刷新点跨过去了 → 体力已经刷新，立刻从头再跑
+      * 还没到刷新点 → 回主界面，等到刷新点再跑
+      * 要等超过 `CROSS_DAY_MAX_WAIT`（4 小时）→ 放弃
+
+    「要不要等、等多久」是纯时间计算，在 `TimeUtils.cross_day_wait` 里；这里只负责把它
+    接到 map_instance 和时钟上。
+    """
+    if single_map_mode or not cfg.read_json_file(
+        cfg.CONFIG_FILE_NAME, False
+    ).get("allow_run_next_day", False):
+        return
+
+    log.info("开始执行跨日连锄")
+    if time_mgr.has_crossed_refresh(start=start_time, end=end_time):
+        log.info("检测到换日，即将从头开锄")
+        map_instance.process_map(start_map, start_in_mid, dev=dev)
+        return
+
+    map_instance.handle.back_to_main(delay=2.0)
+    # back_to_main 之后再取「现在」—— 它本身要花两秒，顺序反过来等待时长会差两秒
+    wait_time = time_mgr.cross_day_wait(
+        clock.now(),
+        cfg.config_file.get("refresh_hour", 4),
+        cfg.config_file.get("refresh_minute", 0),
+    )
+    if wait_time is None:
+        log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
+        return
+    log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
+    clock.sleep(wait_time)
+    map_instance.process_map(start_map, start_in_mid, dev=dev)
+
+
 def run_once(
     start,
     start_in_mid,
@@ -302,29 +352,20 @@ def run_once(
         notify.send_end(summary)
     except Exception as e:
         log.warning(f"结束通知发送失败: {e}")
-    if not single_map_mode and cfg.read_json_file(
-        cfg.CONFIG_FILE_NAME, False
-    ).get("allow_run_next_day", False):
-        log.info("开始执行跨日连锄")
-        if time_mgr.has_crossed_refresh(start=start_time, end=end_time):
-            log.info("检测到换日，即将从头开锄")
-            map_instance.process_map(start_map, start_in_mid, dev=dev)
-        else:
-            map_instance.handle.back_to_main(delay=2.0)
-            now = clock.now()
-            refresh_hour = cfg.config_file.get("refresh_hour", 4)
-            refresh_minute = cfg.config_file.get("refresh_minute", 0)
-            next_refresh = time_mgr.next_refresh_after(
-                now, refresh_hour, refresh_minute
-            )
-            wait_time = (next_refresh - now).total_seconds()
-            wait_time += 60
-            if wait_time <= 14400:
-                log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
-                clock.sleep(wait_time)
-                map_instance.process_map(start_map, start_in_mid, dev=dev)
-            else:
-                log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
+    # cfg / time_mgr / clock 要显式传下去：_cross_day 的默认值是模块级的那几个，
+    # 不传的话 run_once 收到的替身（测试注入的）就到不了跨日这一段
+    _cross_day(
+        map_instance,
+        start_map,
+        start_in_mid,
+        dev,
+        start_time,
+        end_time,
+        single_map_mode=single_map_mode,
+        cfg=cfg,
+        time_mgr=time_mgr,
+        clock=clock,
+    )
     # 关机/注销必须排在跨日连锄之后：两者同时开启时，先关机等于把跨日等待整段废掉
     shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
         "auto_shutdown", 0
