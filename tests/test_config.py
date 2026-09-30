@@ -145,6 +145,33 @@ class TestModifyJsonFile:
         assert "名字" in raw, "应输出 UTF-8 而非 unicode escape"
 
 
+class TestSwapMapVersion:
+    """临时切换地图版本 —— 回归：原值必须在写入之前读出来。
+
+    曾经 fhoe.py 是「先写新版本、再读原值」，读到的自然是刚写进去的新值，
+    finally 里那句「恢复」就变成了恢复成它自己：临时跑一次别的地图版本，
+    config.json 的版本就永久停在那里，用户下次正常锄大地会静默变成那个版本的行为。
+    """
+
+    def test_returns_the_version_that_was_replaced(self):
+        ConfigurationManager.save_config({"map_version": "default"})
+        assert ConfigurationManager.swap_map_version("reward") == "default"
+        assert ConfigurationManager.load_config()["map_version"] == "reward"
+
+    def test_round_trip_restores_the_original(self):
+        ConfigurationManager.save_config({"map_version": "HuangQuan"})
+        old = ConfigurationManager.swap_map_version("reward")
+        ConfigurationManager.modify_json_file(
+            ConfigurationManager.CONFIG_FILE_NAME, "map_version", old
+        )
+        assert ConfigurationManager.load_config()["map_version"] == "HuangQuan"
+
+    def test_no_new_version_means_no_write(self):
+        ConfigurationManager.save_config({"map_version": "default"})
+        assert ConfigurationManager.swap_map_version(None) is None
+        assert ConfigurationManager.load_config()["map_version"] == "default"
+
+
 class TestConfigWriteFormat:
     """config.json 只有一个写盘格式：4 空格缩进 + 中文不转义 + 原子写。
 

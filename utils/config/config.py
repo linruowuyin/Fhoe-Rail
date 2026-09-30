@@ -163,6 +163,21 @@ class ConfigurationManager(metaclass=SingletonMeta):
         data[key] = value
         ConfigurationManager.write_config(file_path, data)
 
+    @classmethod
+    def swap_map_version(cls, new_version):
+        """把 map_version 换成 new_version，返回被换掉的原值；没给新版本时返回 None。
+
+        原值必须在写入**之前**读出来。顺序反了（先写再读）的话，读到的就是刚写进去的
+        新值，调用方拿它去「恢复」等于恢复成自己 —— 临时切换再也回不去。曾经
+        fhoe.py 就是这么写的：临时跑一次别的地图版本，config.json 的版本就永久停在那里，
+        用户下次正常锄大地会静默变成那个版本的行为。
+        """
+        if not new_version:
+            return None
+        old_version = cls.load_config().get("map_version", "default")
+        cls.modify_json_file(cls.CONFIG_FILE_NAME, "map_version", new_version)
+        return old_version
+
     @staticmethod
     def config_keys(real_width=0, real_height=0):
         config_keys = {

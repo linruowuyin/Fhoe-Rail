@@ -115,12 +115,13 @@ def main():
     map_arg = parse_map_arg()  # --map 参数：非交互指定起始地图（WebUI 选图运行）
     single_map_mode = map_arg is not None
 
-    # WebUI 选图运行：若指定了 --map-version，临时切换地图版本（单图运行完后进程即退出）
+    # WebUI 选图运行：若指定了 --map-version，临时切换地图版本（进程退出前恢复）
     map_version_arg = parse_map_version_arg()
-    if map_version_arg and map_arg:
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "map_version", map_version_arg)
+    old_map_version = cfg.swap_map_version(map_version_arg)
+    if old_map_version is not None:
         # 直接同步 MapInfo 单例缓存，避免 property 延迟检测
         map_info_instance._map_version = map_version_arg
+        cfg._config = None
         log.info(f"[单图运行] 临时切换地图版本: {map_version_arg}")
 
     if len(sys.argv) > 1:
@@ -171,15 +172,6 @@ def main():
         start_in_mid, start = start[1], start[0]
 
     if start:
-        # 保存原始地图版本（单图运行可能临时切换版本）
-        old_map_version = None
-        if map_version_arg:
-            old_map_version = cfg.load_config().get("map_version", "default")
-            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "map_version", map_version_arg)
-            map_info_instance._map_version = map_version_arg
-            cfg._config = None  # 让 config_file property 重新加载新值
-            log.info(f"[单图运行] 临时切换地图版本: {map_version_arg}")
-
         try:
             cfg.config_fix()
             log.info(f"config.json:{cfg.load_config()}")
