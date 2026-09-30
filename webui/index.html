@@ -833,7 +833,7 @@ async function loadDashboard() {
       .map(([v, n]) => `<span class="badge b-cyan">${esc(VERSION_NAMES[v] || v)} · ${n}图</span>`).join(" ");
     el.innerHTML = `
       <div class="grid g-stats" style="margin-bottom:16px">
-        <div class="glass"><div class="stat-num">${data.map_total ?? "—"}</div><div class="stat-label">地图总数（4个版本）</div></div>
+        <div class="glass"><div class="stat-num">${data.map_total ?? "—"}</div><div class="stat-label">地图总数（${Object.keys(verMap).length}个版本）</div></div>
         <div class="glass"><div class="stat-num">${statVal(stats.fight_cnt)}</div><div class="stat-label">累计战斗次数（日志）</div></div>
         <div class="glass"><div class="stat-num">${statVal(stats.total_time)}</div><div class="stat-label">最近一次总计用时</div></div>
         <div class="glass"><div class="stat-num">${statVal(stats.save_time)}</div><div class="stat-label">疾跑节约时间</div></div>
