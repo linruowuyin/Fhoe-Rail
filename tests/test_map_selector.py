@@ -14,8 +14,33 @@ import utils.ui.map_selector as selector_module
 from utils.ui.map_selector import (
     _build_main_map_opts,
     _h_allowlist,
+    _h_main_map,
+    _h_priority,
+    _h_side_map,
     choose_map,
+    choose_map_debug,
 )
+
+
+class FakeQuestionary:
+    """按顺序吐出预设答案的 questionary 替身。答案用尽后返回 None（= 用户取消）。"""
+
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.titles = []
+        self.choices = []
+
+    def select(self, title, choices):
+        self.titles.append(title)
+        self.choices.append(list(choices))
+        answer = self.answers.pop(0) if self.answers else None
+        return SimpleNamespace(ask=lambda: answer)
+
+
+def use_questionary(monkeypatch, answers):
+    fake = FakeQuestionary(answers)
+    monkeypatch.setattr(selector_module, "questionary", fake)
+    return fake
 
 
 def set_config_file(root, **values):
@@ -112,3 +137,87 @@ class TestAllowlistChoice:
 
         assert _h_allowlist() == "back"
         assert "请配置allowlist_map的值" in capsys.readouterr().out
+
+
+class TestMainMapMenu:
+    def test_planet_choice_returns_its_id(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["2 雅利洛"])
+        assert _h_main_map(map_info) == "2"
+
+    def test_cancel_returns_none(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, [None])
+        assert _h_main_map(map_info) is None
+
+
+class TestPriorityMenu:
+    def test_choice_is_written_to_config(self, map_info, monkeypatch, isolated_cwd):
+        use_questionary(monkeypatch, ["2 雅利洛"])
+
+        assert _h_priority(map_info) == ("2-1_0", True)
+        assert read_config_file(isolated_cwd, "main_map") == "2", (
+            "用户主动选「优先星球」这一处才该落盘"
+        )
+
+    def test_back_returns_back(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["【返回】"])
+        assert _h_priority(map_info) == "back"
+
+    def test_cancel_returns_back(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, [None])
+        assert _h_priority(map_info) == "back"
+
+
+class TestSideMapMenu:
+    def test_second_then_third_level(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["1-1 1", "1-1 空间站「黑塔」"])
+        assert _h_side_map(map_info, "1") == ("1-1_0", False)
+
+    def test_back_at_second_level(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["【返回】"])
+        assert _h_side_map(map_info, "1") == "back"
+
+    def test_back_at_third_level(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["1-1 1", "【返回】"])
+        assert _h_side_map(map_info, "1") == "back"
+
+    def test_unknown_planet_returns_none_without_asking(self, monkeypatch):
+        fake = use_questionary(monkeypatch, [])
+        assert _h_side_map(SimpleNamespace(map_list_map={}), "9") is None
+        assert fake.titles == []
+
+
+class TestChooseMapDebug:
+    def test_planet_then_side_map(self, map_info, monkeypatch):
+        use_questionary(monkeypatch, ["1 黑塔", "1-1 1", "1-1 空间站「黑塔」"])
+        assert choose_map_debug(map_info) == ("1-1_0", False)
+
+    def test_back_at_the_side_menu_returns_to_the_planet_menu(self, map_info, monkeypatch):
+        use_questionary(
+            monkeypatch, ["1 黑塔", "【返回】", "2 雅利洛", "2-1 2", "2-1 残响回廊"]
+        )
+        assert choose_map_debug(map_info) == ("2-1_0", False)
+
+    def test_priority_short_circuits_with_a_tuple(self, map_info, monkeypatch, isolated_cwd):
+        use_questionary(monkeypatch, ["优先星球", "2 雅利洛"])
+        assert choose_map_debug(map_info) == ("2-1_0", True)
+
+    def test_settings_entry_returns_to_the_planet_menu(self, map_info, monkeypatch):
+        seen = []
+        monkeypatch.setattr(
+            selector_module,
+            "setting",
+            SimpleNamespace(set_config=lambda slot: seen.append(slot)),
+        )
+        use_questionary(
+            monkeypatch, ["[设置]", "1 黑塔", "1-1 1", "1-1 空间站「黑塔」"]
+        )
+
+        assert choose_map_debug(map_info) == ("1-1_0", False)
+        assert seen == ["start_rewrite"], "[设置] 走的是重写配置那个 slot"
+
+    def test_scheduled_entry_returns_immediately(self, map_info, monkeypatch):
+        monkeypatch.setattr(
+            selector_module.TimeUtils, "wait_and_run", staticmethod(lambda: None)
+        )
+        use_questionary(monkeypatch, ["[定时]"])
+        assert choose_map_debug(map_info) == ("1-1_0", False)

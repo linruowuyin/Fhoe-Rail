@@ -1,5 +1,6 @@
-"""utils/ui/setting.py —— 设置菜单的问题表与地图名解析。"""
+"""utils/ui/setting.py —— 设置菜单的问题表、地图名解析与交互流程。"""
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -15,6 +16,44 @@ def setting(make_instance, isolated_cwd):
     return make_instance(
         Setting, cfg=ConfigurationManager(), config={}, map_info=None
     )
+
+
+class FakeQuestionary:
+    """按顺序吐出预设答案的 questionary 替身。答案用尽后返回 None（= 用户取消）。"""
+
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.titles = []
+        self.choices = []
+
+    def select(self, title, choices):
+        self.titles.append(title)
+        self.choices.append(list(choices))
+        answer = self.answers.pop(0) if self.answers else None
+        return SimpleNamespace(ask=lambda: answer)
+
+
+def use_questionary(monkeypatch, answers):
+    fake = FakeQuestionary(answers)
+    monkeypatch.setattr(setting_module, "questionary", fake)
+    return fake
+
+
+def menu_answer(setting, config_key):
+    """拼出主菜单里那一项的文本。
+
+    只有 `------` **前面**那段（标题）会被用来反查问题，括号里的当前值只是显示用。
+    """
+    question = next(
+        q for q in setting.get_questions_for_slot("start")
+        if q["config_key"] == config_key
+    )
+    title = question.get("dynamic_title", lambda _: question["title"])(setting.config)
+    return f"{title}------(当前值)"
+
+
+def saved_config(root):
+    return json.loads((root / "config.json").read_text(encoding="utf-8"))
 
 
 class TestGetPureMapName:
@@ -135,3 +174,119 @@ class TestPlanetSelection:
         monkeypatch.setattr(setting_module, "questionary", FakeQuestionary)
 
         assert setting._h_select_planet() is None
+
+
+class TestSetConfigFlow:
+    """set_config 的主循环：选一项 → 改 → 存盘。之前整段没有覆盖。"""
+
+    def test_unknown_slot_returns_without_asking(self, setting, monkeypatch):
+        fake = use_questionary(monkeypatch, [])
+        setting.set_config(slot="没有这个slot")
+        assert fake.titles == [], "slot 不认识时不该弹菜单"
+
+    def test_return_saves_nothing(self, setting, monkeypatch, isolated_cwd):
+        before = saved_config(isolated_cwd)
+        use_questionary(monkeypatch, ["【返回】"])
+        setting.set_config()
+        assert saved_config(isolated_cwd) == before, "「返回」不该写盘"
+
+    def test_normal_key_is_written_and_saved(self, setting, monkeypatch, isolated_cwd):
+        setting.config = dict(saved_config(isolated_cwd))
+        use_questionary(
+            monkeypatch, [menu_answer(setting, "auto_shutdown"), "关机", "【返回】"]
+        )
+        setting.set_config()
+        assert saved_config(isolated_cwd)["auto_shutdown"] == 1
+
+    def test_cancelling_the_value_prompt_keeps_the_old_value(
+        self, setting, monkeypatch, isolated_cwd
+    ):
+        setting.config = dict(saved_config(isolated_cwd))
+        use_questionary(monkeypatch, [menu_answer(setting, "auto_shutdown"), None, "【返回】"])
+        setting.set_config()
+        assert saved_config(isolated_cwd)["auto_shutdown"] == 0
+
+    def test_special_key_goes_through_the_dedicated_flow(
+        self, setting, monkeypatch, isolated_cwd
+    ):
+        setting.config = {"forbid_map": ["1-1"]}
+        fake = use_questionary(
+            monkeypatch, [menu_answer(setting, "forbid_map"), "【返回】", "【返回】"]
+        )
+        setting.set_config()
+        assert any("已禁用" in t for t in fake.titles), "特殊项走的是带动态标题的子菜单"
+
+
+class TestSpecialConfigFlow:
+    def test_removing_an_entry_writes_it_through(self, setting, monkeypatch, isolated_cwd):
+        setting.config = {"forbid_map": ["1-1", "2-1"]}
+        use_questionary(
+            monkeypatch,
+            [menu_answer(setting, "forbid_map"), "【删除】", "1-1", "【返回】", "【返回】"],
+        )
+        setting.set_config()
+        assert saved_config(isolated_cwd)["forbid_map"] == ["2-1"]
+
+    def test_adding_a_map_appends_its_clean_name(
+        self, setting, monkeypatch, isolated_cwd
+    ):
+        setting.config = {"map_version": "default", "forbid_map": []}
+        setting.map_info = SimpleNamespace(
+            map_list_map={"1": {"1_0": ["空间站「黑塔」", "1-1 空间站「黑塔」"]}}
+        )
+        monkeypatch.setattr(
+            setting_module.MapInfo, "read_maps", staticmethod(lambda map_version: ([], {}))
+        )
+        use_questionary(
+            monkeypatch,
+            [
+                menu_answer(setting, "forbid_map"),
+                "【新增】",
+                "1 黑塔",
+                "空间站「黑塔」 (1个子地图)",
+                "【返回】",
+                "【返回】",
+            ],
+        )
+        setting.set_config()
+        assert saved_config(isolated_cwd)["forbid_map"] == ["空间站「黑塔」"]
+
+
+class TestCleanMapSelection:
+    def test_picks_the_clean_name(self, setting, monkeypatch, isolated_cwd):
+        setting.config = {"map_version": "default"}
+        map_info = SimpleNamespace(
+            map_list_map={
+                "1": {
+                    "1_0": ["空间站「黑塔」", "1-1 空间站「黑塔」"],
+                    "2_0": ["收容舱段", "1-2 收容舱段"],
+                }
+            }
+        )
+        monkeypatch.setattr(
+            setting_module.MapInfo, "read_maps", staticmethod(lambda map_version: ([], {}))
+        )
+        fake = use_questionary(monkeypatch, ["空间站「黑塔」 (1个子地图)"])
+
+        assert setting._h_select_clean_map(map_info, "1") == "空间站「黑塔」"
+        assert set(fake.choices[0]) == {
+            "空间站「黑塔」 (1个子地图)",
+            "收容舱段 (1个子地图)",
+            "返回上级",
+        }
+
+    def test_unknown_planet_returns_back(self, setting, monkeypatch):
+        monkeypatch.setattr(
+            setting_module.MapInfo, "read_maps", staticmethod(lambda map_version: ([], {}))
+        )
+        assert setting._h_select_clean_map(SimpleNamespace(map_list_map={}), "9") == "back"
+
+    def test_returning_upstairs_returns_back(self, setting, monkeypatch):
+        monkeypatch.setattr(
+            setting_module.MapInfo, "read_maps", staticmethod(lambda map_version: ([], {}))
+        )
+        map_info = SimpleNamespace(
+            map_list_map={"1": {"1_0": ["空间站「黑塔」", "1-1 空间站「黑塔」"]}}
+        )
+        use_questionary(monkeypatch, ["返回上级"])
+        assert setting._h_select_clean_map(map_info, "1") == "back"
