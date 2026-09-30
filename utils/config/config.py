@@ -66,13 +66,35 @@ class ConfigurationManager(metaclass=SingletonMeta):
             != self._last_mtime
         )
 
+    @staticmethod
+    def dumps_config(data: dict) -> str:
+        """config.json 的唯一写盘格式：4 空格缩进、中文不转义。
+
+        4 空格是为了让人能读 —— 多处日志会直接让用户「把 config.json 里的
+        allow_map_buy 改为 True」。不转义同理：taskkill_name 常是中文进程名，
+        转成 unicode escape 就没法看了。
+        """
+        return json.dumps(data, ensure_ascii=False, indent=4)
+
+    @classmethod
+    def write_config(cls, path: str, data: dict) -> None:
+        """config.json 的唯一落盘口：先写同目录 .tmp，再原子替换。
+
+        原地 open(..., "w") 会在写到一半崩溃时留下半个文件，而 read_json_file
+        碰到坏 JSON 会直接抛。这里先把整段序列化好再落地，序列化失败时原文件完好。
+        """
+        text = cls.dumps_config(data)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as file:
+            file.write(text)
+        os.replace(tmp, path)
+
     @classmethod
     def save_config(cls, config: dict):
         """
         保存配置文件
         """
-        with open(cls.CONFIG_FILE_NAME, "w", encoding="utf-8") as file:
-            json.dump(config, file, indent=4)
+        cls.write_config(cls.CONFIG_FILE_NAME, config)
 
     @classmethod
     def load_config(cls) -> dict:
@@ -139,8 +161,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
         # 先读，再写
         data, file_path = ConfigurationManager.read_json_file(filename, path=True)
         data[key] = value
-        with open(file_path, "wb") as f:
-            f.write(orjson.dumps(data))
+        ConfigurationManager.write_config(file_path, data)
 
     @staticmethod
     def config_keys(real_width=0, real_height=0):
@@ -201,8 +222,9 @@ class ConfigurationManager(metaclass=SingletonMeta):
     @classmethod
     def init_config_file(cls, real_width, real_height):
         if ConfigurationManager.normalize_file_path(cls.CONFIG_FILE_NAME) is None:
-            with open(cls.CONFIG_FILE_NAME, "wb+") as f:
-                f.write(orjson.dumps(cls.config_keys(real_width, real_height)))
+            cls.write_config(
+                cls.CONFIG_FILE_NAME, cls.config_keys(real_width, real_height)
+            )
 
     @classmethod
     def config_issubset(cls) -> bool:

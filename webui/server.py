@@ -60,6 +60,8 @@ if BASE_DIR not in sys.path:
 # 地图写盘格式（CLAUDE.md R22）。放在这里而不是文件开头：按路径运行
 # `python webui/server.py` 时 sys.path[0] 是 webui/，得先补上仓库根才 import 得到。
 from utils.core.json_io import dumps_map
+# config.json 的唯一落盘口（4 空格 + 中文不转义 + 原子写）。同样要放在补完 sys.path 之后。
+from utils.config.config import ConfigurationManager
 # 展示名（版本 / 星球 / 区域）只有一处维护，见 CLAUDE.md R23 —— 以前这里有一份、
 # ui/map_selector.py 有一份、setting.py 的提示语里还有一份，default_lite 就是这么漏的。
 from utils.core.map_names import (
@@ -468,11 +470,9 @@ def _backup_file(path):
 
 
 def save_config(data):
+    """整体覆盖 config.json —— 全项目唯一的「整份覆盖」写入口，所以只有这里备份。"""
     _backup_file(CONFIG_PATH)
-    tmp = CONFIG_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, CONFIG_PATH)
+    ConfigurationManager.write_config(CONFIG_PATH, data)
     return True
 
 

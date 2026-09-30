@@ -2,6 +2,7 @@
 
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -141,7 +142,40 @@ class TestModifyJsonFile:
         write_config(tmp_path / "x.json", {})
         ConfigurationManager.modify_json_file("x.json", "名字", "值")
         raw = (tmp_path / "x.json").read_text(encoding="utf-8")
-        assert "名字" in raw, "orjson 应输出 UTF-8 而非 \\uXXXX 转义"
+        assert "名字" in raw, "应输出 UTF-8 而非 unicode escape"
+
+
+class TestConfigWriteFormat:
+    """config.json 只有一个写盘格式：4 空格缩进 + 中文不转义 + 原子写。
+
+    曾经是四个写入口、三种形态 —— `save_config` 缩进 4 空格还把中文转义成
+    unicode escape、`modify_json_file` 用 orjson 写紧凑、WebUI 自己缩进 2 空格、
+    `init_config_file` 也是紧凑。谁最后写，config.json 就长成什么样。
+    """
+
+    def test_format_is_four_spaces_and_unescaped(self):
+        ConfigurationManager.save_config({"中文键": "中文值", "n": 1})
+        raw = Path("config.json").read_text(encoding="utf-8")
+        assert '\n    "中文键": "中文值"' in raw
+        assert "中文键" in raw, "不该转义成 unicode escape"
+
+    def test_all_writers_produce_the_same_bytes(self):
+        # 读原始字节：这样连缩进、行尾、转义任何一项不同都能抓到
+        ConfigurationManager.save_config({"a": 1, "中文": "值"})
+        expected = Path("config.json").read_bytes()
+        ConfigurationManager.modify_json_file("config.json", "a", 1)
+        assert Path("config.json").read_bytes() == expected
+
+    def test_failed_write_leaves_the_original_intact(self):
+        """序列化失败时原文件必须完好 —— 原地 open(..., "w") 会留下半个文件。"""
+        ConfigurationManager.save_config({"a": 1})
+        with pytest.raises(TypeError):
+            ConfigurationManager.save_config({"a": object()})
+        assert ConfigurationManager.load_config() == {"a": 1}
+
+    def test_no_temp_file_is_left_behind(self):
+        ConfigurationManager.save_config({"a": 1})
+        assert not Path("config.json.tmp").exists()
 
 
 class TestSaveAndLoadConfig:
