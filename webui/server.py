@@ -16,7 +16,7 @@ Fhoe-Rail WebUI 本地服务（零依赖，仅标准库）
     GET  /api/ping          -> 身份 + 关停令牌 + 有没有在跑锄地（供新实例接管用）
     POST /api/shutdown      -> 优雅关停本实例（需 X-Fhoe-Token 头；body {stop_run} 一并停锄地）
     GET  /api/config        -> 读取 config.json
-    POST /api/config        -> 保存 config.json（请求体为完整 JSON 对象）
+    POST /api/config        -> 保存 config.json（请求体 {changed:{...}, removed:[...]}，按字段合并）
     GET  /api/maps          -> 地图树（按版本 -> 星球 -> 地图）
     GET  /api/map?file=&version= -> 读取单个地图 JSON
     POST /api/map            -> 保存地图 JSON（请求体 {file, version, data}）
@@ -469,11 +469,40 @@ def _backup_file(path):
     os.replace(path, f"{path}.bak1")
 
 
-def save_config(data):
-    """整体覆盖 config.json —— 全项目唯一的「整份覆盖」写入口，所以只有这里备份。"""
+def save_config_patch(changed, removed):
+    """把改动按字段合并进 config.json 的当前内容，而不是整份覆盖。
+
+    整份覆盖会把「打开配置页之后、别处写进文件的改动」一并抹掉 —— 脚本每次启动都会写
+    config.json（`version` / 临时 `map_version` / `allowlist_mode_once` / `angle` …），
+    所以只要配置页开着跑过一次，点保存就会静默回滚那些值。按字段合并只在「同一字段双方
+    都改」时才冲突 —— 那在设置页里几乎不会发生。
+
+    返回实际写入的字段数。
+    """
+    # 这里不用 read_config()：它解析失败时返回 {}，拿它合并会把整个配置写没
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8-sig") as f:
+            current = json.load(f)
+    except FileNotFoundError:
+        current = {}
+    except Exception as e:
+        raise ValueError(f"config.json 读不出来（{e}），拒绝按字段合并，请先修好文件")
+    if not isinstance(current, dict):
+        raise ValueError("config.json 顶层不是 JSON 对象")
+
+    known = set(ConfigurationManager.config_keys()) | set(current)
+    unknown = sorted(k for k in list(changed) + list(removed) if k not in known)
+    if unknown:
+        raise ValueError("未知配置项：" + ", ".join(unknown))
+
+    # 这是用户主动点保存的一刻，回滚价值最高，仍然留一份备份
     _backup_file(CONFIG_PATH)
-    ConfigurationManager.write_config(CONFIG_PATH, data)
-    return True
+    for key, value in changed.items():
+        current[key] = value
+    for key in removed:
+        current.pop(key, None)
+    ConfigurationManager.write_config(CONFIG_PATH, current)
+    return len(changed) + len(removed)
 
 
 def build_map_tree():
@@ -1034,11 +1063,19 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(413, {"ok": False, "error": "请求体过大"})
                     return
                 raw = self.rfile.read(length)
-                data = json.loads(raw.decode("utf-8"))
-                if not isinstance(data, dict):
-                    raise ValueError("config 必须是 JSON 对象")
-                save_config(data)
-                self._send(200, {"ok": True, "saved": True})
+                body = json.loads(raw.decode("utf-8"))
+                if not isinstance(body, dict):
+                    raise ValueError("请求体必须是 JSON 对象")
+                changed = body.get("changed")
+                removed = body.get("removed") or []
+                if not isinstance(changed, dict):
+                    raise ValueError("changed 必须是 JSON 对象")
+                if not isinstance(removed, list) or not all(
+                    isinstance(k, str) for k in removed
+                ):
+                    raise ValueError("removed 必须是字符串数组")
+                applied = save_config_patch(changed, removed)
+                self._send(200, {"ok": True, "saved": True, "applied": applied})
             except Exception as e:
                 self._send(400, {"ok": False, "error": str(e)})
         elif parsed.path == "/api/run":

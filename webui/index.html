@@ -1471,6 +1471,9 @@ $("#modal-mask").addEventListener("click", (e) => { if (e.target === e.currentTa
 
 /* ---------------- 参数设置 ---------------- */
 let configData = null;
+/* 上次读到 / 成功保存的那一份，保存时用来算出"哪些字段真被改过" */
+let configBase = null;
+function cloneConfig(o) { return JSON.parse(JSON.stringify(o ?? {})); }
 /* 地图版本中文别名：硬编码兜底，API 返回 version_names 时自动覆盖 */
 let VERSION_NAMES = {
   default: "默认",
@@ -1548,6 +1551,7 @@ async function loadConfig() {
       try { const _r = await api("/api/maps"); mapData = _r.tree || _r; planetNames = _r.planet_names || {}; Object.assign(VERSION_NAMES, _r.version_names || {}); Object.assign(PLANET_EMOJI, _r.planet_emoji || {}); } catch (e) { /* 地图数据加载失败不阻塞配置编辑 */ }
     }
     configData = await api("/api/config");
+    configBase = cloneConfig(configData);
     renderConfigForm();
   } catch (e) {
     el.innerHTML = `<div class="error-box">加载失败：${esc(e.message)}</div>`;
@@ -1598,7 +1602,7 @@ function renderConfigForm() {
         <button class="btn ghost" id="download-config">⬇️ 下载 config.json</button>
         <button class="btn ghost" id="reload-config">🔄 重新读取</button>
       </div>
-      <div style="font-size: 13px;color:var(--txt-faint);margin-top:10px">⚠️ 保存会直接写入项目根目录 config.json；数组字段用逗号分隔（如 1-1,2-1）。</div>
+      <div style="font-size: 13px;color:var(--txt-faint);margin-top:10px">⚠️ 保存只写入改动过的字段，不会覆盖程序运行期写进 config.json 的值（version、angle 等）；数组字段用逗号分隔（如 1-1,2-1）。</div>
     </div>`;
   el.innerHTML = html;
 
@@ -1644,9 +1648,7 @@ function renderConfigForm() {
     const btn = $("#notify-test"), res = $("#notify-test-result");
     btn.disabled = true; res.textContent = "发送中…";
     try {
-      if (configData) {
-        await api("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(configData) });
-      }
+      if (configData) { await pushConfigPatch(); }  // 先把改动落盘，测试通知按盘上的配置发
       const r = await api("/api/notify/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       res.textContent = r.note || (r.ok ? "已发送，请检查手机/客户端" : "发送失败");
     } catch (e) { res.textContent = "发送失败：" + e.message; }
@@ -1711,17 +1713,43 @@ function syncRawJson() {
   if (ta) ta.value = JSON.stringify(configData, null, 2);
 }
 
+/* 只挑出相对 configBase 真正变过的字段再提交。
+   整份提交会把「打开本页之后、别处写进 config.json 的改动」一并抹掉 —— 脚本每次
+   启动都会写 version / map_version / allowlist_mode_once / angle 等键，整份覆盖
+   等于把它们静默回滚。按字段提交只在「同一字段双方都改」时才冲突。 */
+function configPatch() {
+  const changed = {}, removed = [];
+  const keys = new Set([...Object.keys(configBase || {}), ...Object.keys(configData)]);
+  for (const k of keys) {
+    if (!Object.prototype.hasOwnProperty.call(configData, k)) { removed.push(k); continue; }
+    const before = configBase ? configBase[k] : undefined;
+    if (JSON.stringify(configData[k]) !== JSON.stringify(before)) changed[k] = configData[k];
+  }
+  return { changed, removed };
+}
+
+async function pushConfigPatch() {
+  const { changed, removed } = configPatch();
+  if (!Object.keys(changed).length && !removed.length) return { ok: true, applied: 0 };
+  const res = await api("/api/config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ changed, removed }),
+  });
+  if (res.ok) configBase = cloneConfig(configData);
+  return res;
+}
+
 async function saveConfig() {
   const btn = $("#save-config");
   btn.disabled = true; btn.textContent = "⏳ 保存中…";
   try {
-    const res = await api("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(configData),
-    });
-    if (res.ok) { toast("✅ 配置已保存到 config.json"); }
-    else { toast("保存失败：" + (res.error || "未知错误"), true); }
+    const res = await pushConfigPatch();
+    if (res.ok) {
+      toast(res.applied ? `✅ 已保存 ${res.applied} 项修改` : "没有需要保存的修改");
+    } else {
+      toast("保存失败：" + (res.error || "未知错误"), true);
+    }
   } catch (e) {
     toast("保存失败：" + e.message, true);
   } finally {
