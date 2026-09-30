@@ -84,17 +84,27 @@ class TimeUtils:
         log.info(f"需要等待 {wait_time:.0f} 秒")
         time.sleep(wait_time)
 
-    def has_crossed_4am(self, start: datetime.datetime, end: datetime.datetime) -> bool:
+    @staticmethod
+    def next_refresh_after(
+        moment: datetime.datetime, hour: int, minute: int
+    ) -> datetime.datetime:
         """
-        检查是否从开始时间到结束时间跨越了凌晨4点
+        返回 moment 之后的第一个刷新时刻（严格晚于 moment）。
+
+        刷新点在每天的 hour:minute 出现一次。若当天的那个已经过去（或正好等于
+        moment），则取次日的。
+        """
+        candidate = moment.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        return candidate if candidate > moment else candidate + datetime.timedelta(days=1)
+
+    def has_crossed_refresh(self, start: datetime.datetime, end: datetime.datetime) -> bool:
+        """
+        检查 [start, end] 期间是否跨过了配置的刷新点（refresh_hour:refresh_minute）。
+
+        判定的是「start 之后的第一个刷新点是否落在 end 之内」，因此恰好从刷新点
+        开始跑（start 等于刷新时刻）不算跨过。
         """
         refresh_hour = self.cfg.config_file.get("refresh_hour", 4)
         refresh_minute = self.cfg.config_file.get("refresh_minute", 0)
-        # 获取开始时间的凌晨4点
-        start_4am = start.replace(
-            hour=refresh_hour, minute=refresh_minute, second=0, microsecond=0)
-        if start.hour >= refresh_hour and start.minute >= refresh_minute:
-            # 如果开始时间在4点之后，则4点时间应该是下一天的4点
-            start_4am += datetime.timedelta(days=1)
 
-        return start < start_4am <= end
+        return self.next_refresh_after(start, refresh_hour, refresh_minute) <= end

@@ -54,65 +54,94 @@ class TestGetTargetDatetime:
         assert (target.hour, target.minute, target.second) == (4, 30, 15)
 
 
-class TestHasCrossed4am:
-    """refresh_hour / refresh_minute 来自 config，默认 4:00。"""
+class TestHasCrossedRefresh:
+    """refresh_hour / refresh_minute 来自 config，默认 4:00。
+
+    判定的是「start 之后的第一个刷新点是否落在 end 之内」。
+    """
 
     def test_crossing_within_same_day(self, time_mgr):
         start = datetime.datetime(2026, 1, 1, 3, 0)
         end = datetime.datetime(2026, 1, 1, 5, 0)
-        assert time_mgr.has_crossed_4am(start, end) is True
+        assert time_mgr.has_crossed_refresh(start, end) is True
 
     def test_no_crossing_when_both_after_refresh(self, time_mgr):
         start = datetime.datetime(2026, 1, 1, 5, 0)
         end = datetime.datetime(2026, 1, 1, 6, 0)
-        assert time_mgr.has_crossed_4am(start, end) is False
+        assert time_mgr.has_crossed_refresh(start, end) is False
 
     def test_no_crossing_when_both_before_refresh(self, time_mgr):
         start = datetime.datetime(2026, 1, 1, 1, 0)
         end = datetime.datetime(2026, 1, 1, 3, 0)
-        assert time_mgr.has_crossed_4am(start, end) is False
+        assert time_mgr.has_crossed_refresh(start, end) is False
 
     def test_crossing_into_next_day(self, time_mgr):
         """跨日连锄：今天 5 点跑到明天 4:30，期间跨过明天 4:00 的刷新点。"""
         start = datetime.datetime(2026, 1, 1, 5, 0)
         end = datetime.datetime(2026, 1, 2, 4, 30)
-        assert time_mgr.has_crossed_4am(start, end) is True
+        assert time_mgr.has_crossed_refresh(start, end) is True
 
     def test_refresh_point_is_exclusive_of_start(self, time_mgr):
         """恰好从刷新点开始不算“跨过”。"""
         start = datetime.datetime(2026, 1, 1, 4, 0)
         end = datetime.datetime(2026, 1, 1, 6, 0)
-        assert time_mgr.has_crossed_4am(start, end) is False
+        assert time_mgr.has_crossed_refresh(start, end) is False
 
     def test_refresh_point_is_inclusive_of_end(self, time_mgr):
         start = datetime.datetime(2026, 1, 1, 3, 0)
         end = datetime.datetime(2026, 1, 1, 4, 0)
-        assert time_mgr.has_crossed_4am(start, end) is True
+        assert time_mgr.has_crossed_refresh(start, end) is True
 
     def test_uses_refresh_hour_from_config(self, time_mgr, set_config):
         set_config(time_mgr.cfg, refresh_hour=6, refresh_minute=0)
         start = datetime.datetime(2026, 1, 1, 5, 0)
         end = datetime.datetime(2026, 1, 1, 7, 0)
-        assert time_mgr.has_crossed_4am(start, end) is True
+        assert time_mgr.has_crossed_refresh(start, end) is True
 
     def test_non_zero_refresh_minute_with_start_minute_above_it(self, time_mgr, set_config):
-        """refresh_minute=30，开始时间 5:40 —— 这一支恰好是对的。"""
+        """refresh_minute=30，开始时间 5:40。"""
         set_config(time_mgr.cfg, refresh_hour=4, refresh_minute=30)
         start = datetime.datetime(2026, 1, 1, 5, 40)
         end = datetime.datetime(2026, 1, 2, 4, 35)
-        assert time_mgr.has_crossed_4am(start, end) is True
+        assert time_mgr.has_crossed_refresh(start, end) is True
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="refresh_minute 非 0 且 start.minute < refresh_minute 时，"
-        "第 96 行的 `and` 应为 `or`，导致漏判跨刷新点",
-    )
     def test_non_zero_refresh_minute_with_start_minute_below_it(self, time_mgr, set_config):
-        """refresh_minute=30，开始时间 5:10，跑到次日 4:35 应判定为跨过 4:30。"""
+        """refresh_minute=30，开始时间 5:10，跑到次日 4:35 应判定为跨过 4:30。
+
+        旧写法 `start.hour >= rh and start.minute >= rm` 在这一支会漏判。
+        当年那条 xfail 的 reason 写「`and` 应为 `or`」是错的：`or` 会让条件恒真。
+        """
         set_config(time_mgr.cfg, refresh_hour=4, refresh_minute=30)
         start = datetime.datetime(2026, 1, 1, 5, 10)
         end = datetime.datetime(2026, 1, 2, 4, 35)
-        assert time_mgr.has_crossed_4am(start, end) is True
+        assert time_mgr.has_crossed_refresh(start, end) is True
+
+
+class TestNextRefreshAfter:
+    """next_refresh_after：moment 之后的第一个刷新时刻（严格晚于 moment）。"""
+
+    def test_returns_today_when_refresh_still_ahead(self):
+        moment = datetime.datetime(2026, 1, 1, 3, 0)
+        assert TimeUtils.next_refresh_after(moment, 4, 0) == datetime.datetime(2026, 1, 1, 4, 0)
+
+    def test_rolls_to_tomorrow_when_refresh_already_passed(self):
+        moment = datetime.datetime(2026, 1, 1, 5, 0)
+        assert TimeUtils.next_refresh_after(moment, 4, 0) == datetime.datetime(2026, 1, 2, 4, 0)
+
+    def test_starting_exactly_on_the_refresh_point_rolls_to_tomorrow(self):
+        """严格晚于 moment，所以踩点开始取次日。"""
+        moment = datetime.datetime(2026, 1, 1, 4, 0)
+        assert TimeUtils.next_refresh_after(moment, 4, 0) == datetime.datetime(2026, 1, 2, 4, 0)
+
+    def test_hour_past_but_minute_before_refresh_rolls_to_tomorrow(self):
+        """h > rh 但 m < rm 时必须取次日 —— 旧的 `and` 判定会错成当天。"""
+        moment = datetime.datetime(2026, 1, 1, 5, 10)
+        assert TimeUtils.next_refresh_after(moment, 4, 30) == datetime.datetime(2026, 1, 2, 4, 30)
+
+    def test_minute_past_but_hour_before_refresh_stays_today(self):
+        """m >= rm 但 h < rh 时仍取当天 —— 把 `and` 改成 `or` 会错成次日。"""
+        moment = datetime.datetime(2026, 1, 1, 3, 45)
+        assert TimeUtils.next_refresh_after(moment, 4, 30) == datetime.datetime(2026, 1, 1, 4, 30)
 
 
 class TestGetValidHour:

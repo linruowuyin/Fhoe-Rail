@@ -237,7 +237,7 @@ def main():
                 cfg.CONFIG_FILE_NAME, False
             ).get("allow_run_next_day", False):
                 log.info("开始执行跨日连锄")
-                if time_mgr.has_crossed_4am(start=start_time, end=end_time):
+                if time_mgr.has_crossed_refresh(start=start_time, end=end_time):
                     log.info("检测到换日，即将从头开锄")
                     map_instance.process_map(start_map, start_in_mid, dev=dev)
                 else:
@@ -245,15 +245,10 @@ def main():
                     now = datetime.datetime.now()
                     refresh_hour = cfg.config_file.get("refresh_hour", 4)
                     refresh_minute = cfg.config_file.get("refresh_minute", 0)
-                    next_4am = now.replace(
-                        hour=refresh_hour,
-                        minute=refresh_minute,
-                        second=0,
-                        microsecond=0,
+                    next_refresh = time_mgr.next_refresh_after(
+                        now, refresh_hour, refresh_minute
                     )
-                    if now.hour >= refresh_hour and now.minute >= refresh_minute:
-                        next_4am += datetime.timedelta(days=1)
-                    wait_time = (next_4am - now).total_seconds()
+                    wait_time = (next_refresh - now).total_seconds()
                     wait_time += 60
                     if wait_time <= 14400:
                         log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
