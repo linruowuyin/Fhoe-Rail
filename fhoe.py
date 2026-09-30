@@ -12,7 +12,6 @@ for stream_name in ("stdout", "stderr"):
         except Exception:
             pass
 
-import datetime
 import subprocess
 import time
 import traceback
@@ -34,6 +33,7 @@ from utils.flows.map_operations import MapOperations
 from utils.core.map_info import MapInfo
 from utils.ui.map_selector import choose_map, choose_map_debug
 from utils.core.notify import Notify, get_error_summary
+from utils.core.ports import SYSTEM_CLOCK
 from utils.ui.setting import Setting
 from utils.core.time_utils import TimeUtils
 from utils.drivers.window import Window
@@ -173,82 +173,12 @@ def main():
 
     if start:
         try:
-            cfg.config_fix()
-            log.info(f"config.json:{cfg.load_config()}")
-            log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
-            check_mult_screen()
-            Window().switch_window()
-
-            map_instance = MapOperations()
-            time.sleep(0.5)
-            log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
-            log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
-            log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
-            log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
-            start_time = datetime.datetime.now()
-            notify.send_start(start)
-            map_instance.process_map(
-                start, start_in_mid, dev=dev, single_map=single_map_mode
-            )  # 读取配置
-            start_map = "1-1_0"
-            allow_run_again = not single_map_mode and cfg.read_json_file(
-                cfg.CONFIG_FILE_NAME, False
-            ).get("allow_run_again", False)
-            if allow_run_again:
-                map_instance.process_map(start_map, start_in_mid, dev=dev)
-            end_time = datetime.datetime.now()
-
-            # 结束通知（含统计摘要）
-            try:
-                summary = {
-                    "总计用时": map_instance.map_statu.total_time
-                    if hasattr(map_instance, "map_statu")
-                    else None,
-                    "战斗次数": map_instance.handle.total_fight_cnt
-                    if hasattr(map_instance, "handle")
-                    else None,
-                    "未战斗次数": map_instance.handle.total_no_fight_cnt
-                    if hasattr(map_instance, "handle")
-                    else None,
-                    "疾跑节约": map_instance.handle.tatol_save_time
-                    if hasattr(map_instance, "handle")
-                    else None,
-                    "系统卡顿": map_instance.handle.time_error_cnt
-                    if hasattr(map_instance, "handle")
-                    else None,
-                }
-                summary = {k: v for k, v in summary.items() if v is not None}
-                notify.send_end(summary)
-            except Exception as e:
-                log.warning(f"结束通知发送失败: {e}")
-            if not single_map_mode and cfg.read_json_file(
-                cfg.CONFIG_FILE_NAME, False
-            ).get("allow_run_next_day", False):
-                log.info("开始执行跨日连锄")
-                if time_mgr.has_crossed_refresh(start=start_time, end=end_time):
-                    log.info("检测到换日，即将从头开锄")
-                    map_instance.process_map(start_map, start_in_mid, dev=dev)
-                else:
-                    map_instance.handle.back_to_main(delay=2.0)
-                    now = datetime.datetime.now()
-                    refresh_hour = cfg.config_file.get("refresh_hour", 4)
-                    refresh_minute = cfg.config_file.get("refresh_minute", 0)
-                    next_refresh = time_mgr.next_refresh_after(
-                        now, refresh_hour, refresh_minute
-                    )
-                    wait_time = (next_refresh - now).total_seconds()
-                    wait_time += 60
-                    if wait_time <= 14400:
-                        log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
-                        time.sleep(wait_time)
-                        map_instance.process_map(start_map, start_in_mid, dev=dev)
-                    else:
-                        log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
-            # 关机/注销必须排在跨日连锄之后：两者同时开启时，先关机等于把跨日等待整段废掉
-            shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
-                "auto_shutdown", 0
+            run_once(
+                start,
+                start_in_mid,
+                dev=dev,
+                single_map_mode=single_map_mode,
             )
-            shutdown_computer(shutdown_type)
             if dev:  # 开发者模式自动重选地图
                 main()
         finally:
@@ -286,6 +216,108 @@ def shutdown_computer(shutdown_type):
             subprocess.call(["taskkill", "/im", taskkill_name, "/f"])
     else:
         log.info("shutdown_type参数不正确")
+
+
+def run_once(
+    start,
+    start_in_mid,
+    *,
+    dev=False,
+    single_map_mode=False,
+    cfg=cfg,
+    time_mgr=time_mgr,
+    notify=notify,
+    clock=SYSTEM_CLOCK,
+    window_factory=Window,
+    map_ops_factory=MapOperations,
+    check_screens=check_mult_screen,
+    shutdown=shutdown_computer,
+):
+    """跑一趟：装配 → 切窗口 → 跑图 → 跨日连锄 → 关机/注销。
+
+    从 `main()` 抽出来是为了可测。`main()` 一跑就会切窗口、启动游戏窗口，单测驱动不
+    了；这里所有会碰外部世界的东西（窗口、地图流程、时钟、分辨率检查、关机）都是参数，
+    测试传替身进来就能断言编排顺序 —— 例如「关机必须排在跨日连锄之后」。
+
+    默认值在**函数定义时**就绑定了模块级对象：测试要替换请显式传参，
+    monkeypatch `fhoe.Window` 之类不会改变这里的默认值。
+    """
+    cfg.config_fix()
+    log.info(f"config.json:{cfg.load_config()}")
+    log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
+    check_screens()
+    window_factory().switch_window()
+
+    map_instance = map_ops_factory()
+    clock.sleep(0.5)
+    log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
+    log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
+    log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
+    log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
+    start_time = clock.now()
+    notify.send_start(start)
+    map_instance.process_map(
+        start, start_in_mid, dev=dev, single_map=single_map_mode
+    )  # 读取配置
+    start_map = "1-1_0"
+    allow_run_again = not single_map_mode and cfg.read_json_file(
+        cfg.CONFIG_FILE_NAME, False
+    ).get("allow_run_again", False)
+    if allow_run_again:
+        map_instance.process_map(start_map, start_in_mid, dev=dev)
+    end_time = clock.now()
+
+    # 结束通知（含统计摘要）
+    try:
+        summary = {
+            "总计用时": map_instance.map_statu.total_time
+            if hasattr(map_instance, "map_statu")
+            else None,
+            "战斗次数": map_instance.handle.total_fight_cnt
+            if hasattr(map_instance, "handle")
+            else None,
+            "未战斗次数": map_instance.handle.total_no_fight_cnt
+            if hasattr(map_instance, "handle")
+            else None,
+            "疾跑节约": map_instance.handle.tatol_save_time
+            if hasattr(map_instance, "handle")
+            else None,
+            "系统卡顿": map_instance.handle.time_error_cnt
+            if hasattr(map_instance, "handle")
+            else None,
+        }
+        summary = {k: v for k, v in summary.items() if v is not None}
+        notify.send_end(summary)
+    except Exception as e:
+        log.warning(f"结束通知发送失败: {e}")
+    if not single_map_mode and cfg.read_json_file(
+        cfg.CONFIG_FILE_NAME, False
+    ).get("allow_run_next_day", False):
+        log.info("开始执行跨日连锄")
+        if time_mgr.has_crossed_refresh(start=start_time, end=end_time):
+            log.info("检测到换日，即将从头开锄")
+            map_instance.process_map(start_map, start_in_mid, dev=dev)
+        else:
+            map_instance.handle.back_to_main(delay=2.0)
+            now = clock.now()
+            refresh_hour = cfg.config_file.get("refresh_hour", 4)
+            refresh_minute = cfg.config_file.get("refresh_minute", 0)
+            next_refresh = time_mgr.next_refresh_after(
+                now, refresh_hour, refresh_minute
+            )
+            wait_time = (next_refresh - now).total_seconds()
+            wait_time += 60
+            if wait_time <= 14400:
+                log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
+                clock.sleep(wait_time)
+                map_instance.process_map(start_map, start_in_mid, dev=dev)
+            else:
+                log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
+    # 关机/注销必须排在跨日连锄之后：两者同时开启时，先关机等于把跨日等待整段废掉
+    shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
+        "auto_shutdown", 0
+    )
+    shutdown(shutdown_type)
 
 
 if __name__ == "__main__":
