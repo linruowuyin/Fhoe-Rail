@@ -108,10 +108,61 @@ def parse_map_version_arg():
     return None
 
 
+# 录制 / 测试模式自己就把事情做完了，不产生起始地图
+_MODE_DONE = object()
+
+
+def _start_for_mode(mode, map_arg):
+    """按启动模式决定怎么开局，返回 `(start, dev)`。
+
+    `start` 是 `choose_map*` 的产出（也可能是 `(地图, start_in_mid)` 元组）；
+    `_MODE_DONE` 表示这个模式已经做完、不用再跑图。
+
+    各模式的差别只有三件事 —— **准备配置的方式**、**怎么挑起始地图**、**是不是开发者模式**：
+
+        --map     用 --map 给的那张图开局
+        --debug   三级菜单选图（同时给了 --map 就直接用）
+        --dev     同 --debug，另外跑完自动重选地图
+        --config  先走一遍配置重写，再三级菜单选图
+        --white   按配置直接开局，并开启一次白名单模式
+        --record  进录制模式（不跑图）
+        --test    只切一次窗口（不跑图）
+        其他/无   按配置直接开局
+    """
+    if mode == "--record":
+        from utils.ui.record import record_main
+
+        record_main()
+        return _MODE_DONE, False
+
+    if mode == "--test":
+        cfg.main_start()
+        Window().switch_window()
+        return _MODE_DONE, False
+
+    if mode == "--config":
+        cfg.main_start_rewrite(setting)
+        return choose_map_debug(map_info_instance), False
+
+    cfg.main_start()  # 其余模式都以「补全默认配置」开场，原先在 7 个分支里各写了一遍
+    if mode == "--map":
+        start = (map_arg, False)
+    elif mode in ("--debug", "--dev"):
+        start = (
+            choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
+        )
+    else:  # --white / 未知参数 / 没带参数
+        start = choose_map(map_info_instance)
+
+    if mode == "--white":
+        # 启用一次白名单模式
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True)
+    return start, mode == "--dev"
+
+
 def main():
 
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
-    dev = False  # 初始开发者模式，为否
     map_arg = parse_map_arg()  # --map 参数：非交互指定起始地图（WebUI 选图运行）
     single_map_mode = map_arg is not None
 
@@ -124,49 +175,10 @@ def main():
         cfg._config = None
         log.info(f"[单图运行] 临时切换地图版本: {map_version_arg}")
 
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--map":
-            cfg.main_start()
-            start = (map_arg, False)
-        elif sys.argv[1] == "--debug":
-            cfg.main_start()
-            start = (
-                choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
-            )
-        elif sys.argv[1] == "--config":
-            cfg.main_start_rewrite(setting)
-            start = choose_map_debug(map_info_instance)
-        elif sys.argv[1] == "--dev":
-            cfg.main_start()
-            start = (
-                choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
-            )
-            dev = True  # 设置开发者模式
-        elif sys.argv[1] == "--white":
-            cfg.main_start()
-            start = choose_map(map_info_instance)
-            cfg.modify_json_file(
-                cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True
-            )  # 启用一次白名单模式
-        elif sys.argv[1] == "--record":
-            from utils.ui.record import record_main
-
-            record_main()
-            return
-        elif sys.argv[1] == "--test":
-            # 测试模式：单独测试某个功能
-            cfg.main_start()
-            Window().switch_window()
-            # from utils.flows.handle import Handle
-            # handle = Handle()
-            # handle.auto_use_technique_consumable()
-            return
-        else:
-            cfg.main_start()
-            start = choose_map(map_info_instance)
-    else:
-        cfg.main_start()
-        start = choose_map(map_info_instance)
+    mode = sys.argv[1] if len(sys.argv) > 1 else ""
+    start, dev = _start_for_mode(mode, map_arg)
+    if start is _MODE_DONE:  # 录制 / 测试模式：自己干完了，不再跑图
+        return
 
     if isinstance(start, tuple):
         start_in_mid, start = start[1], start[0]

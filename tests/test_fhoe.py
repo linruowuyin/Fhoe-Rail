@@ -1,11 +1,12 @@
-"""fhoe.py 的编排顺序（`run_once`）。
+"""fhoe.py 的两件事：启动模式分发（`_start_for_mode`）与编排顺序（`run_once`）。
 
-`run_once` 是从 `main()` 抽出来的：`main()` 一跑就会切窗口、启动游戏，单测驱动不了。
+两者都是从 `main()` 抽出来的：`main()` 一跑就会切窗口、启动游戏，单测驱动不了。
 抽出来之后，窗口 / 地图流程 / 时钟 / 关机都成了参数，测试传替身进来就能断言**顺序** ——
 这正是「关机曾经排在跨日连锄之前」那类 bug 唯一能被钉住的地方。
 """
 
 import datetime
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,8 +22,17 @@ class FakeCfg:
         self.flags = flags
         self.calls = []
 
+    def main_start(self):
+        self.calls.append("main_start")
+
+    def main_start_rewrite(self, setting):
+        self.calls.append(("main_start_rewrite", setting))
+
     def config_fix(self):
         self.calls.append("config_fix")
+
+    def modify_json_file(self, filename, key, value):
+        self.calls.append(("modify_json_file", key, value))
 
     def load_config(self):
         return dict(self.flags)
@@ -199,3 +209,85 @@ class TestRunOnceBasics:
         """关不关由 shutdown_computer 自己按类型判断，编排层不做二次判断。"""
         order = _run(fhoe_mod, flags={"auto_shutdown": 0})
         assert ("shutdown", 0) in order
+
+
+def _dispatch(fhoe_mod, monkeypatch, mode, map_arg=None):
+    """跑一次 _start_for_mode，把协作对象全换掉。"""
+    fake_cfg = FakeCfg()
+    switched = []
+    recorded = []
+
+    monkeypatch.setattr(fhoe_mod, "cfg", fake_cfg)
+    monkeypatch.setattr(fhoe_mod, "setting", "FAKE_SETTING")
+    monkeypatch.setattr(fhoe_mod, "choose_map", lambda info: ("CONFIGURED", True))
+    monkeypatch.setattr(fhoe_mod, "choose_map_debug", lambda info: ("MENU", True))
+
+    class FakeSwitchWindow:
+        def switch_window(self):
+            switched.append(True)
+
+    monkeypatch.setattr(fhoe_mod, "Window", FakeSwitchWindow)
+    # 用假模块顶掉 utils.ui.record，避免为了测 --record 真去 import 它
+    monkeypatch.setitem(
+        sys.modules,
+        "utils.ui.record",
+        SimpleNamespace(record_main=lambda: recorded.append("record")),
+    )
+
+    start, dev = fhoe_mod._start_for_mode(mode, map_arg)
+    return SimpleNamespace(
+        start=start, dev=dev, cfg=fake_cfg, switched=switched, recorded=recorded
+    )
+
+
+class TestStartForMode:
+    """启动模式矩阵。把原先那串 if-elif 抽成函数，就是为了能这样一条条钉住。"""
+
+    def test_record_mode_does_not_produce_a_start(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--record")
+        assert r.start is fhoe_mod._MODE_DONE
+        assert r.recorded == ["record"]
+        assert r.cfg.calls == [], "录制模式不该去动配置"
+
+    def test_test_mode_only_switches_the_window(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--test")
+        assert r.start is fhoe_mod._MODE_DONE
+        assert r.switched == [True]
+        assert r.cfg.calls == ["main_start"]
+
+    def test_config_mode_rewrites_then_uses_the_debug_menu(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--config")
+        assert r.start == ("MENU", True)
+        assert r.dev is False
+        assert r.cfg.calls == [("main_start_rewrite", "FAKE_SETTING")]
+
+    def test_white_mode_arms_the_one_shot_allowlist(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--white")
+        assert r.start == ("CONFIGURED", True)
+        assert ("modify_json_file", "allowlist_mode_once", True) in r.cfg.calls
+
+    def test_dev_mode_uses_the_menu_and_marks_dev(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--dev")
+        assert r.start == ("MENU", True)
+        assert r.dev is True
+
+    def test_debug_mode_with_a_map_argument_skips_the_menu(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--debug", map_arg="3-5_1")
+        assert r.start == ("3-5_1", False)
+        assert r.dev is False
+
+    def test_map_mode_uses_the_given_map(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--map", map_arg="3-5_1")
+        assert r.start == ("3-5_1", False)
+        assert r.dev is False
+
+    def test_no_mode_uses_the_configured_start(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "")
+        assert r.start == ("CONFIGURED", True)
+        assert r.dev is False
+        assert r.cfg.calls == ["main_start"]
+
+    def test_unknown_mode_behaves_like_no_mode(self, fhoe_mod, monkeypatch):
+        r = _dispatch(fhoe_mod, monkeypatch, "--并不存在")
+        assert r.start == ("CONFIGURED", True)
+        assert r.dev is False
