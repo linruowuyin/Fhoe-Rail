@@ -47,13 +47,7 @@ class Calculated:
             if result and result["max_val"] > MAP_LOADING:
                 log.info(f"检测到地图加载map_load，匹配度{result['max_val']}")
                 if self.img.on_main_interface(
-                    check_list=[
-                        self.img.main_ui,
-                        self.img.finish2_ui,
-                        self.img.finish2_1_ui,
-                        self.img.finish2_2_ui,
-                        self.img.finish3_ui,
-                    ],
+                    check_list=self._main_ui_candidates(),
                     timeout=10,
                     threshold=threshold,
                 ):
@@ -62,24 +56,12 @@ class Calculated:
                 self.blackscreen.run_blackscreen_cal_time()
                 break
             elif self.img.on_main_interface(
-                check_list=[
-                    self.img.main_ui,
-                    self.img.finish2_ui,
-                    self.img.finish2_1_ui,
-                    self.img.finish2_2_ui,
-                    self.img.finish3_ui,
-                ],
+                check_list=self._main_ui_candidates(),
                 threshold=threshold,
             ):
                 time.sleep(1)
                 if self.img.on_main_interface(
-                    check_list=[
-                        self.img.main_ui,
-                        self.img.finish2_ui,
-                        self.img.finish2_1_ui,
-                        self.img.finish2_2_ui,
-                        self.img.finish3_ui,
-                    ],
+                    check_list=self._main_ui_candidates(),
                     threshold=threshold,
                 ):
                     log.info("连续检测到主界面，地图加载标记为结束")
@@ -142,6 +124,16 @@ class Calculated:
             os.system("shutdown /s /f /t 0")
         else:
             log.info("锄地结束！")
+
+    def _main_ui_candidates(self):
+        """判定「回到主界面」要看的那几张图。原先这段在 run_mapload_check 里抄了 5 遍。"""
+        return [
+            self.img.main_ui,
+            self.img.finish2_ui,
+            self.img.finish2_1_ui,
+            self.img.finish2_2_ui,
+            self.img.finish3_ui,
+        ]
 
     def allow_buy_item(self):
         """
