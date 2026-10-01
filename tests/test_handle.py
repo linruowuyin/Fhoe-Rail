@@ -1,6 +1,8 @@
-"""utils/flows/handle.py —— 战斗判定、F 键分支、移动循环、疾跑线程。"""
+"""utils/flows/handle.py —— 战斗判定与 F 键分支。
 
-import time
+移动/疾跑在 test_movement.py，视角校准在 test_orientation.py。
+"""
+
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -8,17 +10,12 @@ import numpy as np
 import pytest
 import win32api
 import win32con
-from pynput.keyboard import Key as KeyboardKey
 
 import utils.flows.combat as combat_module
-import utils.flows.movement as movement_module
-import utils.flows.orientation as orientation_module
 import utils.vision.arrow as arrow_module
 import utils.flows.handle as handle_module
 from utils.core.exceptions import CustomException
 from utils.flows.combat import Combat
-from utils.flows.movement import Movement
-from utils.flows.orientation import Orientation
 from utils.flows.handle import Handle
 from utils.vision.img import Img
 from utils.vision.matcher import Matcher
@@ -83,39 +80,6 @@ def handle(make_instance, monkeypatch):
         error_fight_cnt=0,
         error_fight_threshold=3,
     )
-    instance.keyboard = keyboard
-    return instance
-
-
-@pytest.fixture
-def movement(make_instance, monkeypatch):
-    """一个不依赖游戏窗口的 Movement。"""
-    keyboard = SimpleNamespace(pressed=[], released=[])
-    keyboard.press_key = keyboard.pressed.append
-    keyboard.release_key = keyboard.released.append
-    keyboard.keyboard_press = lambda key, delay=0: keyboard.pressed.append(key)
-    monkeypatch.setattr(movement_module, "KeyboardEvent", keyboard)
-    instance = make_instance(
-        Movement,
-        cfg=SimpleNamespace(config_file={"auto_run_in_map": False}),
-        img=SimpleNamespace(
-            switch_run="switch_run.png",
-            scan_screenshot=lambda *a, **k: {"max_val": 0.0},
-        ),
-        combat=SimpleNamespace(
-            fight_in_map=False,
-            technique_points_dialog=lambda: None,
-            fight_elapsed=lambda: True,
-        ),
-        thread_check_sprint=None,
-        running=False,
-        run_fix_time=0,
-        run_fixed=False,
-        last_step_run=False,
-        tatol_save_time=0,
-        time_error_cnt=0,
-    )
-    instance.stop_check_sprint_task = lambda: None
     instance.keyboard = keyboard
     return instance
 
@@ -369,17 +333,6 @@ class TestHandleClickFloor:
         assert clicks[1] == (3.4, pytest.approx((970 - 86) / 1080 * 100))
 
 
-class TestViewHelpers:
-    def test_handle_view_set_stores_reference_arrow(self, make_instance, monkeypatch):
-        monkeypatch.setattr(orientation_module.time, "sleep", lambda seconds: None)
-        monkeypatch.setattr(orientation_module.arrow, "take_arrow", lambda img: "ARROW")
-        instance = make_instance(Orientation, img=None, arrow_begin=None)
-
-        instance.handle_view_set(0.1)
-
-        assert instance.arrow_begin == "ARROW"
-
-
 class TestCalAng:
     def test_identical_arrow_is_zero_degrees(self, make_instance):
         """同一张图旋转 0 度时归一化相关为 1，应判定为 0 度。"""
@@ -389,107 +342,6 @@ class TestCalAng:
         shape[8:17, 11:14] = 255
 
         assert arrow_module.cal_ang(img, shape, shape) == 0
-
-
-class TestIsRunning:
-    def test_threshold_is_high(self, make_instance):
-        instance = make_instance(Movement)
-        instance.img = SimpleNamespace(
-            switch_run="img", scan_screenshot=lambda *a, **k: {"max_val": 0.997}
-        )
-        assert instance.is_running() is True
-
-        instance.img = SimpleNamespace(
-            switch_run="img", scan_screenshot=lambda *a, **k: {"max_val": 0.99}
-        )
-        assert instance.is_running() is False
-
-
-class TestSprintTaskLifecycle:
-    def test_start_skips_when_thread_already_alive(self, make_instance, log_records):
-        class Alive:
-            def is_alive(self):
-                return True
-
-        instance = make_instance(Movement, thread_check_sprint=Alive(), running=False)
-
-        instance.start_check_sprint_task()
-
-        assert instance.running is False, "不应重复置位"
-        assert any("已在运行" in r["message"] for r in log_records)
-
-    def test_stop_joins_and_clears_thread(self, make_instance):
-        joined = []
-
-        class Thread:
-            def is_alive(self):
-                return True
-
-            def join(self):
-                joined.append(1)
-
-        instance = make_instance(Movement, thread_check_sprint=Thread(), running=True)
-
-        instance.stop_check_sprint_task()
-
-        assert instance.running is False
-        assert joined == [1]
-        assert instance.thread_check_sprint is None
-
-    def test_enable_run_presses_shift_only_when_needed(self, make_instance, monkeypatch):
-        keyboard = SimpleNamespace(pressed=[])
-        keyboard.press_key = keyboard.pressed.append
-        monkeypatch.setattr(movement_module, "KeyboardEvent", keyboard)
-        instance = make_instance(Movement)
-
-        instance.is_running = lambda: True
-        instance.enable_run()
-        assert keyboard.pressed == [], "已经在疾跑时不应重复按 Shift"
-
-        instance.is_running = lambda: False
-        instance.enable_run()
-        assert keyboard.pressed == ["shift"]
-
-
-class TestHandleMove:
-    def test_releases_direction_and_shift_keys_on_error(self, movement, monkeypatch):
-        """移动循环里抛异常时，方向键与 Shift 必须被释放，否则键盘会卡住。"""
-
-        def boom(*args, **kwargs):
-            raise RuntimeError("循环中失败")
-
-        monkeypatch.setattr(movement, "move_run_fix", boom)
-
-        with pytest.raises(RuntimeError):
-            movement.handle_move(0.5, "w")
-
-        assert "w" in movement.keyboard.released
-        assert "shift" in movement.keyboard.released
-
-    def test_releases_keys_on_normal_completion(self, movement):
-        movement.handle_move(0.1, "w")
-        assert "w" in movement.keyboard.released
-        assert "shift" in movement.keyboard.released
-
-    def test_presses_the_requested_key(self, movement):
-        movement.handle_move(0.1, "a")
-        assert "a" in movement.keyboard.pressed
-
-    @pytest.mark.xfail(
-        strict=True,
-        reason="计时循环体内没有任何 time.sleep：疾跑分支触发后（或关闭疾跑时），"
-        "三个 elif 条件全部为假，剩余的等待时间变成 100% CPU 忙等",
-    )
-    def test_does_not_burn_cpu_while_waiting(self, movement):
-        cpu_before = time.process_time()
-        movement.handle_move(0.4, "w")
-        cpu_used = time.process_time() - cpu_before
-        assert cpu_used < 0.15
-
-
-# ---------------------------------------------------------------------------
-# 战斗簇 —— Handle 里最大的一块（约 300 行），也是拆分的第一刀
-# ---------------------------------------------------------------------------
 
 
 class CombatImg:

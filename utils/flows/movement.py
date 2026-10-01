@@ -20,6 +20,23 @@ from utils.core.log import log
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.core.thresholds import SPRINT_ICON
 
+# 疾跑比走路快这么多倍
+SPRINT_SPEED_FACTOR = 1.53
+
+
+def sprint_duration(walk_seconds: float) -> float:
+    """把「走路走完要多久」换算成「开疾跑走完要多久」。
+
+    疾跑快 `SPRINT_SPEED_FACTOR` 倍，但起步那 1 秒省不掉 —— 先扣 1 秒、除以倍数、
+    再加回来。省下的时间 = walk_seconds - 返回值。
+    """
+    return round((walk_seconds - 1) / SPRINT_SPEED_FACTOR, 4) + 1
+
+
+def should_toggle_sprint(need_run: bool, is_running: bool) -> bool:
+    """当前状态与目标状态不一致时才需要去动 Shift。"""
+    return need_run != is_running
+
 
 class Movement:
     """移动、疾跑检测与卡顿识别。"""
@@ -97,7 +114,7 @@ class Movement:
                         self.start_check_sprint_task(need_run=True)
                         run_in_road = True
                         temp_value = value_before
-                        value = round((value_before - 1) / 1.53, 4) + 1
+                        value = sprint_duration(value_before)
                         self.tatol_save_time += temp_value - value
                         self.last_step_run = True
                 elif (
@@ -128,7 +145,9 @@ class Movement:
             if extra_fix:
                 extra_time = temp_time - value
                 extra_time = (
-                    extra_time if not run_in_road else round(extra_time * 1.53, 4)
+                    extra_time
+                    if not run_in_road
+                    else round(extra_time * SPRINT_SPEED_FACTOR, 4)
                 )
                 if extra_time > 0.05:
                     log.info("强制断开疾跑")
@@ -179,7 +198,7 @@ class Movement:
             await asyncio.sleep(delay)
             is_running = await loop.run_in_executor(None, self.is_running)
 
-            should_act = (need_run and not is_running) or (not need_run and is_running)
+            should_act = should_toggle_sprint(need_run, is_running)
             if not should_act:
                 log.info(f"当前已{action}疾跑")
                 break
