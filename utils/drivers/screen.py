@@ -24,6 +24,38 @@ BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
 
 
+def crop_box(region, crop_region):
+    """把「绝对坐标的裁剪框」换算成「相对截取区域左上角的框」。
+
+    超出截取范围的部分夹到边界内。换算后为空（或左右/上下反了）返回 None，
+    表示这次截取作废 —— 调用方据此放弃这一帧。
+    """
+    left, top, width, height = region
+    crop_left, crop_top, crop_right, crop_bottom = crop_region
+    rel_left = max(0, crop_left - left)
+    rel_top = max(0, crop_top - top)
+    rel_right = min(width, crop_right - left)
+    rel_bottom = min(height, crop_bottom - top)
+    if rel_left >= rel_right or rel_top >= rel_bottom:
+        return None
+    return (rel_left, rel_top, rel_right, rel_bottom)
+
+
+def apply_offset(region, offset):
+    """给截取区域加偏移，返回 `(生效的区域, 是否采用了偏移)`。
+
+    偏移把区域弄成空或负数时不采用，原样返回 —— 调用方据此记一条日志。
+    """
+    left, top, right, bottom = region
+    new_left = left + offset[0]
+    new_top = top + offset[1]
+    new_right = right + offset[2]
+    new_bottom = bottom + offset[3]
+    if new_left < new_right and new_top < new_bottom:
+        return (new_left, new_top, new_right, new_bottom), True
+    return region, False
+
+
 class ScreenSource:
     """游戏窗口的截图源。
 
@@ -62,7 +94,7 @@ class ScreenSource:
 
         :return: PIL 图像（RGB 序），失败返回 None
         """
-        left, top, width, height = region
+        width, height = region[2], region[3]
 
         hwnd_dc = win32gui.GetWindowDC(hwnd)
         mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
@@ -94,14 +126,10 @@ class ScreenSource:
             )
 
             if crop_region is not None:
-                crop_left, crop_top, crop_right, crop_bottom = crop_region
-                rel_left = max(0, crop_left - left)
-                rel_top = max(0, crop_top - top)
-                rel_right = min(width, crop_right - left)
-                rel_bottom = min(height, crop_bottom - top)
-                if rel_left >= rel_right or rel_top >= rel_bottom:
+                box = crop_box(region, crop_region)
+                if box is None:
                     return None
-                picture = picture.crop((rel_left, rel_top, rel_right, rel_bottom))
+                picture = picture.crop(box)
 
             return picture
         finally:
@@ -128,18 +156,18 @@ class ScreenSource:
                 base_bottom,
             )
 
-            # 计算偏移截图范围
-            new_left = screenshot_left + offset[0]
-            new_top = screenshot_top + offset[1]
-            new_right = screenshot_right + offset[2]
-            new_bottom = screenshot_bottom + offset[3]
-            if all([new_left < new_right, new_top < new_bottom]):
-                screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = (
-                    new_left,
-                    new_top,
-                    new_right,
-                    new_bottom,
-                )
+            # 计算偏移截图范围；偏移不合法就退回窗口截图
+            region, offset_applied = apply_offset(
+                (
+                    screenshot_left,
+                    screenshot_top,
+                    screenshot_right,
+                    screenshot_bottom,
+                ),
+                offset,
+            )
+            if offset_applied:
+                screenshot_left, screenshot_top, screenshot_right, screenshot_bottom = region
             else:
                 log.info(
                     f"截图区域无效，偏移值错误({offset[0]},{offset[1]},{offset[2]},{offset[3]})，将使用窗口截图"
