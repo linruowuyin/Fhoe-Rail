@@ -277,3 +277,31 @@ class TestPurePrimitives:
         assert np.allclose(
             Matcher.handle_rotate_val(50, 50, 0), [[1, 0, 0], [0, 1, 0]]
         )
+
+
+class TestMatchPeaks:
+    """次优峰值：标定阈值时比最优值更该看的数（CLAUDE.md §1.2 的负样本余量）。"""
+
+    def test_second_peak_skips_every_position_overlapping_the_best(self):
+        rng = np.random.default_rng(0)
+        screenshot = rng.integers(0, 60, (60, 80, 3), dtype=np.uint8)
+        prepared = np.zeros((8, 8, 3), dtype=np.uint8)
+        prepared[2:6, 2:6] = 255
+        screenshot[10:18, 10:18] = prepared  # 唯一一处精确吻合
+
+        result = Matcher.match_peaks(screenshot, prepared, left=5, top=7)
+
+        assert result["max_loc"] == (15, 17), "left/top 要加到位置上去"
+        assert result["max_val"] > result["second_val"], (
+            "次优峰屏蔽了最优峰周围一个模板大小的邻域，剩下的只是噪声"
+        )
+
+    def test_second_peak_is_zero_when_only_one_candidate_exists(self):
+        """模板与帧一样大时只有一个候选位置，没有「次优」。"""
+        prepared = np.zeros((8, 8, 3), dtype=np.uint8)
+        prepared[2:6, 2:6] = 255
+
+        result = Matcher.match_peaks(prepared.copy(), prepared)
+
+        assert result["max_loc"] == (0, 0)
+        assert result["second_val"] == 0.0

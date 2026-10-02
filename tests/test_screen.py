@@ -282,6 +282,49 @@ class TestTakeScreenshot:
         with pytest.raises(RuntimeError, match="最大重试次数"):
             source.take_screenshot(max_retries=1, retry_interval=0)
 
+    def test_raises_when_the_window_is_invisible(self):
+        """R9：失败必须抛明确异常。隐式返回 None 会让调用点在 5 元组解包处炸。"""
+        source = ScreenSource(window=FakeWindow(visible=False))
+
+        with pytest.raises(RuntimeError, match="不可见"):
+            source.take_screenshot(max_retries=0, retry_interval=0)
+
+
+class TestCaptureSource:
+    """这一帧是从哪来的 —— 探针据此判断结果能不能信。"""
+
+    def test_printwindow_when_the_background_capture_works(self, shot):
+        source, _ = shot
+
+        source.take_screenshot()
+
+        assert source.last_capture_source == screen_module.CAPTURE_PRINTWINDOW
+
+    def test_screengrab_when_it_falls_back_to_the_desktop(self, monkeypatch):
+        """回退路径拿的是那个位置上**实际的屏幕像素** —— 游戏被遮挡时就抓到遮挡窗口。
+
+        探针要能看见这件事，所以来源必须记下来。
+        """
+        monkeypatch.setattr(
+            ScreenSource, "capture_window_background", staticmethod(lambda *a, **k: None)
+        )
+        monkeypatch.setattr(
+            screen_module,
+            "ImageGrab",
+            SimpleNamespace(grab=lambda box, all_screens: Image.new("RGB", (2, 2), (0, 0, 0))),
+        )
+        monkeypatch.setattr(
+            screen_module, "time", SimpleNamespace(sleep=lambda seconds: None)
+        )
+        source = ScreenSource(window=FakeWindow())
+
+        source.take_screenshot(max_retries=0, retry_interval=0)
+
+        assert source.last_capture_source == screen_module.CAPTURE_SCREENGRAB
+
+    def test_no_source_before_anything_is_captured(self):
+        assert ScreenSource(window=FakeWindow()).last_capture_source is None
+
 
 class TestHasFreshFrame:
     def test_false_before_anything_is_captured(self):

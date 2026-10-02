@@ -8,6 +8,7 @@ config.json（`version` / 临时 `map_version` / `allowlist_mode_once` / `angle`
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -91,3 +92,21 @@ class TestSaveConfigPatch:
         with pytest.raises(ValueError, match="读不出来"):
             server.save_config_patch({"a": 1}, [])
         assert cfg_path.read_text(encoding="utf-8") == "{ 这不是 json"
+
+
+class TestFrontendConfigDefs:
+    """前端配置表（CONFIG_DEFS / DEV_DEFS）里声明的键必须都在 `config_keys()` 里。
+
+    单向检查：前端多一个键 → 点保存会被 `未知配置项` 拒掉（用户看得见）；反过来
+    `config_keys()` 里有、前端没渲染，只是「这一页上改不了」，不算错。
+    """
+
+    def test_every_key_the_frontend_declares_is_known_to_the_backend(self):
+        from utils.config.config import ConfigurationManager
+
+        html = (REPO_ROOT / "webui" / "index.html").read_text(encoding="utf-8")
+        declared = set(re.findall(r'\{\s*key:\s*"([\w\-]+)"', html))
+
+        assert declared, "一个配置项都没解析到 —— 正则该跟着 index.html 改了"
+        unknown = sorted(declared - set(ConfigurationManager.config_keys()))
+        assert unknown == [], f"前端声明了 config_keys() 里没有的键：{unknown}"

@@ -447,6 +447,42 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
+  /* 图片探针（开发者模式） */
+  .probe-search {
+    width: 100%; background: rgba(255,255,255,.06); border: 1px solid var(--glass-border);
+    color: var(--txt); border-radius: 12px; padding: 10px 16px; font-size: 15px;
+    outline: none; margin-bottom: 10px;
+  }
+  .probe-meta { font-size: 13px; color: var(--txt-dim); margin-bottom: 10px; }
+  .probe-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px; max-height: 380px; overflow-y: auto;
+  }
+  .probe-item {
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 6px; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .probe-item:hover { border-color: var(--border-strong); }
+  .probe-item.selected { border-color: var(--cyan); background: rgba(var(--cyan-rgb), .12); }
+  .probe-item img { width: 100%; display: block; aspect-ratio: 1/1; object-fit: contain; }
+  .probe-item .probe-name {
+    font-size: 11px; color: var(--txt-dim); margin-top: 4px; word-break: break-all; text-align: center;
+  }
+  .probe-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--border);
+  }
+  .probe-row .k { color: var(--txt-dim); min-width: 88px; }
+  .probe-row code {
+    background: rgba(255,255,255,.07); padding: 2px 7px; border-radius: 5px;
+    font-family: var(--font-mono);
+  }
+  .probe-threshold { font-size: 14px; color: var(--txt-dim); }
+  .probe-threshold input {
+    width: 84px; background: rgba(255,255,255,.06); border: 1px solid var(--glass-border);
+    color: var(--txt); border-radius: 8px; padding: 6px 10px; font-size: 14px; outline: none;
+  }
+
   /* ============================================================
      Modal / Toast / 状态
      ============================================================ */
@@ -585,6 +621,7 @@
       <div class="nav-item" data-page="config"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="15" cy="17" r="2.2"/></svg><span class="lbl">参数设置</span></div>
       <div class="nav-item" data-page="logs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="lbl">航行日志</span></div>
       <div class="nav-item" data-page="notes"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="lbl">新图注意</span></div>
+      <div class="nav-item" data-page="probe" id="nav-probe" style="display:none"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.2" y1="16.2" x2="21" y2="21"/><line x1="8" y1="11" x2="14" y2="11"/></svg><span class="lbl">图片探针</span></div>
       <div class="nav-item" data-page="about"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12,3.5 14.4,9 20.2,9.6 15.9,13.4 17.2,19 12,16 6.8,19 8.1,13.4 3.8,9.6 9.6,9"/></svg><span class="lbl">关于</span></div>
     </nav>
     <!-- 主题切换器 + 氛围特效开关：色点 = 一套主题色；氛围 = 银河/极光/粒子特效 -->
@@ -657,6 +694,28 @@
       <h1 class="page-title"><span class="spark">✦</span> 新图注意</h1>
       <p class="page-desc">新地图的机关 / 路线注意事项图片 · 点击任意图片放大查看</p>
       <div class="notes-grid" id="notes-content"><div class="loading">正在加载…</div></div>
+    </section>
+
+    <!-- 图片探针（开发者模式开启后才出现在侧栏） -->
+    <section id="page-probe" style="display:none">
+      <h1 class="page-title"><span class="spark">✦</span> 图片探针</h1>
+      <p class="page-desc">抓一帧游戏画面，量一张模板匹配到哪里、余量多少、两种 offset 各是多少 · 抓的是游戏窗口自身的像素，只读不点击</p>
+      <div class="glass" style="margin-bottom:16px">
+        <div class="card-title">① 选一张模板</div>
+        <input type="text" id="probe-search" class="probe-search" placeholder="🔍 输入名字片段筛选，例如 transfer / battle / map_1">
+        <div class="probe-meta" id="probe-meta"></div>
+        <div class="probe-grid" id="probe-images"><div class="loading">正在读取图片列表…</div></div>
+      </div>
+      <div class="glass" id="probe-run-box" style="display:none;margin-bottom:16px">
+        <div class="card-title">② 跑探针</div>
+        <div class="probe-row" id="probe-picked"></div>
+        <div class="probe-row" style="border-bottom:none">
+          <label class="probe-threshold">阈值 <input type="number" id="probe-threshold" value="0.90" min="0" max="1" step="0.01"></label>
+          <button class="btn" id="probe-run">🚀 运行探针</button>
+          <span style="font-size:13px;color:var(--txt-dim)">游戏窗口要开着，且不要正在跑图</span>
+        </div>
+      </div>
+      <div id="probe-result"></div>
     </section>
 
     <!-- 关于 -->
@@ -759,7 +818,7 @@ async function api(path, opts) {
 }
 
 /* ---------------- 页面路由 ---------------- */
-const PAGES = ["dashboard", "run", "maps", "config", "logs", "notes", "about"];
+const PAGES = ["dashboard", "run", "maps", "config", "logs", "notes", "probe", "about"];
 function switchPage(name) {
   PAGES.forEach(p => { $("#page-" + p).style.display = (p === name) ? "" : "none"; });
   $$(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.page === name));
@@ -770,6 +829,7 @@ function switchPage(name) {
   if (name === "config") loadConfig();
   if (name === "logs") startLogs();
   if (name === "notes") loadNotes();
+  if (name === "probe") loadProbe();
   if (name === "about") loadAbout();
   window.scrollTo(0, 0);
 }
@@ -818,6 +878,158 @@ function showNoteImage(name) {
   $("#modal-body").innerHTML =
     `<img src="/notes-img?name=${encodeURIComponent(name)}" style="max-width:100%;border-radius:10px;display:block;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.5)">`;
   $("#modal-body").scrollTop = 0;
+}
+
+/* ---------------- 图片探针（开发者模式） ---------------- */
+// 侧栏入口默认藏着，读一次配置决定要不要露出来。开关本身在「参数设置 · 开发者选项」。
+async function initDevMode() {
+  const nav = $("#nav-probe");
+  if (!nav) return;
+  try {
+    const cfg = await api("/api/config");
+    nav.style.display = (cfg && cfg.webui_dev_mode === true) ? "" : "none";
+  } catch (e) {
+    nav.style.display = "none";   // 读不到就当没开
+  }
+}
+
+// 与 api() 的区别：失败时把服务端给的那句话带出来。
+// 探针的拒绝理由（开发者模式没开 / 正在跑图 / 没检测到游戏窗口）都在响应体里，
+// api() 只会抛一个 "HTTP 409"，用户看了不知道该怎么办。
+async function probeApi(path, opts) {
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+  return data;
+}
+
+let probePicked = null;
+
+async function loadProbe() {
+  $("#probe-result").innerHTML = "";
+  $("#probe-run-box").style.display = "none";
+  probePicked = null;
+  const box = $("#probe-search");
+  if (!box.dataset.wired) {
+    box.dataset.wired = "1";
+    let timer = null;
+    box.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => loadProbeImages(box.value.trim()), 250);
+    });
+  }
+  $("#probe-run").addEventListener("click", runProbe);
+  await loadProbeImages(box.value.trim());
+}
+
+async function loadProbeImages(fragment) {
+  const el = $("#probe-images");
+  el.innerHTML = '<div class="loading">正在读取…</div>';
+  try {
+    const data = await probeApi("/api/probe/images?q=" + encodeURIComponent(fragment));
+    const images = data.images || [];
+    $("#probe-meta").textContent = data.total > images.length
+      ? `共 ${data.total} 张，这里列出前 ${images.length} 张 —— 把片段写长一点缩小范围`
+      : `共 ${data.total} 张`;
+    if (!images.length) {
+      el.innerHTML = '<div class="empty">没有名字匹配的图片</div>';
+      return;
+    }
+    el.innerHTML = images.map(name => `
+      <div class="probe-item" data-name="${esc(name)}" title="${esc(name)}">
+        <img loading="lazy" src="/api/picture?p=${encodeURIComponent(name)}" alt="${esc(name)}">
+        <div class="probe-name">${esc(name)}</div>
+      </div>`).join("");
+    $$("#probe-images .probe-item").forEach(item => {
+      item.addEventListener("click", () => pickProbeImage(item.dataset.name));
+    });
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">读取失败：${esc(e.message)}</div>`;
+  }
+}
+
+function pickProbeImage(name) {
+  probePicked = name;
+  $$("#probe-images .probe-item").forEach(i =>
+    i.classList.toggle("selected", i.dataset.name === name));
+  $("#probe-run-box").style.display = "";
+  $("#probe-picked").innerHTML =
+    `<span class="k">已选</span><code>${esc(name)}</code>` +
+    `<img src="/api/picture?p=${encodeURIComponent(name)}" alt="" style="height:30px;border-radius:4px">`;
+}
+
+async function runProbe() {
+  if (!probePicked) return;
+  const el = $("#probe-result");
+  const btn = $("#probe-run");
+  btn.disabled = true;
+  el.innerHTML = '<div class="loading">正在抓帧测量…</div>';
+  try {
+    const data = await probeApi("/api/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: probePicked,
+        threshold: parseFloat($("#probe-threshold").value),
+      }),
+    });
+    renderProbeResult(data);
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">探针失败：${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderProbeResult(data) {
+  const fmt = v => Array.isArray(v) ? "(" + v.join(", ") + ")" : String(v);
+  const num = v => (v >= 0 ? "+" : "") + v.toFixed(4);
+  const hit = data.passed
+    ? '<span class="badge b-green">命中</span>'
+    : '<span class="badge b-amber">未达阈值</span>';
+  const thin = data.margin < 0.03 ? ' <span class="badge b-amber">余量 &lt; 0.03，游戏一更新就可能碎</span>' : "";
+  const source = data.capture_source === "printwindow"
+    ? '<span class="badge b-green">printwindow</span> 游戏窗口自身的像素'
+    : '<span class="badge b-red">screengrab</span> 回退抓屏幕 —— 游戏被别的窗口盖住时，抓到的就是盖住它的窗口';
+  const fuzzyNote = data.pad_applied === data.fuzzy_padding
+    ? `四边各外扩 ${data.fuzzy_padding}px`
+    : `四边各外扩 ${data.fuzzy_padding}px，但贴着画面边缘了，最少的一侧只扩了 ${data.pad_applied}px`;
+  const preview = data.preview_png_b64
+    ? `<img src="data:image/png;base64,${data.preview_png_b64}" alt="匹配预览"
+            style="max-width:100%;border-radius:10px;margin-top:12px;display:block">`
+    : "";
+
+  $("#probe-result").innerHTML = `
+    <div class="glass">
+      <div class="card-title">③ 结果 · ${esc(data.name)}</div>
+      <div class="probe-row"><span class="k">匹配度</span>
+        <span><code>${data.score.toFixed(4)}</code> ${hit} ${thin}</span>
+        <span style="color:var(--txt-dim)">阈值 ${data.threshold.toFixed(4)} · 余量 ${num(data.margin)}</span></div>
+      <div class="probe-row"><span class="k">次优峰值</span>
+        <span><code>${data.second.toFixed(4)}</code></span>
+        <span style="color:var(--txt-dim)">与最优相差 ${num(data.score - data.second)}（相差太小说明这一帧里到处都像它）</span></div>
+      <div class="probe-row"><span class="k">截图来源</span><span>${source}</span></div>
+      <div class="probe-row"><span class="k">搜索区域</span><span><code>${fmt(data.region)}</code></span></div>
+      <div class="probe-row"><span class="k">匹配框</span>
+        <span><code>${fmt(data.box)}</code></span>
+        <span style="color:var(--txt-dim)">屏幕绝对坐标 · 中心 <code>${fmt(data.center)}</code></span></div>
+      <div class="probe-row"><span class="k">精确 offset</span>
+        <span><code>${fmt(data.exact_offset)}</code></span>
+        <button class="btn ghost probe-copy" data-copy="${esc(fmt(data.exact_offset))}">复制</button></div>
+      <div class="probe-row"><span class="k">模糊 offset</span>
+        <span><code>${fmt(data.fuzzy_offset)}</code></span>
+        <button class="btn ghost probe-copy" data-copy="${esc(fmt(data.fuzzy_offset))}">复制</button>
+        <span style="color:var(--txt-dim);font-size:13px">${esc(fuzzyNote)}</span></div>
+      ${preview}
+    </div>`;
+
+  $$("#probe-result .probe-copy").forEach(btn => {
+    btn.addEventListener("click", () => {
+      navigator.clipboard.writeText(btn.dataset.copy)
+        .then(() => toast("已复制 " + btn.dataset.copy))
+        .catch(() => toast("复制失败，请手动选中", true));
+    });
+  });
 }
 
 /* ---------------- 指挥台 ---------------- */
@@ -1539,6 +1751,7 @@ const NOTIFY_CHANNEL_NAMES = (() => {
 /* 开发者选项：单独渲染在参数设置页最底部 */
 const DEV_DEFS = [
   { key: "script_debug", label: "脚本调试模式", hint: "仅开发调试时开启", type: "bool" },
+  { key: "webui_dev_mode", label: "开发者模式", hint: "开启后侧栏出现「图片探针」页：抓一帧游戏画面，量一张模板匹配到哪里、余量多少、两种 offset 各是多少", type: "bool" },
   { key: "github_proxy", label: "GitHub 代理前缀", hint: "资源更新用，留空直连", type: "text" },
   { key: "rawgithub_proxy", label: "raw.githubusercontent 代理前缀", hint: "资源更新用，留空直连", type: "text" },
 ];
@@ -1747,6 +1960,7 @@ async function saveConfig() {
     const res = await pushConfigPatch();
     if (res.ok) {
       toast(res.applied ? `✅ 已保存 ${res.applied} 项修改` : "没有需要保存的修改");
+      initDevMode();     // 刚打开/关掉开发者模式的话，侧栏入口要跟着变
     } else {
       toast("保存失败：" + (res.error || "未知错误"), true);
     }
@@ -1951,6 +2165,7 @@ if (location.protocol === "file:") {
       </div>
     </div>`);
 } else {
+  initDevMode();          // 侧栏「图片探针」入口按开发者模式显隐
   switchPage("dashboard");
 }
 </script>

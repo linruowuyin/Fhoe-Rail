@@ -73,6 +73,7 @@ from utils.core.map_names import (
 )
 WEBUI_DIR = os.path.join(BASE_DIR, "webui")
 NOTES_DIR = os.path.join(BASE_DIR, "新图注意事项")
+PICTURE_DIR = os.path.join(BASE_DIR, "picture")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 LOG_PATH = os.path.join(BASE_DIR, "logs", "日志文件.log")
 PORT = 8666
@@ -454,6 +455,102 @@ def read_config():
             return json.load(f)
     except Exception:
         return {}
+
+
+# ============ 图片探针（开发者模式） ============
+# 探针抓一帧游戏画面并量一张模板匹配到哪里。它能读到你的屏幕内容，所以**门禁在
+# 服务端**：只在前端把入口藏起来，直接 fetch 一下就绕过去了（同 /api/shutdown 走
+# 令牌而不是只把按钮藏掉的道理）。开关本身是配置项 webui_dev_mode。
+
+#: 未指定 limit 时一次返回多少张候选；367 张图全塞给浏览器没意义
+PROBE_IMAGE_LIMIT = 200
+
+#: 同一个名字有多个后缀时的优先级，跟 utils/vision/images.py::resolve_path 对齐
+_PROBE_EXT_PRIORITY = {"webp": 0, "png": 1, "jpg": 2, "jpeg": 3}
+
+
+def dev_mode_enabled():
+    """开发者模式开着没有。"""
+    return read_config().get("webui_dev_mode") is True
+
+
+def picture_files():
+    """`picture/` 下的图片：`{不带后缀的名字: 实际文件名}`。
+
+    同名多后缀时只留优先级最高的那个（webp > png > jpg），与图库自己的查找顺序一致。
+    返回值里的文件名可以直接喂给 `/api/picture?p=`。
+    """
+    try:
+        entries = os.listdir(PICTURE_DIR)
+    except OSError:
+        return {}
+    best = {}
+    for entry in entries:
+        base, ext = os.path.splitext(entry)
+        ext = ext.lower().lstrip(".")
+        if ext not in _PROBE_EXT_PRIORITY or not base:
+            continue
+        if base not in best or _PROBE_EXT_PRIORITY[ext] < _PROBE_EXT_PRIORITY[best[base][1]]:
+            best[base] = (entry, ext)
+    return {base: filename for base, (filename, _) in best.items()}
+
+
+def list_probe_images(fragment="", limit=None):
+    """按子串过滤图片名（不区分大小写），返回可直接喂给 `/api/picture` 的文件名。
+
+    :param limit: None 表示不截断。调用方需要总条数时先不截断、自己再切。
+    """
+    fragment = (fragment or "").lower()
+    files = picture_files()
+    hits = [files[base] for base in sorted(files) if fragment in base.lower()]
+    return hits if limit is None else hits[:limit]
+
+
+def run_image_probe(name, threshold):
+    """抓一帧，量一张模板。返回 `vision/probe.py::measure()` 的结果。
+
+    这里是 WebUI 唯一构造 `ScreenSource` 的地方。先 `Window.is_game_running()` 看一眼，
+    **不构造 `Window()`** —— 构造它会连带 `switch_window()`：把鼠标挪到游戏窗口中心，
+    游戏没开时还会启动游戏并连点 30 秒。点一个网页按钮不该有这种副作用。
+
+    :raises ValueError: 图片名非法、阈值越界、或模板比截图区域还大（都是参数问题）
+    :raises FileNotFoundError: 图片不存在或读不出来
+    :raises RuntimeError: 没检测到游戏窗口
+    """
+    # 重活 import 一律放函数里 —— 这个文件的启动契约是「只依赖标准库」
+    from utils.drivers.screen import ScreenSource
+    from utils.drivers.window import Window
+    from utils.vision import images as image_library
+    from utils.vision import probe as probe_module
+
+    if "/" in name or "\\" in name or ".." in name:
+        raise ValueError("图片名非法")
+    if not re.match(r"^[\w\-]+\.(png|jpg|jpeg|webp|gif)$", name, re.I):
+        raise ValueError("图片名非法")
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("阈值应落在 0~1")
+
+    template = image_library.get_img(os.path.join(PICTURE_DIR, name))
+    if template is None:
+        raise FileNotFoundError(f"图片读不出来：{name}")
+
+    hwnd = Window.find_window_hwnd()
+    if not hwnd:
+        # 多用户 / RDP 多开时，游戏很可能开在**别的 Windows 会话**里 —— 会话隔离让
+        # EnumWindows 看不见它，报错要说清这一点，不然会一直往「是不是最小化了」上查
+        raise RuntimeError(Window.describe_missing_window())
+
+    # 抓帧重试压到 2 次 × 0.5 秒：默认的 50 次 × 2 秒是主程序等游戏加载用的，
+    # 不能让一个 HTTP 请求挂在那里一百秒。
+    # measure 默认**不接受**「回退去抓屏幕」那一帧（那种帧可能根本不是游戏画面），
+    # 它会抛 ScreenFallbackRejected —— 它是 RuntimeError 的子类，走上面的 503 分支。
+    return probe_module.measure(
+        ScreenSource(window=Window.attach(hwnd)),
+        template,
+        threshold,
+        max_retries=2,
+        retry_interval=0.5,
+    )
 
 
 def _backup_file(path):
@@ -1023,6 +1120,30 @@ class Handler(BaseHTTPRequestHandler):
                     "gif": "image/gif",
                 }.get(ext, "application/octet-stream")
                 self._send(200, data, ct)
+            elif path == "/api/probe/images":
+                """图片探针的候选列表（开发者模式）。缩略图仍走 /api/picture。"""
+                if not dev_mode_enabled():
+                    self._send(403, {"ok": False, "error": "开发者模式未开启"})
+                    return
+                from urllib.parse import parse_qs
+
+                qs = parse_qs(parsed.query)
+                try:
+                    limit = int(qs.get("limit", [PROBE_IMAGE_LIMIT])[0])
+                except ValueError:
+                    limit = PROBE_IMAGE_LIMIT
+                limit = max(1, min(limit, PROBE_IMAGE_LIMIT))
+                # 先不截断拿总数：前端要能分清「就这么多」和「被上限截断了」
+                matches = list_probe_images(qs.get("q", [""])[0])
+                self._send(
+                    200,
+                    {
+                        "ok": True,
+                        "total": len(matches),
+                        "images": matches[:limit],
+                        "limit": limit,
+                    },
+                )
             elif path == "/api/stats":
                 cfg = read_config()
                 tree = build_map_tree()
@@ -1179,6 +1300,44 @@ class Handler(BaseHTTPRequestHandler):
                         else "发送失败，请检查配置（总开关、渠道、密钥）",
                     },
                 )
+            except Exception as e:
+                self._send(500, {"ok": False, "error": str(e)})
+        elif parsed.path == "/api/probe":
+            """跑一次图片探针（开发者模式）。"""
+            from utils.core.thresholds import DEFAULT_MATCH
+            from utils.vision import probe as probe_module
+
+            try:
+                if not dev_mode_enabled():
+                    self._send(403, {"ok": False, "error": "开发者模式未开启"})
+                    return
+                if run_status().get("running"):
+                    # 跑图时截图线程正忙，而且抓到的帧可能正好卡在过场/黑屏
+                    self._send(409, {"ok": False, "error": "正在跑图，先停止运行再探针"})
+                    return
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                if length > self.MAX_BODY:
+                    self._send(413, {"ok": False, "error": "请求体过大"})
+                    return
+                body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+                measurement = run_image_probe(
+                    str(body.get("name", "")),
+                    float(body.get("threshold", DEFAULT_MATCH)),
+                )
+                # frame 是几 MB 的 ndarray，不进 JSON；预览图单独编码
+                payload = {key: value for key, value in measurement.items() if key != "frame"}
+                preview = probe_module.render_preview_png(measurement)
+                payload["preview_png_b64"] = (
+                    base64.b64encode(preview).decode("ascii") if preview else None
+                )
+                payload["ok"] = True
+                self._send(200, payload)
+            except FileNotFoundError as e:
+                self._send(404, {"ok": False, "error": str(e)})
+            except RuntimeError as e:
+                self._send(503, {"ok": False, "error": str(e)})
+            except (TypeError, ValueError) as e:
+                self._send(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
         elif parsed.path == "/api/shutdown":

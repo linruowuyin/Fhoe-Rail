@@ -66,6 +66,7 @@ class TestConfigKeys:
             "allow_memory_token",
             "notify_enabled",
             "notify_channel",
+            "webui_dev_mode",
         ],
     )
     def test_expected_key_present(self, key):

@@ -23,6 +23,13 @@ from utils.drivers.window import Window
 BASE_WIDTH = 1920
 BASE_HEIGHT = 1080
 
+#: 这帧是从哪来的。`last_capture_source` 取这两个值之一。
+#: 区别要紧：PrintWindow 拿的是游戏窗口自己的像素，与遮挡无关；
+#: 回退到 ImageGrab 拿的是**那个位置上实际的屏幕像素** —— 游戏被别的窗口盖住时，
+#: 抓到的就是盖住它的那个窗口。探针据此判断这一帧能不能信。
+CAPTURE_PRINTWINDOW = "printwindow"
+CAPTURE_SCREENGRAB = "screengrab"
+
 
 def crop_box(region, crop_region):
     """把「绝对坐标的裁剪框」换算成「相对截取区域左上角的框」。
@@ -66,6 +73,10 @@ class ScreenSource:
     def __init__(self, window=None):
         self.window = window or Window()
         self.temp_screenshot = (0, 0, 0, 0, 0)  # (帧, left, top, right, bottom)
+        #: 最近一帧的来源，取 CAPTURE_PRINTWINDOW / CAPTURE_SCREENGRAB。
+        #: 放在这里而不是返回成一个额外字段：读取方（探针）持有的正是 ScreenSource，
+        #: 跨模块状态要落在读取方真正拿得到的对象上（CLAUDE.md R13）。
+        self.last_capture_source = None
 
     def cal_screenshot(self):
         """
@@ -176,6 +187,7 @@ class ScreenSource:
             retries = 0
             while retries <= max_retries:
                 picture = None
+                source = None
                 try:
                     # 优先后台截图，失败后再回退到前台截图
                     base_width = base_right - base_left
@@ -193,6 +205,8 @@ class ScreenSource:
                         )
                         if picture is None:
                             log.debug("后台截图失败，回退到前台截图")
+                        else:
+                            source = CAPTURE_PRINTWINDOW
 
                     if picture is None:
                         picture = ImageGrab.grab(
@@ -204,11 +218,13 @@ class ScreenSource:
                             ),
                             all_screens=True,
                         )
+                        source = CAPTURE_SCREENGRAB
 
                     # PIL 给的是 RGB 序；统一翻成 BGR，与 cv2.imread 的约定一致，
                     # 否则模板匹配会拿反通道的图去比。
                     # 用切片而不是 cv2.cvtColor：drivers 层不依赖图像库。
                     screenshot = np.array(picture)[:, :, ::-1].copy()
+                    self.last_capture_source = source
                     self.temp_screenshot = (
                         screenshot,
                         screenshot_left,
@@ -222,6 +238,11 @@ class ScreenSource:
                     retries += 1
                     time.sleep(retry_interval)
             raise RuntimeError(f"截图尝试失败，已达到最大重试次数 {max_retries} 次）")
+
+        # R9：截图失败必须抛明确异常，不能隐式返回 None。这里原来是函数的末路 ——
+        # 窗口不可见时上面整个 if 不执行，函数静默返回 None，而所有调用点都在做
+        # 5 元组解包，用户看到的是 "TypeError: cannot unpack non-sequence NoneType"。
+        raise RuntimeError("游戏窗口不可见，截图失败")
 
     def has_fresh_frame(self) -> bool:
         """`temp_screenshot` 里是否已经有一帧真实截图。"""

@@ -12,6 +12,20 @@ from utils.core.exceptions import CustomException
 from utils.core.log import log
 from utils.core.singleton import SingletonMeta
 
+#: 崩铁客户端进程的可执行文件名（小写比较）。云游戏是浏览器进程，认不出来，
+#: 所以 `find_window_hwnd` 在它之后还留了按标题找的那条兜底。
+#: 这个名字取自上游同源项目 March7thAssistant 的 `game_path` 配置（`StarRail.exe`）。
+GAME_PROCESS_NAMES = ("starrail.exe",)
+
+#: `OpenProcess` 的权限位：Vista 起拿进程映像路径只要这个，不必更高权限
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+#: `NtQuerySystemInformation` 的信息类：系统进程信息（含每个进程的会话号）
+SYSTEM_PROCESS_INFORMATION_CLASS = 57
+
+#: `NtQuerySystemInformation` 的「缓冲区不够」返回码
+STATUS_INFO_LENGTH_MISMATCH = 0xC0000004
+
 
 class Window(metaclass=SingletonMeta):
 
@@ -56,6 +70,204 @@ class Window(metaclass=SingletonMeta):
         if '云星穹铁道' in title:
             return True
         return False
+
+    @staticmethod
+    def find_window_hwnd(process_names=GAME_PROCESS_NAMES):
+        """找一个游戏窗口的句柄，找不到返回 None。
+
+        **先按进程可执行文件名找，再退回按标题找**：标题会随语言 / 版本 / 窗口状态变
+        （`is_target_window` 里那几个是硬编码的中文串），进程名不会 —— 用
+        `StarRail.exe` 认才是稳的。云游戏是浏览器进程，进程名认不出来，靠标题那条兜。
+
+        只做查找：不激活窗口、不启动游戏、不动鼠标。这正是它与构造 `Window()` 的区别
+        —— 那条路走 `switch_window()`，会把鼠标挪到窗口中心，找不到还会启动游戏连点
+        30 秒。
+        """
+        hwnd = Window.find_window_hwnd_by_process(process_names)
+        if hwnd:
+            return hwnd
+        for window in pyautogui.getAllWindows():
+            if Window.is_target_window(window):
+                return window._hWnd
+        return None
+
+    @staticmethod
+    def find_window_hwnd_by_process(names=GAME_PROCESS_NAMES):
+        """按进程可执行文件名（不区分大小写）找可见窗口，找不到返回 None。"""
+        wanted = {name.lower() for name in names}
+        found = []
+
+        def callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                # 返回的是 (线程号, 进程号) —— 进程号在 [1]，[0] 是线程号。
+                # 同一进程的窗口线程号各不相同，取错了就会拿线程号去 OpenProcess。
+                pid = win32process.GetWindowThreadProcessId(hwnd)[1]
+                path = Window._process_image_name(pid)
+                if path and os.path.basename(path).lower() in wanted:
+                    found.append(hwnd)
+            return True
+
+        win32gui.EnumWindows(callback, None)
+        return found[0] if found else None
+
+    @staticmethod
+    def _process_image_name(pid):
+        """进程可执行文件的完整路径；拿不到返回 None。
+
+        用 `QueryFullProcessImageNameW` 而不是 `GetModuleFileNameEx`：前者只要
+        PROCESS_QUERY_LIMITED_INFORMATION，对方进程权限更高时也拿得到。
+        """
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return None
+        try:
+            size = wintypes.DWORD(32768)
+            buffer = ctypes.create_unicode_buffer(size.value)
+            if not kernel32.QueryFullProcessImageNameW(
+                handle, 0, buffer, ctypes.byref(size)
+            ):
+                return None
+            return buffer.value
+        finally:
+            kernel32.CloseHandle(handle)
+
+    @classmethod
+    def attach(cls, hwnd):
+        """给一个**已经存在**的窗口句柄造一个 `Window`，跳过 `__init__`。
+
+        探针要的就是「挂在游戏窗口上抓一帧」，而 `Window()` 的构造会激活窗口、必要时
+        还会启动游戏并连点。这条路径只登记 hwnd / 标题 / 客户端类型，别的什么都不做。
+        """
+        window = object.__new__(cls)
+        window.hwnd = hwnd
+        window.title = win32gui.GetWindowText(hwnd) or ""
+        # 空标题不能让 `_get_client` 判成"云游戏" —— 那条路会去取整个显示器的矩形
+        window.client = cls._get_client(window.title) if window.title else "客户端"
+        window.winrect = ()
+        return window
+
+    @staticmethod
+    def current_session_id():
+        """本进程所在的 Windows 会话号。"""
+        import ctypes
+        from ctypes import wintypes
+
+        session = wintypes.DWORD()
+        ctypes.windll.kernel32.ProcessIdToSessionId(os.getpid(), ctypes.byref(session))
+        return session.value
+
+    @staticmethod
+    def process_sessions(process_names=GAME_PROCESS_NAMES):
+        """系统里名字匹配的进程，返回 `[(pid, 会话号)]`（不区分大小写）。
+
+        走 `NtQuerySystemInformation` —— 它把**会话号直接放在结构体里**，不需要打开对方
+        进程、也不需要管理员权限，所以游戏跑在别的 Windows 会话 / 别的用户下时照样看得见。
+        （先试过 `ProcessIdToSessionId`，它要求对方进程的 QUERY_INFORMATION 权限，跨用户
+        时直接失败并留下一个 0 —— 会报出「会话 0」这种假答案。）
+        """
+        import ctypes
+        from ctypes import wintypes
+
+        class UNICODE_STRING(ctypes.Structure):
+            _fields_ = [
+                ("Length", wintypes.USHORT),
+                ("MaximumLength", wintypes.USHORT),
+                ("Buffer", ctypes.c_void_p),
+            ]
+
+        class SYSTEM_PROCESS_INFORMATION(ctypes.Structure):
+            """只声明到 `SessionId` 为止 —— 它后面的字段随 Windows 版本变。"""
+
+            _fields_ = [
+                ("NextEntryOffset", wintypes.ULONG),
+                ("NumberOfThreads", wintypes.ULONG),
+                ("WorkingSetPrivateSize", ctypes.c_longlong),
+                ("HardFaultCount", wintypes.ULONG),
+                ("NumberOfThreadsHighWatermark", wintypes.ULONG),
+                ("CycleTime", ctypes.c_ulonglong),
+                ("CreateTime", ctypes.c_longlong),
+                ("UserTime", ctypes.c_longlong),
+                ("KernelTime", ctypes.c_longlong),
+                ("ImageName", UNICODE_STRING),
+                ("BasePriority", ctypes.c_long),
+                ("UniqueProcessId", ctypes.c_void_p),
+                ("InheritedFromUniqueProcessId", ctypes.c_void_p),
+                ("HandleCount", wintypes.ULONG),
+                ("SessionId", wintypes.ULONG),
+            ]
+
+        wanted = {name.lower() for name in process_names}
+        ntdll = ctypes.windll.ntdll
+        ntdll.NtQuerySystemInformation.argtypes = [
+            wintypes.ULONG,
+            ctypes.c_void_p,
+            wintypes.ULONG,
+            ctypes.POINTER(wintypes.ULONG),
+        ]
+        ntdll.NtQuerySystemInformation.restype = ctypes.c_long
+
+        # 这台机器上进程表要 ~2.4 MB，起步给 4 MB 免得白跑一轮
+        size = 1 << 22
+        while True:
+            buffer = ctypes.create_string_buffer(size)
+            needed = wintypes.ULONG(0)
+            status = ntdll.NtQuerySystemInformation(
+                SYSTEM_PROCESS_INFORMATION_CLASS,
+                buffer,
+                size,
+                ctypes.byref(needed),
+            )
+            # NTSTATUS 从 c_long 回来是**负数**（0xC0000004 → -1073741820），
+            # 直接跟无符号常数比会永远不相等 —— 先掩成 32 位无符号再比。
+            if (status & 0xFFFFFFFF) == STATUS_INFO_LENGTH_MISMATCH:
+                size = max(needed.value, size * 2)
+                if size > (1 << 28):
+                    return []
+                continue
+            if status != 0:
+                return []
+            break
+
+        rows = []
+        offset = 0
+        while True:
+            entry = SYSTEM_PROCESS_INFORMATION.from_buffer(buffer, offset)
+            if entry.ImageName.Buffer:
+                name = ctypes.wstring_at(
+                    entry.ImageName.Buffer, entry.ImageName.Length // 2
+                )
+                if name.lower() in wanted:
+                    rows.append((int(entry.UniqueProcessId or 0), entry.SessionId))
+            if not entry.NextEntryOffset:
+                return rows
+            offset += entry.NextEntryOffset
+
+    @classmethod
+    def describe_missing_window(cls, process_names=GAME_PROCESS_NAMES):
+        """找不到游戏窗口时，给一句能指导下一步的话。
+
+        「明明开着游戏却说没检测到窗口」最容易被误判成最小化，其实多用户 / RDP 多开
+        更常见：Windows 的会话隔离让 `EnumWindows` 只看得见**本会话**的窗口，游戏开在
+        别的会话里时一个窗口都找不到 —— 但进程快照看得见它。把这一层说破，省得往
+        最小化那条死路上查。
+        """
+        ours = cls.current_session_id()
+        sessions = cls.process_sessions(process_names)
+        if not sessions:
+            return "没检测到游戏窗口 —— 先把游戏打开再跑本工具。"
+        where = "、".join(f"pid {pid}（会话 {session}）" for pid, session in sessions)
+        if all(session != ours for _, session in sessions):
+            return (
+                f"游戏进程在{where}里跑，而本进程在会话 {ours}。"
+                "Windows 的会话隔离让跨会话拿不到窗口（EnumWindows 只看得到本会话），"
+                "所以抓不到游戏画面 —— 请到游戏所在的那个会话里启动本工具"
+                "（多用户 / RDP 多开的情况下，光把游戏挪到前台没用）。"
+            )
+        return f"游戏进程在{where}，但拿不到它的窗口 —— 可能被最小化了。"
 
     @staticmethod
     def get_hwnd_by_title(title):
@@ -184,7 +396,8 @@ class Window(metaclass=SingletonMeta):
         self.hwnd = self.get_hwnd_by_title(self.title)
         return self.hwnd
 
-    def _get_client(self, title: str) -> str:
+    @staticmethod
+    def _get_client(title: str) -> str:
         """
         根据窗口标题获取客户端类型
         :param title: 窗口标题

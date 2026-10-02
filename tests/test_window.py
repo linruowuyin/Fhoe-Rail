@@ -1,5 +1,7 @@
 """utils/drivers/window.py —— 窗口查找、标题匹配、客户区/全屏矩形计算。"""
 
+import os
+import sys
 import time
 
 import pyautogui
@@ -55,6 +57,125 @@ class TestIsTargetWindow:
         assert Window.is_target_window(FakeWindowHandle("")) is False
 
 
+class TestFindWindowHwnd:
+    """找游戏窗口 —— **先按进程名，再退回按标题**。不激活、不动鼠标、不启动游戏。
+
+    加进程名那条的原因：`is_target_window` 里的标题是硬编码的中文串，客户端语言或
+    标题格式一变就认不出来；进程名（`StarRail.exe`）不会变。
+    """
+
+    @staticmethod
+    def _title_windows(monkeypatch, *titles):
+        monkeypatch.setattr(
+            window_module.pyautogui,
+            "getAllWindows",
+            lambda: [FakeWindowHandle(t) for t in titles],
+        )
+
+    @staticmethod
+    def _processes(monkeypatch, mapping):
+        """mapping: {hwnd: exe 完整路径}；拿 hwnd 当 pid 用。"""
+        monkeypatch.setattr(window_module.win32gui, "IsWindowVisible", lambda hwnd: True)
+        monkeypatch.setattr(
+            window_module.win32gui,
+            "EnumWindows",
+            lambda callback, param: [callback(hwnd, param) for hwnd in mapping],
+        )
+        monkeypatch.setattr(
+            window_module.win32process,
+            "GetWindowThreadProcessId",
+            lambda hwnd: (0, hwnd),
+        )
+        monkeypatch.setattr(
+            Window, "_process_image_name", staticmethod(lambda pid: mapping.get(pid))
+        )
+
+    def test_finds_the_window_by_process_name(self, monkeypatch):
+        """标题认不出来（换个语言就是另一个串），进程名照样认得出。"""
+        self._title_windows(monkeypatch, "Honkai: Star Rail")
+        self._processes(monkeypatch, {111: r"D:\MHY\Star Rail Game\StarRail.exe"})
+
+        assert Window.find_window_hwnd() == 111
+
+    def test_process_name_match_ignores_case(self, monkeypatch):
+        self._title_windows(monkeypatch)
+        self._processes(monkeypatch, {111: r"D:\sTaRrAiL.EXE"})
+
+        assert Window.find_window_hwnd() == 111
+
+    def test_process_name_wins_over_the_title(self, monkeypatch):
+        self._title_windows(monkeypatch, "崩坏：星穹铁道")
+        self._processes(monkeypatch, {111: r"D:\StarRail.exe"})
+
+        assert Window.find_window_hwnd() == 111
+
+    def test_falls_back_to_the_title_when_the_process_is_unknown(self, monkeypatch):
+        """云游戏是浏览器进程，进程名认不出来 —— 靠标题那条兜。"""
+        self._title_windows(monkeypatch, "记事本", "云星穹铁道")
+        self._processes(monkeypatch, {111: r"C:\chrome.exe"})
+
+        assert Window.find_window_hwnd() == 4242  # FakeWindowHandle 的默认 hwnd
+
+    def test_none_when_neither_matches(self, monkeypatch):
+        self._title_windows(monkeypatch, "记事本")
+        self._processes(monkeypatch, {111: r"C:\notepad.exe"})
+
+        assert Window.find_window_hwnd() is None
+
+    def test_none_when_there_are_no_windows_at_all(self, monkeypatch):
+        self._title_windows(monkeypatch)
+        self._processes(monkeypatch, {})
+
+        assert Window.find_window_hwnd() is None
+
+    def test_does_not_move_the_mouse_or_launch_the_game(self, monkeypatch):
+        """这两件事是 `switch_window()` 干的，也是这条路径存在的理由。"""
+        self._title_windows(monkeypatch, "记事本")
+        self._processes(monkeypatch, {})
+        monkeypatch.setattr(
+            window_module.pyautogui, "moveTo", lambda *a, **k: pytest.fail("不该移动鼠标")
+        )
+        monkeypatch.setattr(
+            Window,
+            "start_lnk_file",
+            staticmethod(lambda *a, **k: pytest.fail("不该启动游戏")),
+        )
+
+        assert Window.find_window_hwnd() is None
+
+
+class TestAttach:
+    """给一个已经存在的 hwnd 造 `Window`，跳过 `__init__`。"""
+
+    def test_registers_the_handle_without_activating_anything(self, monkeypatch):
+        monkeypatch.setattr(
+            window_module.win32gui, "GetWindowText", lambda hwnd: "崩坏：星穹铁道"
+        )
+        monkeypatch.setattr(
+            Window, "switch_window", lambda self: pytest.fail("不该激活窗口")
+        )
+
+        window = Window.attach(7788)
+
+        assert window.hwnd == 7788
+        assert window.title == "崩坏：星穹铁道"
+        assert window.client == "客户端"
+        assert window.winrect == ()
+
+    def test_cloud_client_is_detected_from_the_title(self, monkeypatch):
+        monkeypatch.setattr(
+            window_module.win32gui, "GetWindowText", lambda hwnd: "云·星穹铁道"
+        )
+
+        assert Window.attach(7788).client == "云游戏"
+
+    def test_empty_title_defaults_to_the_local_client(self, monkeypatch):
+        """空标题不能让客户端判成云游戏 —— 那条路会去取整个显示器的矩形，截图范围就歪了。"""
+        monkeypatch.setattr(window_module.win32gui, "GetWindowText", lambda hwnd: "")
+
+        assert Window.attach(7788).client == "客户端"
+
+
 class TestGetHwndByTitle:
     def test_finds_first_matching_visible_window(self, monkeypatch):
         titles = {1: "别的窗口", 2: "崩坏：星穹铁道", 3: "崩坏：星穹铁道"}
@@ -101,10 +222,70 @@ class TestIsFullscreen:
 
 class TestGetClient:
     def test_official_client(self):
-        assert Window._get_client(Window, "崩坏：星穹铁道") == "客户端"
+        assert Window._get_client("崩坏：星穹铁道") == "客户端"
 
     def test_cloud_client(self):
-        assert Window._get_client(Window, "云·星穹铁道") == "云游戏"
+        assert Window._get_client("云·星穹铁道") == "云游戏"
+
+
+class TestProcessSessions:
+    """跨会话列出进程 —— 「明明开着游戏却说没检测到窗口」的定位手段。"""
+
+    def test_finds_our_own_process_and_its_session(self):
+        """拿自己当样本：Toolhelp32 + ProcessIdToSessionId 这条路真能列出进程。
+
+        这条不走替身 —— 替身测不出 ctypes 那层结构体对齐、句柄类型这些坑。
+        """
+        ours = os.path.basename(sys.executable).lower()
+
+        rows = Window.process_sessions((ours,))
+
+        assert (os.getpid(), Window.current_session_id()) in rows
+
+    def test_an_unrelated_name_yields_nothing(self):
+        assert Window.process_sessions(("绝对不存在的进程名.exe",)) == []
+
+    def test_is_case_insensitive(self):
+        ours = os.path.basename(sys.executable).upper()
+
+        assert any(pid == os.getpid() for pid, _ in Window.process_sessions((ours,)))
+
+    def test_current_session_id_is_an_int(self):
+        assert isinstance(Window.current_session_id(), int)
+
+
+class TestDescribeMissingWindow:
+    """找不到窗口时那句提示 —— 别让人一直往「是不是最小化了」上查。"""
+
+    def test_says_the_game_is_in_another_session(self, monkeypatch):
+        monkeypatch.setattr(Window, "current_session_id", staticmethod(lambda: 1))
+        monkeypatch.setattr(
+            Window, "process_sessions", staticmethod(lambda names=None: [(34148, 7)])
+        )
+
+        message = Window.describe_missing_window()
+
+        assert "会话 7" in message and "会话 1" in message
+        assert "34148" in message
+        assert "会话隔离" in message
+
+    def test_says_the_window_is_just_unreachable_in_our_session(self, monkeypatch):
+        """进程就在本会话里、却拿不到窗口 —— 这才轮到「是不是最小化了」。"""
+        monkeypatch.setattr(Window, "current_session_id", staticmethod(lambda: 1))
+        monkeypatch.setattr(
+            Window, "process_sessions", staticmethod(lambda names=None: [(34148, 1)])
+        )
+
+        message = Window.describe_missing_window()
+
+        assert "会话 1" in message
+        assert "最小化" in message
+
+    def test_says_the_game_is_not_running_when_there_is_no_process(self, monkeypatch):
+        monkeypatch.setattr(Window, "current_session_id", staticmethod(lambda: 1))
+        monkeypatch.setattr(Window, "process_sessions", staticmethod(lambda names=None: []))
+
+        assert "没检测到游戏窗口" in Window.describe_missing_window()
 
 
 class TestRectCalculations:

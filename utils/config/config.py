@@ -193,6 +193,10 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "star_version": "0",
             "open_map": "m",
             "script_debug": False,
+            # WebUI 的「开发者模式」：开启后设置页之外多一个图片探针页。
+            # 带 webui_ 前缀是因为 CLI 已经有 --dev（开发者选图运行）和 devmap
+            # 运行模式，再叫 dev_mode 会混。
+            "webui_dev_mode": False,
             "auto_shutdown": 0,
             "taskkill_name": "",
             "auto_final_fight_e": True,

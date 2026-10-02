@@ -63,6 +63,43 @@ class Matcher:
         }
 
     @staticmethod
+    def match_peaks(screenshot, prepared, left=0, top=0):
+        """一次匹配，同时给出最优峰与**次优峰**。
+
+        次优峰 = 屏蔽掉最优峰周围一个模板大小的邻域（即所有与最优位置有像素重叠的
+        候选位置）后剩下的最高匹配值。它回答的是「这张模板在这一帧里唯一吗」：
+        最优 0.97 而次优也 0.96，说明帧里到处都长得像它，阈值定得再高也会指到错的
+        位置 —— 这是标定阈值时比最优值更该看的一个数（CLAUDE.md §1.2 的负样本余量）。
+
+        注意 `TM_CCORR_NORMED` 对整体亮度缩放不敏感：暗一倍的同一图案一样是 1.0。
+        次优峰只区分「位置不重叠」，不区分「颜色深浅」。
+
+        :return: {"max_val", "max_loc"(已加 left/top), "second_val"}
+                 模板与帧一样大（只有一个候选位置）时 `second_val` 为 0.0
+        """
+        result = cv2.matchTemplate(screenshot, prepared, cv2.TM_CCORR_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+
+        height, width = prepared.shape[:2]
+        suppressed = result.copy()
+        y0 = max(0, max_loc[1] - height + 1)
+        y1 = min(result.shape[0], max_loc[1] + height)
+        x0 = max(0, max_loc[0] - width + 1)
+        x1 = min(result.shape[1], max_loc[0] + width)
+        suppressed[y0:y1, x0:x1] = -1.0
+
+        if (suppressed == -1.0).all():
+            second_val = 0.0
+        else:
+            second_val = cv2.minMaxLoc(suppressed)[1]
+
+        return {
+            "max_val": max_val,
+            "max_loc": (max_loc[0] + left, max_loc[1] + top),
+            "second_val": second_val,
+        }
+
+    @staticmethod
     def invert(image):
         """颜色反转（取反色）。用于「阴阳变转」那类原图/反色谁更像的判定。"""
         return cv2.bitwise_not(image)
