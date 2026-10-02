@@ -822,8 +822,10 @@ class TestBackToMain:
         instance = make_instance(
             Handle,
             img=img,
+            mouse_event=SimpleNamespace(),
             combat=SimpleNamespace(fight_elapsed=lambda: fought.append(1)),
         )
+        monkeypatch.setattr(handle_module, "try_exit_puzzle", lambda *a: False)
         return instance, fought, keyboard, fake
 
     def test_battle_esc_branch_goes_through_combat(self, subject):
@@ -845,3 +847,58 @@ class TestBackToMain:
         assert keyboard.pressed == []
         assert fought == []
         assert fake.slept == []
+
+    def test_unknown_interface_aborts_instead_of_continuing_route(self, subject):
+        """恢复失败不能假装成功，否则下一条路线会再次卡住数小时。"""
+        instance, fought, keyboard, fake = subject
+        instance.img.on_main_interface = lambda timeout=2: False
+        instance.img.on_interface = lambda **kwargs: False
+
+        with pytest.raises(CustomException, match="回到主界面超时"):
+            instance.back_to_main()
+
+        assert fought == []
+        assert fake.now <= 123
+
+    def test_open_puzzle_confirmation_is_clicked_before_escape(self, subject, monkeypatch):
+        instance, fought, keyboard, fake = subject
+        attempts = []
+        monkeypatch.setattr(
+            handle_module, "try_exit_puzzle",
+            lambda *a: attempts.append("confirm") or True,
+        )
+        instance.back_to_main()
+
+        assert attempts == ["confirm"]
+        assert keyboard.pressed == []
+        assert fought == []
+
+    def test_escape_then_puzzle_confirmation_then_main(self, subject, monkeypatch):
+        instance, fought, keyboard, fake = subject
+        main_states = iter([False, False, True])
+        instance.img.on_main_interface = lambda timeout=2: next(main_states)
+        instance.img.on_interface = lambda **kwargs: False
+        actions = []
+        keyboard.keyboard_press = lambda key: actions.append(key)
+
+        def recover(*args):
+            if actions:
+                actions.append("confirm")
+                return True
+            return False
+        monkeypatch.setattr(handle_module, "try_exit_puzzle", recover)
+
+        instance.back_to_main()
+
+        assert actions == ["esc", "confirm"]
+
+    def test_confirmation_click_does_not_bypass_recovery_timeout(self, subject, monkeypatch):
+        instance, fought, keyboard, fake = subject
+        instance.img.on_main_interface = lambda timeout=2: False
+        monkeypatch.setattr(handle_module, "try_exit_puzzle", lambda *a: True)
+
+        with pytest.raises(CustomException, match="回到主界面超时"):
+            instance.back_to_main()
+
+        assert keyboard.pressed == []
+        assert fake.now <= 123
