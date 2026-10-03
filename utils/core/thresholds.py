@@ -50,6 +50,12 @@ ROUND_ICON = 0.95
 #: `battle_esc_check.png`：战斗中按 ESC 后的确认画面
 BATTLE_ESC_CHECK = 0.97
 
+# 2026-10-02 雅努斯密径实机 1920x1080 样本，TM_CCOEFF_NORMED。
+# 正样本均为 1.000；同一弹窗去除对应文字/按钮的负样本分别为 0.243 / 0.447；
+# 解谜画面负样本为 0.147 / 0.265。实机样本见 tests/fixtures/puzzle_exit/dialog.png。
+PUZZLE_EXIT_PROMPT = 0.90
+PUZZLE_EXIT_CONFIRM = 0.90
+
 #: `not_auto.png` / `not_auto_c.png`：自动战斗未开启
 AUTO_OFF_ICON = 0.95
 
