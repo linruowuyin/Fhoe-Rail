@@ -1751,6 +1751,8 @@ const NOTIFY_CHANNEL_NAMES = (() => {
 /* 开发者选项：单独渲染在参数设置页最底部 */
 const DEV_DEFS = [
   { key: "script_debug", label: "脚本调试模式", hint: "仅开发调试时开启", type: "bool" },
+  { key: "collect_picture_samples", label: "收集图片样本", hint: "跑图时把识别到的图收进 picture/new_pic/，并生成「未使用图片」报告", type: "select",
+    options: { off: "关闭", single: "单图：每张图本轮第一次命中存一张", multi: "多图：每次命中都存（按模板分目录，分析稳定性用）" } },
   { key: "webui_dev_mode", label: "开发者模式", hint: "开启后侧栏出现「图片探针」页：抓一帧游戏画面，量一张模板匹配到哪里、余量多少、两种 offset 各是多少", type: "bool" },
   { key: "github_proxy", label: "GitHub 代理前缀", hint: "资源更新用，留空直连", type: "text" },
   { key: "rawgithub_proxy", label: "raw.githubusercontent 代理前缀", hint: "资源更新用，留空直连", type: "text" },

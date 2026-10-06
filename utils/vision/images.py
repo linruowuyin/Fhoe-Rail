@@ -10,7 +10,6 @@
 import os
 
 import cv2
-import numpy as np
 
 from utils.core.log import log
 
@@ -31,6 +30,15 @@ DEFAULT_IMAGE_PATHS = {
 
 #: 图片加载缓存：{(路径): (文件mtime, ndarray)}，文件更新后自动失效
 _IMG_CACHE = {}
+
+#: `id(ndarray) → 解析后的路径`，用来从一张**已经加载过的**图反查它来自哪个文件。
+#: 匹配那一层只拿得到 ndarray（`Matcher.match_screenshot` 的签名里没有路径），所以靠对象
+#: 身份认回来。注意键是 `resolve_path` 之后的**原样路径**：`./picture/x.png` 与
+#: `picture\x.png` 是两个不同的键、各占一条缓存（同一个文件被加载两次是既有行为），
+#: 但两者的 `basename` 一样 —— 收集器用的正是 basename，不受影响。
+#: 只登记缓存里那些：缓存持有强引用，`id` 不会被回收复用。
+#: 反色（`cv2.bitwise_not`）与旋转造出来的新数组不在表里，反查返回 None。
+_PATH_BY_ID = {}
 
 
 def resolve_path(img_path):
@@ -55,6 +63,10 @@ def get_img(img_path):
     :param img_path: 图片路径
     :return: BGR ndarray；加载失败返回 None（调用方必须处理 None）
     """
+    # 延迟 import：samples 要拿 cv2 编码 webp，而 images 被 matcher 依赖 ——
+    # 模块级互相 import 会成环。这里只在真正加载时用一次，代价可以忽略。
+    from utils.vision import samples
+
     img_path = resolve_path(img_path)
 
     try:
@@ -65,6 +77,7 @@ def get_img(img_path):
 
     cached = _IMG_CACHE.get(img_path)
     if cached is not None and cached[0] == mtime:
+        samples.note_loaded(img_path)
         return cached[1]
 
     try:
@@ -72,10 +85,20 @@ def get_img(img_path):
         if img is None:
             raise FileNotFoundError(f"图片加载失败，路径不存在或文件损坏: {img_path}")
         _IMG_CACHE[img_path] = (mtime, img)
+        _PATH_BY_ID[id(img)] = img_path
+        samples.note_loaded(img_path)
         return img
     except Exception as e:
         log.error(f"加载图片时发生错误: {e}")
         return None
+
+
+def path_of(image):
+    """反查一张图来自哪个文件；不是本模块加载的就返回 None。
+
+    给「匹配那一层」用 —— 它只拿得到 ndarray。反色 / 旋转造出来的新数组返回 None。
+    """
+    return _PATH_BY_ID.get(id(image)) if image is not None else None
 
 
 def load_all(image_paths=None) -> dict:
@@ -95,5 +118,9 @@ def load_all(image_paths=None) -> dict:
 
 
 def clear_cache():
-    """清空缓存。测试用；生产环境靠 mtime 自动失效。"""
+    """清空缓存。测试用；生产环境靠 mtime 自动失效。
+
+    身份表跟着一起清 —— 它只对缓存里那些活着的数组有意义（R15 的清理点）。
+    """
     _IMG_CACHE.clear()
+    _PATH_BY_ID.clear()

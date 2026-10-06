@@ -19,6 +19,7 @@ from utils.core.thresholds import DEFAULT_MATCH, LOW_MATCH_REPORT_FLOOR
 from utils.drivers.mouse_event import MouseEvent
 from utils.drivers.screen import ScreenSource
 from utils.vision import images as image_library
+from utils.vision import samples
 
 
 class Matcher:
@@ -51,9 +52,14 @@ class Matcher:
 
     @staticmethod
     def match_screenshot(screenshot, prepared, left, top):
-        """比对 screenshot 与 prepared，返回匹配值与位置。"""
+        """比对 screenshot 与 prepared，返回匹配值与位置。
+
+        这里是**全部匹配的唯一汇聚点**，所以图片样本收集也挂在这一处（见
+        `vision/samples.py`）—— 挂在各调用点等于抄十几遍。
+        """
         result = cv2.matchTemplate(screenshot, prepared, cv2.TM_CCORR_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        Matcher._collect_sample(screenshot, prepared, left, top, max_val, max_loc)
         return {
             "screenshot": screenshot,
             "min_val": min_val,
@@ -61,6 +67,26 @@ class Matcher:
             "min_loc": (min_loc[0] + left, min_loc[1] + top),
             "max_loc": (max_loc[0] + left, max_loc[1] + top),
         }
+
+    @staticmethod
+    def _collect_sample(screenshot, prepared, left, top, max_val, max_loc):
+        """开发者模式：把这次匹配喂给样本收集器。
+
+        路径靠**对象身份**反查（`images.path_of`）—— 这里只拿得到 ndarray。
+        反色 / 旋转造出来的新数组查不到，那几次就不落样本（不影响「未使用」口径，
+        那条走的是 `images.get_img` 的加载钩子）。
+        """
+        if not samples.enabled():
+            return
+        height, width = prepared.shape[:2]
+        box_left, box_top = max_loc[0] + left, max_loc[1] + top
+        samples.note_match(
+            image_library.path_of(prepared),
+            screenshot,
+            (left, top, left + screenshot.shape[1], top + screenshot.shape[0]),
+            (box_left, box_top, box_left + width, box_top + height),
+            max_val,
+        )
 
     @staticmethod
     def match_peaks(screenshot, prepared, left=0, top=0):

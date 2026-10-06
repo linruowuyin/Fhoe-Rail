@@ -67,6 +67,7 @@ class TestConfigKeys:
             "notify_enabled",
             "notify_channel",
             "webui_dev_mode",
+            "collect_picture_samples",
         ],
     )
     def test_expected_key_present(self, key):

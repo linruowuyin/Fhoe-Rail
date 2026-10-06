@@ -257,6 +257,45 @@ class TestMatcherIsConstructibleWithoutAGame:
         assert subject.mouse is sentinel  # 只构造一次
 
 
+class TestSampleCollectionHook:
+    """匹配的汇聚点顺带喂给图片样本收集器（开发者模式 collect_picture_samples）。"""
+
+    def test_a_disabled_collector_is_never_touched(self, monkeypatch):
+        from utils.vision import samples
+
+        called = []
+        monkeypatch.setattr(samples, "enabled", lambda: False)
+        monkeypatch.setattr(samples, "note_match", lambda *args: called.append(args))
+
+        Matcher.match_screenshot(
+            np.zeros((60, 80, 3), np.uint8), np.zeros((10, 10, 3), np.uint8), 0, 0
+        )
+
+        assert called == [], "开关关着时不该有任何开销之外的副作用"
+
+    def test_the_box_and_the_score_are_handed_over(self, monkeypatch):
+        from utils.vision import samples
+
+        seen = []
+        monkeypatch.setattr(samples, "enabled", lambda: True)
+        monkeypatch.setattr(
+            samples,
+            "note_match",
+            lambda path, frame, region, box, score: seen.append((path, region, box, score)),
+        )
+        screenshot = np.zeros((60, 80, 3), dtype=np.uint8)
+        prepared = np.full((10, 10, 3), 255, dtype=np.uint8)
+        screenshot[20:30, 30:40] = 255
+
+        Matcher.match_screenshot(screenshot, prepared, left=100, top=200)
+
+        path, region, box, score = seen[0]
+        assert region == (100, 200, 180, 260), "区域是「帧 + 它的屏幕原点」"
+        assert box == (130, 220, 140, 230), "框是屏幕绝对坐标，尺寸 = 模板尺寸"
+        assert score == pytest.approx(1.0)
+        assert path is None, "合成数组没有对应文件，反查本来就该是 None"
+
+
 class TestPurePrimitives:
     def test_match_screenshot_offsets_are_applied(self):
         screenshot = np.zeros((60, 80, 3), dtype=np.uint8)

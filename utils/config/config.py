@@ -193,6 +193,10 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "star_version": "0",
             "open_map": "m",
             "script_debug": False,
+            # 开发者模式：跑图时把「游戏里实际长什么样」收进 picture/new_pic/，并累计统计
+            # 哪些图没被用到。见 utils/vision/samples.py。
+            # 三档：off / single（每张图本轮第一次命中）/ multi（每次命中都存）
+            "collect_picture_samples": "off",
             # WebUI 的「开发者模式」：开启后设置页之外多一个图片探针页。
             # 带 webui_ 前缀是因为 CLI 已经有 --dev（开发者选图运行）和 devmap
             # 运行模式，再叫 dev_mode 会混。

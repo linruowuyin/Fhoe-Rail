@@ -11,6 +11,7 @@ from utils.ui.text_window import show_text, start_tkinter_thread, TEXT_WINDOWS
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.vision.img import Img
+from utils.vision import samples
 from utils.core.log import log
 from utils.core.thresholds import (
     BUY_ICON,
@@ -124,6 +125,10 @@ class MapOperations:
 
             # 输出报告
             self.report.output_report()
+
+            # 图片样本报告收尾刷一次：带上这一趟的结束时间（跑图中途每次新图就已经写过了，
+            # 这里只是把收尾状态落下来）
+            samples.write_report()
         else:
             log.info(f'地图编号 {start} 不存在，请尝试检查地图文件')
 
@@ -156,6 +161,11 @@ class MapOperations:
         log.info(
             f"{map_json}用时\033[1;92m『{formatted_time}』\033[0m,总计:\033[1;92m『{self.time_mgr.format_time(self.map_statu.total_processing_time)}』\033[0m")
 
+        # 离开这张图了 —— 之后再匹配到的就不该算在它头上（回主界面、跨图传送那些）
+        samples.set_current_map("")
+        # 报告是清单的派生视图，每张地图跑完刷一次就够 —— 逐帧重写反而会跟"你正开着它看"抢
+        samples.write_report()
+
     def process_single_map_start(self, index, map_json, dev: bool = False):
         """
         处理单张地图的开始
@@ -165,6 +175,8 @@ class MapOperations:
             f"map/{self.map_info.map_version}/{map_base}.json")
         map_data_name = map_data['name']
         map_data_author = map_data['author']
+        # 告诉图片样本收集器「现在跑的是哪张图」，报告里低分项要能指回具体地图
+        samples.set_current_map(map_json, map_data_name)
         # 白名单模式下，只运行白名单中的地图
         if self.map.check_allowlist_maps(map_data_name):
             self.map_statu.skip_this_map = True
