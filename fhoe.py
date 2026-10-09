@@ -212,16 +212,16 @@ def main():
                     "总计用时": map_instance.map_statu.total_time
                     if hasattr(map_instance, "map_statu")
                     else None,
-                    "战斗次数": map_instance.handle.total_fight_cnt
+                    "战斗次数": map_instance.handle.combat.total_fight_cnt
                     if hasattr(map_instance, "handle")
                     else None,
-                    "未战斗次数": map_instance.handle.total_no_fight_cnt
+                    "未战斗次数": map_instance.handle.combat.total_no_fight_cnt
                     if hasattr(map_instance, "handle")
                     else None,
-                    "疾跑节约": map_instance.handle.tatol_save_time
+                    "疾跑节约": map_instance.handle.movement.tatol_save_time
                     if hasattr(map_instance, "handle")
                     else None,
-                    "系统卡顿": map_instance.handle.time_error_cnt
+                    "系统卡顿": map_instance.handle.movement.time_error_cnt
                     if hasattr(map_instance, "handle")
                     else None,
                 }
