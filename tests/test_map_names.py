@@ -49,6 +49,11 @@ def shipped_map_names():
             yield version, path.name, json.loads(path.read_text(encoding="utf-8")).get("name", "")
 
 
+def shipped_map_file_count():
+    """整库地图文件数 —— 别写死：新增一个版本目录（如 SilverWolfLv999）就会变。"""
+    return sum(1 for _ in MAP_DIR.glob("*/*.json"))
+
+
 class TestCoverageAgainstTheLibrary:
     """磁盘上有的，表里必须有 —— default_lite 那次漏项就该被这几条拦住。"""
 
@@ -91,7 +96,7 @@ class TestValidatorCatchesMissingNames:
 
         assert validate.main([]) == 1
         out = capsys.readouterr().out
-        assert "638 个地图文件" in out, "得真的读到整库，不然这条测试是假通过"
+        assert f"{shipped_map_file_count()} 个地图文件" in out, "得真的读到整库，不然这条测试是假通过"
         assert "没有登记中文名" in out
         assert "default_lite" in out
 
@@ -100,7 +105,7 @@ class TestValidatorCatchesMissingNames:
 
         assert validate.main([]) == 0
         out = capsys.readouterr().out
-        assert "638 个地图文件，0 个有错误" in out
+        assert f"校验 {shipped_map_file_count()} 个地图文件，0 个有错误" in out
 
 
 class TestAreaKey:

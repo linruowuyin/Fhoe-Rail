@@ -395,9 +395,10 @@ ALT/SHIFT 被释放前要比较初始状态，避免把用户自己按住的键�
 拆成 9 行，这才是保存后 diff 变脏的大头。代价是某个文件**第一次**被重写会重排
 整份，收益是之后同一文件再改就只剩真正改动的那几行（实测连写三次，后两次零 diff）。
 
-三个写入方 —— webui 保存、`ui/record.py` 录制、`tools/convert.py` 批量替换 ——
-都调这一个序列化器，**别再各写一套**。`tests/test_map_json_format.py` 钉住这个
-契约（内联规则 + 整库收敛 + 三个写入方必须都引用它）。
+四个写入方 —— webui 保存、`ui/record.py` 录制、`tools/convert.py` 批量替换、
+`tools/convert_huangquan_check_e.py` 黄泉→银狼地图转换 —— 都调这一个序列化器，
+**别再各写一套**。`tests/test_map_json_format.py` 钉住这个
+契约（内联规则 + 整库收敛 + 写入方必须都引用它）。
 
 门在 CI：`.github/workflows/run.yml` 的 `Check changed map JSON format` →
 `tools/format_maps.py`，**只拦本次改动的地图**。全库 633 张里 471 张是历史格式
