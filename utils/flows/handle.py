@@ -8,6 +8,7 @@ from utils.core.exceptions import CustomException
 from utils.flows.combat import Combat
 from utils.flows.movement import Movement
 from utils.flows.orientation import Orientation
+from utils.flows.puzzle_exit import try_exit_puzzle
 from utils.vision.img import Img
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.core.log import log
@@ -214,15 +215,18 @@ class Handle(metaclass=SingletonMeta):
     def back_to_main(self, delay=2.0):
         """
         检测并回到主界面
-        增加总超时保护：长时间检测不到主界面时强制继续，避免游戏异常时无限按esc死循环
+        恢复超时则停止运行，避免在未知界面继续执行路线并反复重试。
         """
         start_time = time.time()
         while not self.img.on_main_interface(
             timeout=2
         ):  # 检测是否出现左上角灯泡，即主界面检测
             if time.time() - start_time > 120:
-                log.error("回到主界面超时（120秒），强制继续执行下一步")
-                break
+                raise CustomException("回到主界面超时（120秒），请检查游戏界面后重试")
+            # ESC 会取消已经打开的确认框，必须先处理它，再尝试按 ESC。
+            if try_exit_puzzle(self.img, self.mouse_event):
+                time.sleep(delay)
+                continue
             KeyboardEvent.keyboard_press("esc")
             time.sleep(delay)
             if self.img.on_interface(
