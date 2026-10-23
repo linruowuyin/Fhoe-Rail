@@ -1,8 +1,8 @@
 """tools/convert_huangquan_check_e.py —— 黄泉地图批量转换工具。
 
-钉住：**e:2 → 0.8 秒同向移动**（同向前缀用双键保疾跑）、**e:1 → lv999_fighting**、
-`lv999_e` 永远在最前面且只有一条、**按序号区间导出**、**源目录只读**、
-写盘必须走 R22 的规范序列化。
+钉住：**e:2 → E2_REPLACEMENT_SECONDS 秒同向移动**（同向前缀用双键保疾跑）、
+**e:1 → lv999_fighting**、`lv999_e` 永远在最前面且只有一条、**按序号区间导出**、
+**源目录只读**、写盘必须走 R22 的规范序列化。
 """
 
 import json
@@ -54,14 +54,23 @@ class TestTransformMap:
     def test_e2_at_map_start_gets_w_and_lv999_e(self):
         data, e2, e1, inserted = convert.transform_map({"map": [{"e": 2}]})
 
-        assert data["map"] == [{"lv999_e": 1}, {"w": 0.8}]
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"w": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
+        ]
         assert (e2, e1) == (1, 0)
         assert inserted
 
     def test_e2_after_same_direction_uses_double_key(self):
         data, e2, _, _ = convert.transform_map({"map": [{"a": 2}, {"e": 2}]})
 
-        assert data["map"] == [{"lv999_e": 1}, {"a": 2}, {"aa": 0.8}]
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"a": 2},
+            {"aa": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
+        ]
         assert e2 == 1
 
     def test_every_e_in_a_block_is_replaced(self):
@@ -72,9 +81,10 @@ class TestTransformMap:
         assert data["map"] == [
             {"lv999_e": 1},
             {"a": 2},
-            {"aa": 0.8},
-            {"aa": 0.8},
-            {"aa": 0.8},
+            {"aa": convert.E2_REPLACEMENT_SECONDS},
+            {"aa": convert.E2_REPLACEMENT_SECONDS},
+            {"aa": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
         ]
         assert e2 == 3
 
@@ -87,7 +97,8 @@ class TestTransformMap:
             {"lv999_e": 1},
             {"s": 2},
             {"await": 1.5},
-            {"s": 0.8},
+            {"s": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
         ]
 
     def test_e1_becomes_lv999_fighting(self):
@@ -106,7 +117,7 @@ class TestTransformMap:
         assert data["map"] == [
             {"lv999_e": 1},
             {"s": 2},
-            {"ss": 0.8},
+            {"ss": convert.E2_REPLACEMENT_SECONDS},
             {"lv999_fighting": 1},
         ]
         assert (e2, e1) == (1, 1)
@@ -131,7 +142,12 @@ class TestTransformMap:
             {"map": [{"w": 1}, {"lv999_e": 5}, {"e": 2}]}
         )
 
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"w": 0.8}]
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"w": 1},
+            {"w": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
+        ]
         assert inserted
 
     def test_is_idempotent(self):
@@ -150,6 +166,27 @@ class TestTransformMap:
         original = {"map": [{"a": 2}, {"e": 2}]}
         convert.transform_map(original)
         assert original == {"map": [{"a": 2}, {"e": 2}]}
+
+    def test_e2_not_at_the_end_does_not_append_lv999_await(self):
+        data, _, _, _ = convert.transform_map({"map": [{"e": 2}, {"w": 1}]})
+
+        assert {"lv999_await": 2} not in data["map"]
+
+    def test_trailing_e2_appends_lv999_await_after_the_replacement(self):
+        data, _, _, _ = convert.transform_map({"map": [{"w": 1}, {"e": 2}]})
+
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"w": 1},
+            {"ww": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
+        ]
+
+    def test_trailing_lv999_await_is_not_duplicated(self):
+        once, _, _, _ = convert.transform_map({"map": [{"w": 1}, {"e": 2}]})
+        twice, _, _, _ = convert.transform_map(once)
+
+        assert twice == once
 
 
 class TestOrdering:
@@ -322,7 +359,7 @@ class TestWrite:
         data = read_map(output)
         assert data["map"] == [
             {"lv999_e": 1},
-            {"w": 0.8},
+            {"w": convert.E2_REPLACEMENT_SECONDS},
             {"w": 1},
             {"lv999_fighting": 1},
         ]
@@ -377,7 +414,8 @@ class TestWrite:
         ]
         assert read_map(output / "map_1-1_1.json")["map"] == [
             {"lv999_e": 1},
-            {"w": 0.8},
+            {"w": convert.E2_REPLACEMENT_SECONDS},
+            {"lv999_await": 2},
         ]
 
     def test_unchanged_maps_are_copied_too(self, repo):

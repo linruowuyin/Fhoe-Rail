@@ -142,6 +142,15 @@ class SilverWolfLv999:
             )
         handle.handle_fighting(value)
 
+    def handle_lv999_await(self, value, handle):
+        """`lv999_await` 是 `await` 的银狼专用别名，等待逻辑完全相同。
+
+        黄泉图以 `{"e": 2}` 结尾时，转换工具（tools/convert_huangquan_check_e.py）
+        会在末尾补一步 `{"lv999_await": 2}`：银狼用位移代替冲刺后，需要和原来
+        一样停一下再结束本图。值原样交给 `handle_await`，语义与 `await` 一致。
+        """
+        handle.handle_await(value)
+
     def ensure_lv999_e(self, value, handle):
         """执行一步 `{"lv999_e": 1}`。
 

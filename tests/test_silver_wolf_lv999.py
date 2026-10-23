@@ -50,6 +50,7 @@ class FakeHandle:
         self.settings_calls = 0
         self.e_values = []
         self.fighting_values = []
+        self.await_values = []
         self.img = FakeImg(e_states, template)
 
     def auto_use_technique_consumable(self):
@@ -61,6 +62,9 @@ class FakeHandle:
 
     def handle_fighting(self, value):
         self.fighting_values.append(value)
+
+    def handle_await(self, value):
+        self.await_values.append(value)
 
 
 class TestEStateOffset:
@@ -122,6 +126,16 @@ class TestLv999Fighting:
         with pytest.raises(CustomException):
             SilverWolfLv999().handle_lv999_fighting(value, handle)
         assert handle.fighting_values == []
+
+
+class TestLv999Await:
+    def test_calls_the_same_path_as_await(self):
+        handle = FakeHandle()
+
+        SilverWolfLv999().handle_lv999_await(2, handle)
+
+        assert handle.await_values == [2]
+        assert handle.e_values == [], "别名只走等待，不该动秘技 E"
 
 
 class TestCheckE:

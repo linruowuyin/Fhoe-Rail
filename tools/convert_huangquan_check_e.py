@@ -23,12 +23,16 @@
 
 转换规则（只动 `data["map"]`，`start` 原样保留）：
 
-  * `{"e": 2}` → 最近的前置方向键，固定 **0.8 秒**。连续 e 每一条都换；
+  * `{"e": 2}` → 最近的前置方向键，固定 **0.52 秒**。连续 e 每一条都换；
     跨过 `await` 找最近方向；地图开头没有方向时补 `w`。
+    （0.52 来自实机标定：黄泉 E ≈ 银狼 ss 0.493 秒疾跑 / 0.55 秒不疾跑，取中间值）
   * 如果替换出来这一步与**上一条输出**同方向，就用双键 `aa/ww/ss/dd`
     （运行时据此在上一段已经疾跑时不断疾跑），否则用单键。
   * `{"e": 1}` → `{"lv999_fighting": 1}`：运行时走 `fighting: 1` 同一条路径，
     只是 JSON 侧的名字区分银狼版本。
+  * 源图 `map` 的**最后一步**是 `{"e": 2}` 时，转换后的末尾再补一条
+    `{"lv999_await": 2}`：银狼的位移跑完后像原来的 e:2 一样停一下再结束本图，
+    运行时走正常的 `await` 逻辑。不在末尾的 e:2 不补。
   * `with-e` 模式下，没有任何 e 步骤的文件 map 原样保留，不插 `lv999_e`。
   * 插入时保证 `map` 最前面有且只有一条 `{"lv999_e": 1}`：已有条目会被收掉重插，
     值统一成 1，因此重复转换是幂等的。
@@ -62,11 +66,17 @@ MODE_PROMPT = {"": MODE_WITH_E, "1": MODE_WITH_E, "2": MODE_ALWAYS}
 #: 单独一行 `},` —— 不要手工拼字符串，也不要把对象内联。
 LV999_E_STEP = {"lv999_e": 1}
 
-#: `{"e": 2}` 被替换成同方向移动时使用的秒数
-E2_REPLACEMENT_SECONDS = 0.8
+#: `{"e": 2}` 被替换成同方向移动时使用的秒数。
+#: 实机标定（tools/measure_e_displacement.py）：黄泉 E ≈ 银狼 ss 0.493 秒（疾跑）/
+#: 0.55 秒（不疾跑），取中间 0.52，两种状态下偏差都在 5% 以内。
+E2_REPLACEMENT_SECONDS = 0.52
 
 #: `{"e": 1}` 的银狼版写法；运行时等价于 `{"fighting": 1}`
 LV999_FIGHTING_STEP = {"lv999_fighting": 1}
+
+#: 黄泉图以 `{"e": 2}` 收尾时，补在最后一步的银狼版等待；运行时等价于
+#: `{"await": 2}`（见 flows/roles/silver_wolf_lv999.py）。
+LV999_AWAIT_STEP = {"lv999_await": 2}
 
 #: 方向键 → 保疾跑双键
 DOUBLE_MOVES = {"w": "ww", "a": "aa", "s": "ss", "d": "dd"}
@@ -204,8 +214,9 @@ def ensure_lv999_e(steps):
 def transform_steps(steps):
     """把 e 步骤按银狼规则重写，返回 (新步骤列表, e2 条数, e1 条数)。
 
-    e2 → 最近前置方向 + 0.8 秒；上一条输出同方向时用双键。
+    e2 → 最近前置方向 + E2_REPLACEMENT_SECONDS 秒；上一条输出同方向时用双键。
     e1 → lv999_fighting。
+    原 steps 的最后一步是 e2 时，末尾再补 `lv999_await`（值 2）。
     """
     result = []
     last_direction = "w"  # 地图开头没有方向时的兜底（用户确认补 w）
@@ -239,6 +250,10 @@ def transform_steps(steps):
         if raw_key in DIRECTIONS or raw_key in DOUBLE_MOVES:
             last_direction = base_direction(raw_key)
         prev_key = raw_key
+
+    if steps and is_e2_step(steps[-1]):
+        # 原图以 e:2 收尾：换成位移后角色还会往前冲一段，补一步等待再结束本图
+        result.append(dict(LV999_AWAIT_STEP))
 
     return result, e2_count, e1_count
 
@@ -582,7 +597,9 @@ def main(argv, repo_root=None, ask=input):
         for name, e2_count, e1_count, inserted in changed:
             detail = []
             if e2_count:
-                detail.append(f"替换 {e2_count} 条 \"e\": 2 为 0.8 秒移动")
+                detail.append(
+                    f"替换 {e2_count} 条 \"e\": 2 为 {E2_REPLACEMENT_SECONDS:g} 秒移动"
+                )
             if e1_count:
                 detail.append(f"{e1_count} 条 \"e\": 1 → lv999_fighting")
             if inserted:

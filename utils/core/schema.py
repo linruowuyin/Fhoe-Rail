@@ -73,6 +73,7 @@ MAP_KEYS = {
     "e",
     "lv999_e",
     "lv999_fighting",
+    "lv999_await",
     "esc",
     "1",
     "2",
@@ -109,6 +110,7 @@ NUMERIC_KEYS = {
     "f",
     "lv999_e",
     "lv999_fighting",
+    "lv999_await",
     "mouse_move",
 } | MOVEMENT_KEYS
 
