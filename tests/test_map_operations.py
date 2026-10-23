@@ -15,7 +15,7 @@ from utils.vision.img import Img
 from utils.flows.map_operations import MapOperations
 from utils.core.map_statu import MapStatu
 from utils.core.time_utils import TimeUtils
-from utils.flows.technique import Technique
+from utils.flows.roles.silver_wolf_lv999 import SilverWolfLv999
 
 # 分发表会调用的 Handle 方法白名单。故意写成白名单而不是"任何未知属性都返回可调用对象"，
 # 这样 map_operations 里出现拼写错误时会直接 AttributeError，而不是被静默吞掉。
@@ -74,8 +74,8 @@ class RecordingHandle:
         return [call for call in self.calls if call[0] == name]
 
 
-class TechniqueRecorder:
-    """Technique 的替身，记录 check_e 分派。"""
+class Lv999Recorder:
+    """SilverWolfLv999 的替身，记录 lv999_e 分派。"""
 
     def __init__(self):
         self.calls = []
@@ -85,8 +85,8 @@ class TechniqueRecorder:
         self.calls.append("ensure_settings")
         return self.settings_ok
 
-    def check_e(self, value, handle):
-        self.calls.append(("check_e", value))
+    def ensure_lv999_e(self, value, handle):
+        self.calls.append(("lv999_e", value))
 
 
 class MapStub:
@@ -187,7 +187,7 @@ def operations(make_instance, isolated_cwd, monkeypatch):
             multi_click=1,
         ),
         handle=SimpleNamespace(f_key_error=False),
-        technique=Technique(),
+        lv999=SilverWolfLv999(),
         pause=PauseStub(),
         img=SimpleNamespace(),
         mouse_event=SimpleNamespace(last_search_allow_retry=False),
@@ -533,8 +533,8 @@ class TestProcessMap:
                 "auto_use_technique_consumable": True
             },
         )
-        operations.technique = TechniqueRecorder()
-        operations.technique.settings_ok = False
+        operations.lv999 = Lv999Recorder()
+        operations.lv999.settings_ok = False
 
         with pytest.raises(CustomException):
             operations.process_map("1-1_0")
@@ -547,8 +547,8 @@ class TestProcessMap:
                 "auto_use_technique_consumable": True
             },
         )
-        operations.technique = TechniqueRecorder()
-        operations.technique.settings_ok = False
+        operations.lv999 = Lv999Recorder()
+        operations.lv999.settings_ok = False
 
         operations.process_map("1-1_0")
 
@@ -847,9 +847,9 @@ class TestHandleStepDispatch:
                 },
             )
             handle = RecordingHandle()
-            technique = TechniqueRecorder()
+            lv999 = Lv999Recorder()
             operations.handle = handle
-            operations.technique = technique
+            operations.lv999 = lv999
             operations.calculated = CalculatedRecorder()
             operations.monthly_pass = SimpleNamespace(
                 monthly_pass_check=lambda: None
@@ -857,7 +857,7 @@ class TestHandleStepDispatch:
             operations.window = SimpleNamespace(switch_window=lambda: None)
             operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
             return SimpleNamespace(
-                handle=handle, technique=technique, statu=operations.map_statu
+                handle=handle, lv999=lv999, statu=operations.map_statu
             )
 
         return _run
@@ -897,12 +897,12 @@ class TestHandleStepDispatch:
             "",
         )
 
-    def test_check_e_routes_to_technique_not_move(self, run):
-        result = run({"check_e": 1})
+    def test_lv999_e_routes_to_role_not_move(self, run):
+        result = run({"lv999_e": 1})
 
-        assert result.technique.calls == [("check_e", 1)]
+        assert result.lv999.calls == [("lv999_e", 1)]
         assert not result.handle.called("handle_move"), (
-            "check_e 不能被当成未知键掉进移动分支"
+            "lv999_e 不能被当成未知键掉进移动分支"
         )
 
     def test_check_key_uses_the_recording_date(self, run, operations):

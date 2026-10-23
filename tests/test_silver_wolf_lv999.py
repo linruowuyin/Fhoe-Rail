@@ -1,6 +1,6 @@
-"""utils/flows/technique.py —— 银狼秘技 check_e 与 E 状态检测。
+"""utils/flows/roles/silver_wolf_lv999.py —— 银狼 LV.999 秘技 lv999_e 与 E 状态检测。
 
-钉住：设置整轮只做一次、失败不置位且抛 CustomException、每次 check_e 只按
+钉住：设置整轮只做一次、失败不置位且抛 CustomException、每次 lv999_e 只按
 `handle_e(2)`（只放秘技、不引战）、按完用状态图验证、没检测到就终止（不盲按第二次）。
 """
 
@@ -9,11 +9,16 @@ import pytest
 
 from utils.core.exceptions import CustomException
 from utils.core.thresholds import SILVER_WOLF_LV999_E_ICON
-from utils.flows.technique import (
+from utils.flows.roles.silver_wolf_lv999 import (
+    E_STATE_CHECK_DELAY,
     SILVER_WOLF_LV999_E_IMAGE,
-    Technique,
+    SilverWolfLv999,
     e_state_offset,
 )
+
+
+def no_sleep(_seconds):
+    """测试里不真睡（否则每个 lv999_e 都要等 2 秒）。"""
 
 
 class FakeImg:
@@ -40,7 +45,7 @@ class FakeImg:
 class FakeHandle:
     """记录设置与 E 的调用顺序。"""
 
-    def __init__(self, settings_ok=True, e_states=(True,), template=True):
+    def __init__(self, settings_ok=True, e_states=(False, True), template=True):
         self.settings_ok = settings_ok
         self.settings_calls = 0
         self.e_values = []
@@ -75,91 +80,115 @@ class TestEStateOffset:
             e_state_offset((7, 14), position=(1915, 320))
 
 
-class TestIsEActive:
+class TestIsLv999EActive:
     def test_passes_the_computed_offset_and_threshold(self):
-        handle = FakeHandle()
+        handle = FakeHandle(e_states=(True,))
 
-        assert Technique().is_e_active(handle) is True
+        assert SilverWolfLv999(sleep=no_sleep).is_lv999_e_active(handle) is True
 
         call = handle.img.calls[0]
         assert call["offset"] == e_state_offset((7, 14))
         assert call["threshold"] == SILVER_WOLF_LV999_E_ICON
+        assert call["timeout"] == 0.0, "等满 2 秒后只判一次"
         assert call["check_list"] == [handle.img.template]
         assert handle.img.path == SILVER_WOLF_LV999_E_IMAGE
 
     def test_returns_false_when_template_does_not_match(self):
         handle = FakeHandle(e_states=(False,))
-        assert Technique().is_e_active(handle) is False
+        assert SilverWolfLv999(sleep=no_sleep).is_lv999_e_active(handle) is False
 
     def test_missing_template_is_a_configuration_error(self):
         handle = FakeHandle(template=False)
         with pytest.raises(CustomException):
-            Technique().is_e_active(handle)
+            SilverWolfLv999(sleep=no_sleep).is_lv999_e_active(handle)
 
 
 class TestCheckE:
-    def test_first_call_runs_settings_then_presses_e_and_verifies(self):
-        handle = FakeHandle()
-        technique = Technique()
+    def test_already_active_skips_e_and_sleep(self):
+        handle = FakeHandle(e_states=(True,))
+        sleeps = []
+        lv999 = SilverWolfLv999(sleep=sleeps.append)
 
-        technique.check_e(1, handle)
+        lv999.ensure_lv999_e(1, handle)
+
+        assert handle.e_values == [], "状态已经开着就不该再按 E"
+        assert sleeps == [], "没按 E 就不需要等 2 秒"
+        assert len(handle.img.calls) == 1
+
+    def test_waits_two_seconds_after_pressing_e(self):
+        sleeps = []
+        handle = FakeHandle(e_states=(False, True))
+        lv999 = SilverWolfLv999(sleep=sleeps.append)
+
+        lv999.ensure_lv999_e(1, handle)
+
+        assert E_STATE_CHECK_DELAY == 2.0
+        assert sleeps == [2.0], "按 E 后要等 2 秒再判状态"
+        assert handle.e_values == [2]
+        assert len(handle.img.calls) == 2, "按 E 前先查一次、按完再判一次"
+
+    def test_first_call_runs_settings_then_presses_e_and_verifies(self):
+        handle = FakeHandle(e_states=(False, True))
+        lv999 = SilverWolfLv999(sleep=no_sleep)
+
+        lv999.ensure_lv999_e(1, handle)
 
         assert handle.settings_calls == 1
         assert handle.e_values == [2], "地图开头只放秘技，不引战"
-        assert len(handle.img.calls) == 1
-        assert technique.settings_ready is True
+        assert len(handle.img.calls) == 2
+        assert lv999.settings_ready is True
 
-    def test_second_call_skips_settings_and_only_presses_e(self):
-        handle = FakeHandle()
-        technique = Technique()
+    def test_second_call_skips_settings_and_e_when_already_active(self):
+        handle = FakeHandle(e_states=(False, True, True))
+        lv999 = SilverWolfLv999(sleep=no_sleep)
 
-        technique.check_e(1, handle)
-        technique.check_e(1, handle)
+        lv999.ensure_lv999_e(1, handle)
+        lv999.ensure_lv999_e(1, handle)
 
         assert handle.settings_calls == 1, "设置阶段只该做一次"
-        assert handle.e_values == [2, 2], "E 每张图都要按"
-        assert len(handle.img.calls) == 2
+        assert handle.e_values == [2], "第二张图状态还在，就不该再按 E"
+        assert len(handle.img.calls) == 3
 
     def test_settings_failure_raises_and_does_not_mark_ready(self):
         handle = FakeHandle(settings_ok=False)
-        technique = Technique()
+        lv999 = SilverWolfLv999(sleep=no_sleep)
 
         with pytest.raises(CustomException):
-            technique.check_e(1, handle)
+            lv999.ensure_lv999_e(1, handle)
 
         assert handle.e_values == [], "设置失败时不该按 E"
         assert handle.img.calls == []
-        assert technique.settings_ready is False
+        assert lv999.settings_ready is False
 
     def test_settings_are_retried_after_failure(self):
         handle = FakeHandle(settings_ok=False)
-        technique = Technique()
+        lv999 = SilverWolfLv999(sleep=no_sleep)
         with pytest.raises(CustomException):
-            technique.check_e(1, handle)
+            lv999.ensure_lv999_e(1, handle)
 
         handle.settings_ok = True
-        technique.check_e(1, handle)
+        lv999.ensure_lv999_e(1, handle)
 
         assert handle.settings_calls == 2, "失败不能把设置标记成已完成"
         assert handle.e_values == [2]
 
     def test_inactive_after_press_aborts(self):
-        handle = FakeHandle(e_states=(False,))
-        technique = Technique()
+        handle = FakeHandle(e_states=(False, False))
+        lv999 = SilverWolfLv999(sleep=no_sleep)
 
         with pytest.raises(CustomException):
-            technique.check_e(1, handle)
+            lv999.ensure_lv999_e(1, handle)
 
         assert handle.e_values == [2], "不自动重按：E 若有开关语义，第二次会把状态关掉"
-        assert len(handle.img.calls) == 1
+        assert len(handle.img.calls) == 2, "按前查一次、按后 2 秒再判一次"
 
     @pytest.mark.parametrize("value", [0, 2, "1", None])
     def test_invalid_value_is_refused(self, value):
         handle = FakeHandle()
-        technique = Technique()
+        lv999 = SilverWolfLv999(sleep=no_sleep)
 
         with pytest.raises(CustomException):
-            technique.check_e(value, handle)
+            lv999.ensure_lv999_e(value, handle)
 
         assert handle.settings_calls == 0
         assert handle.e_values == []
@@ -168,22 +197,22 @@ class TestCheckE:
 class TestEnsureSettings:
     def test_returns_true_and_skips_when_already_ready(self):
         handle = FakeHandle()
-        technique = Technique()
-        technique.settings_ready = True
+        lv999 = SilverWolfLv999(sleep=no_sleep)
+        lv999.settings_ready = True
 
-        assert technique.ensure_settings(handle) is True
+        assert lv999.ensure_settings(handle) is True
         assert handle.settings_calls == 0
 
     def test_returns_false_on_failure_without_marking_ready(self):
         handle = FakeHandle(settings_ok=False)
-        technique = Technique()
+        lv999 = SilverWolfLv999(sleep=no_sleep)
 
-        assert technique.ensure_settings(handle) is False
-        assert technique.settings_ready is False
+        assert lv999.ensure_settings(handle) is False
+        assert lv999.settings_ready is False
 
     def test_sets_ready_on_success(self):
         handle = FakeHandle()
-        technique = Technique()
+        lv999 = SilverWolfLv999(sleep=no_sleep)
 
-        assert technique.ensure_settings(handle) is True
-        assert technique.settings_ready is True
+        assert lv999.ensure_settings(handle) is True
+        assert lv999.settings_ready is True

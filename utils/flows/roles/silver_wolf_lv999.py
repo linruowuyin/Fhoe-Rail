@@ -1,18 +1,18 @@
-"""银狼 LV.999 秘技（`check_e`）：设置整轮只做一次，E 每次都按，按完验证状态。
+"""银狼 LV.999 秘技（`lv999_e`）：设置整轮只做一次；E 状态已开则跳过，未开才按并复判。
 
-地图 JSON 里每张银狼图的开头是 `{"check_e": 1}`，分两段：
+地图 JSON 里每张银狼图的开头是 `{"lv999_e": 1}`，分两段：
 
   * 第一段：银狼专用游戏设置。目前就是 `handle.auto_use_technique_consumable()`
     —— 它走 ESC → 设置 → 其他设置 → 拖动 → 点开关键 → 确认 的硬编码流程。
     **整轮只执行一次**；失败时抛 `CustomException`，由 `fhoe.py` 的 `__main__`
     兜底：写日志并发 `notify_on_error` 通知，不会静默继续。
-  * 第二段：按 E 打开秘技状态，然后用 `picture/silver_wolf_lv999_e.png` 验证。
-    固定用 `handle_e(2)` —— value=2 是「只放秘技」，不点画面中心、不进入战斗；
-    value=1 是「引战」语义，不能用在地图开头。没检测到状态就抛
-    `CustomException` 终止本轮（不自动重按：E 若有开关语义，盲按第二次会把
-    刚打开的状态关掉；确认 E 一定是「使用」而不是「切换」后再考虑重试）。
+  * 第二段：**先查**右上角的秘技状态图。已经开着就直接返回，不再按 E（避免
+    白耗秘技点）；没开才按 E，等 2 秒（动画/图标渐显）后复判。固定用
+    `handle_e(2)` —— value=2 是「只放秘技」，不点画面中心、不进入战斗；value=1
+    是「引战」语义，不能用在地图开头。复判没检测到就抛 `CustomException` 终止
+    本轮（不自动重按：E 若有开关语义，盲按第二次会把刚打开的状态关掉）。
 
-状态放在 `Technique` 实例上，由 `MapOperations` 持有：分派 `check_e` 的是它，
+状态放在 `SilverWolfLv999` 实例上，由 `MapOperations` 持有：分派 `lv999_e` 的是它，
 R13 要求跨模块状态挂在读取方真正持有的对象上。一个实例覆盖 `allow_run_again`
 和跨日连锄；`--dev` 重开是新实例，设置会重做一次（配方在设计上应当幂等）。
 
@@ -25,10 +25,16 @@ TODO(阈值校准): `SILVER_WOLF_LV999_E_ICON` 是用户指定的 0.98 精确匹
 tools/match_probe.py 量正负样本，再按实测余量调整。
 """
 
+import time
+
 from utils.core.exceptions import CustomException
 from utils.core.match_offsets import padded_offset_for_box
 from utils.core.thresholds import SILVER_WOLF_LV999_E_ICON
 from utils.drivers.screen import BASE_HEIGHT, BASE_WIDTH
+
+#: 按下 E 之后等多久再检测状态（秒）。秘技动画和图标渐显需要时间，
+#: 立刻查会假阴性；2 秒是实机节奏，等不到再判失败。
+E_STATE_CHECK_DELAY = 2.0
 
 #: 银狼 LV.999 E 状态图标的左上角，坐标是 1920×1080 的截图基准（与
 #: `take_screenshot` 的 offset 同一坐标系）。模板 7×14，右边缘 1637、下边缘 334。
@@ -77,13 +83,16 @@ def e_state_offset(
     return offset
 
 
-class Technique:
-    """银狼秘技的两段逻辑与「设置已做」状态。"""
+class SilverWolfLv999:
+    """银狼 LV.999 的两段逻辑与「设置已做」状态。"""
 
-    def __init__(self):
+    def __init__(self, sleep=time.sleep, check_delay=E_STATE_CHECK_DELAY):
         #: 本次运行（一个 MapOperations 实例）里，银狼设置是否已经验证成功。
         #: 只有 auto_use_technique_consumable() 返回 True 才置位，失败不置位。
         self.settings_ready = False
+        #: 按 E 后的等待，可注入（测试里传替身，不真睡 2 秒）
+        self._sleep = sleep
+        self._check_delay = check_delay
 
     def ensure_settings(self, handle) -> bool:
         """确保银狼设置已完成；已完成时直接返回 True（不再走菜单）。
@@ -98,7 +107,7 @@ class Technique:
         self.settings_ready = True
         return True
 
-    def is_e_active(self, handle) -> bool:
+    def is_lv999_e_active(self, handle) -> bool:
         """右上角是否出现银狼 LV.999 秘技已开启的状态图标。
 
         模板缺失 / 裁切超出画面时抛 `CustomException`（配置错误，不是「没找到」）。
@@ -114,17 +123,21 @@ class Technique:
         offset = e_state_offset((width, height))
         return handle.img.on_interface(
             check_list=[template],
-            timeout=1.0,
+            timeout=0.0,  # 等满 2 秒后只判这一次，不在窗口里反复扫
             interface_desc="银狼 LV.999 秘技已开启",
             threshold=SILVER_WOLF_LV999_E_ICON,
             offset=offset,
         )
 
-    def check_e(self, value, handle):
-        """执行一步 `{"check_e": 1}`：首次做设置，按 E，然后验证状态。"""
+    def ensure_lv999_e(self, value, handle):
+        """执行一步 `{"lv999_e": 1}`。
+
+        顺序：首次做设置 → 先看 E 状态是否已经开着 → 已开就直接返回（不浪费秘技点）
+        → 没开才按 E，等 2 秒后复判。
+        """
         if value != 1:
             raise CustomException(
-                f"map数据错误, check_e参数只能为1（设置+按E），实际为 {value!r}"
+                f"map数据错误, lv999_e参数只能为1（设置+按E），实际为 {value!r}"
             )
         if not self.ensure_settings(handle):
             # fhoe.py 的顶层 except 会捕获它，写日志并发 notify_on_error 通知。
@@ -132,8 +145,12 @@ class Technique:
                 "银狼 LV.999 秘技设置失败：自动使用秘技消耗品未能开启，已终止运行"
             )
 
+        if self.is_lv999_e_active(handle):
+            return  # 已经是开启状态，不再按 E
+
         handle.handle_e(2)  # 只放秘技，不点屏幕、不引战
-        if not self.is_e_active(handle):
+        self._sleep(self._check_delay)  # 等动画/图标出来再判，避免假阴性
+        if not self.is_lv999_e_active(handle):
             raise CustomException(
                 "银狼 LV.999 秘技未能开启（按 E 后未检测到状态图标），已终止运行"
             )

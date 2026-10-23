@@ -18,21 +18,21 @@
 
 两种模式：
 
-    with-e（默认）  只给确实含有 `{"e": 2}` 的地图删 e 并插 `{"check_e": 1}`
-    always          区间内**所有**地图都插 `{"check_e": 1}`（不管有没有 e 步骤）
+    with-e（默认）  只给确实含有 `{"e": 2}` 的地图删 e 并插 `{"lv999_e": 1}`
+    always          区间内**所有**地图都插 `{"lv999_e": 1}`（不管有没有 e 步骤）
 
 转换规则（只动 `data["map"]`，`start` 原样保留）：
 
   * 只删除**单键且值恰好为 2** 的 `{"e": 2}` —— `map_3-4_7.json` 里的
     `{"e": 1}` 保留。
-  * `with-e` 模式下，没有 e 步骤的文件 map 原样保留，不插 `check_e`。
-  * 插入时保证 `map` 最前面有且只有一条 `{"check_e": 1}`：已有条目会被收掉重插，
+  * `with-e` 模式下，没有 e 步骤的文件 map 原样保留，不插 `lv999_e`。
+  * 插入时保证 `map` 最前面有且只有一条 `{"lv999_e": 1}`：已有条目会被收掉重插，
     值统一成 1，因此重复转换是幂等的。
   * 区间内的文件都会写入输出目录（无需改动的也写，保证目录完整）；区间外的文件
     不读不写。
 
 写盘一律走 `utils/core/json_io.dumps_map`（CLAUDE.md R22）：4 空格缩进 + 短数组
-内联 + 末尾不加换行。`{"check_e": 1}` 与其它步骤同构，不会内联成一行。
+内联 + 末尾不加换行。`{"lv999_e": 1}` 与其它步骤同构，不会内联成一行。
 
 退出码：有文件读不了 / 解析失败 / 结构不对时 1；参数或输入输出目录有问题时 2；
 其余 0。
@@ -54,9 +54,9 @@ MODE_LABELS = {MODE_WITH_E: "有E才加", MODE_ALWAYS: "无E也加"}
 MODE_PROMPT = {"": MODE_WITH_E, "1": MODE_WITH_E, "2": MODE_ALWAYS}
 
 #: 插入到 `map` 最前面的步骤。写盘时和其它步骤走同一个 `dumps_map`，
-#: 因此格式与既有条目完全一致：单独一行 `{`、12 空格缩进的 `"check_e": 1`、
+#: 因此格式与既有条目完全一致：单独一行 `{`、12 空格缩进的 `"lv999_e": 1`、
 #: 单独一行 `},` —— 不要手工拼字符串，也不要把对象内联。
-CHECK_E_STEP = {"check_e": 1}
+LV999_E_STEP = {"lv999_e": 1}
 
 # 系统语言兼容（issue #428 同类问题）：日文系统 cp932 代码页下中文 print 会崩溃
 for _stream in (sys.stdout, sys.stderr):
@@ -156,11 +156,11 @@ def is_e2_step(entry):
     return key == "e" and value == 2
 
 
-def is_check_e_step(entry):
-    """是不是 `check_e` 步骤（不管值是多少，统一收掉重插）。"""
+def is_lv999_e_step(entry):
+    """是不是 `lv999_e` 步骤（不管值是多少，统一收掉重插）。"""
     if not isinstance(entry, dict) or len(entry) != 1:
         return False
-    return next(iter(entry)) == "check_e"
+    return next(iter(entry)) == "lv999_e"
 
 
 def strip_e2(steps):
@@ -169,22 +169,22 @@ def strip_e2(steps):
     return kept, len(steps) - len(kept)
 
 
-def ensure_check_e(steps):
-    """保证最前面有且只有一条 `{"check_e": 1}`。
+def ensure_lv999_e(steps):
+    """保证最前面有且只有一条 `{"lv999_e": 1}`。
 
     返回 (新步骤列表, 是否有改动)。已有条目在别处 / 值不是 1 时也会被统一，
     所以同一份地图转换两次，第二次返回的列表与输入完全相同。
     """
-    body = [step for step in steps if not is_check_e_step(step)]
-    new_steps = [dict(CHECK_E_STEP)] + body
+    body = [step for step in steps if not is_lv999_e_step(step)]
+    new_steps = [dict(LV999_E_STEP)] + body
     return new_steps, new_steps != steps
 
 
 def transform_map(data, mode=MODE_WITH_E):
-    """对一份已解析的地图做转换，返回 (新数据, 删除条数, 是否插入/调整了 check_e)。
+    """对一份已解析的地图做转换，返回 (新数据, 删除条数, 是否插入/调整了 lv999_e)。
 
-    `with-e` 模式：没有 `{"e": 2}` 的地图完全不碰（不插 check_e）。
-    `always` 模式：不论有没有 e，都在最前面插 `check_e`。
+    `with-e` 模式：没有 `{"e": 2}` 的地图完全不碰（不插 lv999_e）。
+    `always` 模式：不论有没有 e，都在最前面插 `lv999_e`。
     不修改传入的 `data`；只动 `data["map"]`，`start` 原样保留。
     """
     steps = data["map"]
@@ -192,7 +192,7 @@ def transform_map(data, mode=MODE_WITH_E):
     new_data = dict(data)
     if mode == MODE_WITH_E and not removed:
         return new_data, 0, False
-    new_steps, inserted = ensure_check_e(stripped)
+    new_steps, inserted = ensure_lv999_e(stripped)
     new_data["map"] = new_steps
     return new_data, removed, inserted
 
@@ -511,7 +511,7 @@ def main(argv, repo_root=None, ask=input):
         for name, removed, inserted in changed:
             detail = f"删除 {removed} 条 \"e\": 2"
             if inserted:
-                detail += "，插入 check_e"
+                detail += "，插入 lv999_e"
             print(f"  {name}: {detail}")
     if unchanged_count:
         verb = "已原样写出" if opts["write"] else "会原样写出"

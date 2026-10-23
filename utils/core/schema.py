@@ -71,7 +71,7 @@ MAP_KEYS = {
     "scroll",
     "shutdown",
     "e",
-    "check_e",
+    "lv999_e",
     "esc",
     "1",
     "2",
@@ -105,7 +105,7 @@ NUMERIC_KEYS = {
     "normal_run",
     "allow_skip_f",
     "f",
-    "check_e",
+    "lv999_e",
     "mouse_move",
 } | MOVEMENT_KEYS
 
@@ -213,12 +213,12 @@ def validate_map(data, filename: str = "") -> list:
                     f"只接受 1（进入战斗）或 2（打障碍物），实际是 {value!r}",
                 )
             )
-        if key == "check_e" and _is_number(value) and value != 1:
+        if key == "lv999_e" and _is_number(value) and value != 1:
             issues.append(
                 Issue(
                     "error",
-                    f"{where}.map[{index}].check_e",
-                    f"只接受 1（银狼设置 + 按E），实际是 {value!r}",
+                    f"{where}.map[{index}].lv999_e",
+                    f"只接受 1（银狼 LV.999 设置 + 按E），实际是 {value!r}",
                 )
             )
         if key == "check" and not _is_number(value) and not isinstance(value, list):

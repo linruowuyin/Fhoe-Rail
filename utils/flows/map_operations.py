@@ -8,7 +8,7 @@ import time
 from utils.flows.calculated import Calculated
 from utils.config.config import ConfigurationManager
 from utils.core.exceptions import CustomException
-from utils.flows.technique import Technique
+from utils.flows.roles.silver_wolf_lv999 import SilverWolfLv999
 from utils.ui.text_window import show_text, start_tkinter_thread, TEXT_WINDOWS
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
@@ -49,8 +49,9 @@ class MapOperations:
         self.time_mgr = TimeUtils()
         self.map_statu = MapStatu()
         self.handle = Handle()
-        #: 银狼秘技（check_e）—— 设置整轮做一次，E 每图按一次（flows/technique.py）
-        self.technique = Technique()
+        #: 银狼 LV.999 专用（lv999_e）—— 设置整轮做一次，E 每图按一次
+        #: （flows/roles/silver_wolf_lv999.py）
+        self.lv999 = SilverWolfLv999()
         self.mouse_event = MouseEvent()
         self.img = Img()
         self.window = Window()
@@ -91,12 +92,12 @@ class MapOperations:
         self.pause = Pause(dev=dev)
         self.map.pause_gate = self.pause.wait_if_paused  # 供 flows/map.py 的循环闸门调用
 
-        # 银狼专用设置（check_e 第一段）：整轮只做一次。
+        # 银狼专用设置（lv999_e 第一段）：整轮只做一次。
         # SilverWolf 版本做不成直接终止（fhoe.py 顶层负责日志 + notify_on_error）；
         # 其它版本保持原来的「警告后继续」，避免改掉既有行为。
         config = self.cfg.read_json_file(self.cfg.CONFIG_FILE_NAME, False)
         if config.get("auto_use_technique_consumable", False):
-            if not self.technique.ensure_settings(self.handle):
+            if not self.lv999.ensure_settings(self.handle):
                 if self.map_info.map_version == "SilverWolfLv999":
                     raise CustomException(
                         "银狼专用设置失败：自动使用秘技消耗品未能开启，已终止运行"
@@ -464,8 +465,8 @@ class MapOperations:
                     self.handle.scroll(value)
                 elif key == "shutdown":
                     self.handle.handle_shutdown()
-                elif key == "check_e":
-                    self.technique.check_e(value, self.handle)
+                elif key == "lv999_e":
+                    self.lv999.ensure_lv999_e(value, self.handle)
                 elif key == "e":
                     self.handle.handle_e(value)  # 用E进入战斗
                 elif key == "esc":

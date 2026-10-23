@@ -1,7 +1,7 @@
 """tools/convert_huangquan_check_e.py —— 黄泉地图批量转换工具。
 
-钉住五件事：**只删 `{"e": 2}`**（`{"e": 1}` 保留）、两种模式下 `check_e` 的插入
-规则、`check_e` 与普通步骤同构、**按序号区间导出**（区间之前一个字节都不动）、
+钉住五件事：**只删 `{"e": 2}`**（`{"e": 1}` 保留）、两种模式下 `lv999_e` 的插入
+规则、`lv999_e` 与普通步骤同构、**按序号区间导出**（区间之前一个字节都不动）、
 **源目录只读**（输入输出同目录直接拒绝）、写盘必须走 R22 的规范序列化。
 """
 
@@ -55,27 +55,27 @@ class TestTransformMap:
         steps = [{"e": 2}, {"w": 1.5}, {"e": 1}, {"fighting": 1}]
         data, removed, inserted = convert.transform_map({"map": steps})
 
-        assert data["map"] == [{"check_e": 1}, {"w": 1.5}, {"e": 1}, {"fighting": 1}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1.5}, {"e": 1}, {"fighting": 1}]
         assert removed == 1, "只删 {\"e\": 2}"
         assert inserted
 
     def test_accepts_2_as_float(self):
         data, removed, _ = convert.transform_map({"map": [{"e": 2.0}, {"w": 1}]})
         assert removed == 1
-        assert data["map"] == [{"check_e": 1}, {"w": 1}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
 
     def test_does_not_touch_multi_key_entries(self):
         # 结构上不是单键步骤，就不是这次要删的东西 —— 宁可放过，也不猜
         steps = [{"e": 2, "drag": 1}, {"w": 1}]
         data, removed, inserted = convert.transform_map({"map": steps})
         assert removed == 0
-        assert not inserted, "没有删掉任何 e 步骤就不插 check_e"
+        assert not inserted, "没有删掉任何 e 步骤就不插 lv999_e"
         assert data["map"] == steps
 
-    def test_check_e_goes_first_and_order_is_preserved(self):
+    def test_lv999_e_goes_first_and_order_is_preserved(self):
         steps = [{"w": 1}, {"a": 2}, {"e": 2}, {"s": 3}]
         data, _, _ = convert.transform_map({"map": steps})
-        assert data["map"] == [{"check_e": 1}, {"w": 1}, {"a": 2}, {"s": 3}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"a": 2}, {"s": 3}]
 
     def test_is_idempotent(self):
         once, removed, _ = convert.transform_map({"map": [{"e": 2}, {"w": 1}]})
@@ -86,11 +86,11 @@ class TestTransformMap:
         assert not inserted
         assert twice == once
 
-    def test_existing_check_e_is_moved_to_front_and_normalized(self):
-        steps = [{"w": 1}, {"check_e": 5}, {"e": 2}, {"check_e": 1}]
+    def test_existing_lv999_e_is_moved_to_front_and_normalized(self):
+        steps = [{"w": 1}, {"lv999_e": 5}, {"e": 2}, {"lv999_e": 1}]
         data, removed, inserted = convert.transform_map({"map": steps})
         assert removed == 1
-        assert data["map"] == [{"check_e": 1}, {"w": 1}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
         assert inserted
 
     def test_with_e_mode_leaves_map_without_e_alone(self):
@@ -102,14 +102,14 @@ class TestTransformMap:
         assert not inserted
         assert data["map"] == steps
 
-    def test_always_mode_adds_check_e_even_without_e(self):
+    def test_always_mode_adds_lv999_e_even_without_e(self):
         steps = [{"w": 1}, {"fighting": 2}]
         data, removed, inserted = convert.transform_map(
             {"map": steps}, convert.MODE_ALWAYS
         )
         assert removed == 0
         assert inserted
-        assert data["map"] == [{"check_e": 1}, {"w": 1}, {"fighting": 2}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"fighting": 2}]
 
     def test_always_mode_still_removes_e2(self):
         data, removed, inserted = convert.transform_map(
@@ -117,7 +117,7 @@ class TestTransformMap:
         )
         assert removed == 1
         assert inserted
-        assert data["map"] == [{"check_e": 1}, {"w": 1}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
 
     def test_start_is_untouched(self):
         start = [{"map": 1}, {"e": 2}]
@@ -298,13 +298,13 @@ class TestWrite:
 
         output = repo / "map" / "SilverWolfLv999" / "map_1-1_1.json"
         data = read_map(output)
-        assert data["map"] == [{"check_e": 1}, {"w": 1}, {"e": 1}]
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"e": 1}]
         assert is_canonical(output.read_text(encoding="utf-8")), (
             "写盘必须走 utils/core/json_io.py（CLAUDE.md R22）"
         )
 
-    def test_check_e_is_written_like_a_normal_step(self, repo):
-        """check_e 必须和既有步骤同一个写法：多行对象 + `": "` + 4 空格缩进。"""
+    def test_lv999_e_is_written_like_a_normal_step(self, repo):
+        """lv999_e 必须和既有步骤同一个写法：多行对象 + `": "` + 4 空格缩进。"""
         write_map(repo / "map" / "HuangQuan" / "map_1-1_1.json", [{"w": 1}, {"e": 2}])
 
         convert.main(BASE + ["--write"], repo_root=repo, ask=boom)
@@ -315,17 +315,17 @@ class TestWrite:
         assert (
             '    "map": [\n'
             "        {\n"
-            '            "check_e": 1\n'
+            '            "lv999_e": 1\n'
             "        },\n"
             "        {\n"
             '            "w": 1\n'
             "        }\n"
             "    ]"
         ) in text
-        assert '"check_e":1' not in text, "冒号后要有空格，与其它键一致"
-        assert '{"check_e": 1}' not in text, "对象不能内联成一行"
+        assert '"lv999_e":1' not in text, "冒号后要有空格，与其它键一致"
+        assert '{"lv999_e": 1}' not in text, "对象不能内联成一行"
 
-    def test_map_without_e_is_copied_without_check_e(self, repo):
+    def test_map_without_e_is_copied_without_lv999_e(self, repo):
         write_map(
             repo / "map" / "HuangQuan" / "map_no_e.json",
             [{"w": 1}, {"e": 1}, {"fighting": 2}],
@@ -340,7 +340,7 @@ class TestWrite:
             {"fighting": 2},
         ]
 
-    def test_always_mode_adds_check_e_to_every_file(self, repo):
+    def test_always_mode_adds_lv999_e_to_every_file(self, repo):
         write_map(repo / "map" / "HuangQuan" / "map_1-1_0.json", [{"w": 1}])
         write_map(repo / "map" / "HuangQuan" / "map_1-1_1.json", [{"e": 2}])
 
@@ -350,15 +350,15 @@ class TestWrite:
 
         output = repo / "map" / "SilverWolfLv999"
         assert read_map(output / "map_1-1_0.json")["map"] == [
-            {"check_e": 1},
+            {"lv999_e": 1},
             {"w": 1},
         ]
-        assert read_map(output / "map_1-1_1.json")["map"] == [{"check_e": 1}]
+        assert read_map(output / "map_1-1_1.json")["map"] == [{"lv999_e": 1}]
 
     def test_unchanged_maps_are_copied_too(self, repo):
         write_map(
             repo / "map" / "HuangQuan" / "map_done.json",
-            [{"check_e": 1}, {"w": 1}],
+            [{"lv999_e": 1}, {"w": 1}],
         )
         write_map(repo / "map" / "HuangQuan" / "map_todo.json", [{"e": 2}])
 
@@ -396,7 +396,7 @@ class TestWrite:
         assert code == 1
         assert "跳过 map_bad.json" in out
         output = repo / "map" / "SilverWolfLv999" / "map_good.json"
-        assert read_map(output)["map"][0] == {"check_e": 1}
+        assert read_map(output)["map"][0] == {"lv999_e": 1}
         assert not (repo / "map" / "SilverWolfLv999" / "map_bad.json").exists()
 
     def test_missing_map_array_is_skipped(self, repo, capsys):
