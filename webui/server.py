@@ -834,6 +834,18 @@ def _run_reader(proc):
 FHOE_EXE = os.path.join(BASE_DIR, "Fhoe-Rail.exe")
 
 
+def _is_admin():
+    """Windows 下是否管理员。非 Windows 视为可用（测试/开发环境）。"""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return True
+
+
 def run_start(mode, map_id=None, map_version=None):
     """启动锄地进程（单例：已有进程时拒绝）
     mode: normal/white/record/install/map/devmap
@@ -841,6 +853,12 @@ def run_start(mode, map_id=None, map_version=None):
     map_version: 仅 map/devmap 模式可选，如 'default' / 'HuangQuan'
     打包环境（同目录有 Fhoe-Rail.exe）直接用 exe；源码环境用 python + launch.py
     """
+    if mode != "install" and not _is_admin():
+        return {
+            "ok": False,
+            "error": "WebUI 没有管理员权限：游戏以管理员运行，UIPI 会阻止窗口截图和前台切换。"
+            "请关闭后用 Start-WebUI.bat（或右键 Start-WebUI.exe 以管理员身份运行）重新打开。",
+        }
     with _RUN["lock"]:
         if _RUN["proc"] is not None and _RUN["proc"].poll() is None:
             return {"ok": False, "error": "已有锄地进程在运行，请先停止"}

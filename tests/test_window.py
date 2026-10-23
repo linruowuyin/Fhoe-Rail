@@ -374,7 +374,9 @@ class TestForceForeground:
         monkeypatch.setattr(win32gui, "BringWindowToTop", lambda hwnd: None)
         monkeypatch.setattr(win32gui, "SetWindowPos", lambda *a, **k: None)
         monkeypatch.setattr(win32api, "GetCurrentThreadId", lambda: 1)
+        monkeypatch.setattr(win32api, "keybd_event", lambda *a: None)
         monkeypatch.setattr(win32process, "GetWindowThreadProcessId", lambda hwnd: (1, 0))
+        monkeypatch.setattr(Window, "_switch_to_this_window", staticmethod(lambda hwnd: True))
         monkeypatch.setattr(time, "sleep", lambda seconds: None)
 
     def test_reports_success_when_window_becomes_foreground(self, monkeypatch):
@@ -441,6 +443,24 @@ class TestSwitchWindow:
 
         win = object.__new__(Window)
         win.switch_window()  # 不应抛出
+
+    def test_raises_when_window_found_but_cannot_be_activated(
+        self, monkeypatch, no_sleep
+    ):
+        """找到了游戏窗口却抢不到前台时必须报错，不能把键鼠送进浏览器。"""
+        monkeypatch.setattr(
+            pyautogui,
+            "getAllWindows",
+            lambda: [FakeWindowHandle("崩坏：星穹铁道")],
+        )
+        monkeypatch.setattr(Window, "_force_foreground", staticmethod(lambda hwnd: False))
+        monkeypatch.setattr(
+            pyautogui, "moveTo", lambda x, y: pytest.fail("没抢到前台不该移动鼠标")
+        )
+
+        win = object.__new__(Window)
+        with pytest.raises(CustomException):
+            win.switch_window()
 
 
 class TestFindLnkFiles:

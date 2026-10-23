@@ -288,6 +288,17 @@ class Window(metaclass=SingletonMeta):
         return not style & win32con.WS_OVERLAPPEDWINDOW
 
     @staticmethod
+    def _switch_to_this_window(hwnd):
+        """任务栏点窗口时用的那条 API，比 SetForegroundWindow 更容易绕过前台锁。"""
+        import ctypes
+
+        try:
+            ctypes.windll.user32.SwitchToThisWindow(hwnd, True)
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
     def _force_foreground(hwnd):
         """强制将窗口切到前台（破解 Windows 前台锁限制）。
         SetForegroundWindow 在后台进程调用时常失败，
@@ -299,6 +310,16 @@ class Window(metaclass=SingletonMeta):
         # 检查窗口是否最小化，如果是则恢复
         if win32gui.IsIconic(hwnd):
             win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+        # 合成一次 ALT：让本进程被视为「刚接收过输入」，绕过后台进程的前台锁。
+        # WebUI 从浏览器点启动时，fhoe 是后台进程的子进程，没有这条经常激活失败。
+        try:
+            win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+            win32api.keybd_event(
+                win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0
+            )
+        except Exception:
+            pass
 
         for attempt in range(5):
             used_method = "none"
@@ -355,6 +376,14 @@ class Window(metaclass=SingletonMeta):
                 except Exception:
                     pass
 
+                try:
+                    # 方法5: SwitchToThisWindow（任务栏切换用的是这条）
+                    if Window._switch_to_this_window(hwnd):
+                        if used_method == "none":
+                            used_method = "SwitchToThisWindow"
+                except Exception:
+                    pass
+
                 # 解除线程输入队列关联
                 if attached and tid_fg != tid_self and tid_fg:
                     try:
@@ -370,7 +399,15 @@ class Window(metaclass=SingletonMeta):
             except Exception as e:
                 log.debug(f"强激活尝试 {attempt + 1} 失败: {e}")
             _t.sleep(0.3)
-        log.warning(f"强激活窗口失败(hwnd={hwnd})，继续尝试后续流程")
+        try:
+            foreground = win32gui.GetForegroundWindow()
+            foreground_title = win32gui.GetWindowText(foreground)
+        except Exception:
+            foreground_title = "<读不到>"
+        log.warning(
+            f"强激活窗口失败(hwnd={hwnd})，当前前台窗口是 {foreground_title!r}。"
+            "WebUI 启动时这通常意味着 WebUI 不是管理员，或前台锁没放开"
+        )
         return False
 
     def get_hwnd_title(self, hwnd_max_retries=10) -> str:
@@ -508,30 +545,40 @@ class Window(metaclass=SingletonMeta):
                     return False
 
                 all_windows = pyautogui.getAllWindows()
-                for w in all_windows:
-                    if is_target_window(w):
-                        log.info(f'激活窗口: {w.title}')
-                        try:
-                            w.restore()  # 防止最小化状态
-                            # 强激活：Windows 前台锁常导致 SetForegroundWindow 失败，
-                            # 使用 AttachThreadInput 技巧 + 重试，确保窗口能切到前台
-                            self._force_foreground(w._hWnd)
-                            # 获取窗口的位置和尺寸
-                            left, top, width, height = w.left, w.top, w.width, w.height
-                            log.info(
-                                f'窗口位置和尺寸: {left}, {top}, {width}, {height}')
-
-                            # 计算窗口中心坐标
-                            center_x = left + width // 2
-                            center_y = top + height // 2
-
-                            # 移动鼠标到窗口中心
-                            log.info(f'移动鼠标到窗口中心: {center_x}, {center_y}')
-                            pyautogui.moveTo(center_x, center_y)
-                            return
-                        except Exception as e:
-                            log.info(f'窗口激活失败: {e}')
+                candidates = [w for w in all_windows if is_target_window(w)]
+                for w in candidates:
+                    log.info(f'激活窗口: {w.title}')
+                    try:
+                        w.restore()  # 防止最小化状态
+                        # 强激活：Windows 前台锁常导致 SetForegroundWindow 失败，
+                        # 使用 AttachThreadInput 技巧 + 重试，确保窗口能切到前台
+                        if not self._force_foreground(w._hWnd):
+                            log.warning(f'窗口强激活失败，尝试下一个: {w.title}')
                             continue
+                        # 获取窗口的位置和尺寸
+                        left, top, width, height = w.left, w.top, w.width, w.height
+                        log.info(
+                            f'窗口位置和尺寸: {left}, {top}, {width}, {height}')
+
+                        # 计算窗口中心坐标
+                        center_x = left + width // 2
+                        center_y = top + height // 2
+
+                        # 移动鼠标到窗口中心
+                        log.info(f'移动鼠标到窗口中心: {center_x}, {center_y}')
+                        pyautogui.moveTo(center_x, center_y)
+                        return
+                    except Exception as e:
+                        log.info(f'窗口激活失败: {e}')
+                        continue
+                if candidates:
+                    # 找到了游戏窗口，但一个都没抢到前台：继续跑只会把键鼠送进
+                    # 浏览器/控制台，必须明确失败，让用户手动点一下或提权重试。
+                    raise CustomException(
+                        "检测到游戏窗口，但无法切到前台。请手动点一下游戏窗口后重试；"
+                        "WebUI 请用 Start-WebUI.bat（管理员权限）启动，"
+                        "后台启动的子进程常被 Windows 前台锁拦住。"
+                    )
                 log.debug(f'未找到目标窗口，已扫描{len(all_windows)}个窗口')
                 log.debug('当前存在的窗口标题：')
                 for w in pyautogui.getAllWindows():
