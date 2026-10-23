@@ -10,10 +10,12 @@ import pytest
 
 import utils.flows.map_operations as operations_module
 from utils.config.config import ConfigurationManager
+from utils.core.exceptions import CustomException
 from utils.vision.img import Img
 from utils.flows.map_operations import MapOperations
 from utils.core.map_statu import MapStatu
 from utils.core.time_utils import TimeUtils
+from utils.flows.technique import Technique
 
 # 分发表会调用的 Handle 方法白名单。故意写成白名单而不是"任何未知属性都返回可调用对象"，
 # 这样 map_operations 里出现拼写错误时会直接 AttributeError，而不是被静默吞掉。
@@ -36,7 +38,6 @@ HANDLE_METHODS = {
     "handle_view_reset",
     "handle_view_rotate",
     "handle_await",
-    "auto_use_technique_consumable",
     "handle_move",
     "handle_b",
     "handle_click_floor",
@@ -71,6 +72,21 @@ class RecordingHandle:
 
     def called(self, name):
         return [call for call in self.calls if call[0] == name]
+
+
+class TechniqueRecorder:
+    """Technique 的替身，记录 check_e 分派。"""
+
+    def __init__(self):
+        self.calls = []
+        self.settings_ok = True
+
+    def ensure_settings(self, handle):
+        self.calls.append("ensure_settings")
+        return self.settings_ok
+
+    def check_e(self, value, handle):
+        self.calls.append(("check_e", value))
 
 
 class MapStub:
@@ -171,6 +187,7 @@ def operations(make_instance, isolated_cwd, monkeypatch):
             multi_click=1,
         ),
         handle=SimpleNamespace(f_key_error=False),
+        technique=Technique(),
         pause=PauseStub(),
         img=SimpleNamespace(),
         mouse_event=SimpleNamespace(last_search_allow_retry=False),
@@ -505,6 +522,38 @@ class TestProcessMap:
 
         assert any("不存在" in r["message"] for r in log_records)
 
+    def test_silver_wolf_settings_failure_aborts(self, operations):
+        """银狼版本设置失败必须终止，交给 fhoe.py 顶层发通知。"""
+        operations.map_info = SimpleNamespace(
+            map_version="SilverWolfLv999", map_list=[]
+        )
+        operations.cfg = SimpleNamespace(
+            CONFIG_FILE_NAME="config.json",
+            read_json_file=lambda *args, **kwargs: {
+                "auto_use_technique_consumable": True
+            },
+        )
+        operations.technique = TechniqueRecorder()
+        operations.technique.settings_ok = False
+
+        with pytest.raises(CustomException):
+            operations.process_map("1-1_0")
+
+    def test_other_version_settings_failure_only_warns(self, operations, log_records):
+        operations.map_info = SimpleNamespace(map_version="default", map_list=[])
+        operations.cfg = SimpleNamespace(
+            CONFIG_FILE_NAME="config.json",
+            read_json_file=lambda *args, **kwargs: {
+                "auto_use_technique_consumable": True
+            },
+        )
+        operations.technique = TechniqueRecorder()
+        operations.technique.settings_ok = False
+
+        operations.process_map("1-1_0")
+
+        assert any("继续执行地图流程" in r["message"] for r in log_records)
+
     def test_single_map_runs_only_the_requested_file(self, operations, log_records):
         processed = []
         operations.map_info = SimpleNamespace(
@@ -798,14 +847,18 @@ class TestHandleStepDispatch:
                 },
             )
             handle = RecordingHandle()
+            technique = TechniqueRecorder()
             operations.handle = handle
+            operations.technique = technique
             operations.calculated = CalculatedRecorder()
             operations.monthly_pass = SimpleNamespace(
                 monthly_pass_check=lambda: None
             )
             operations.window = SimpleNamespace(switch_window=lambda: None)
             operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
-            return SimpleNamespace(handle=handle, statu=operations.map_statu)
+            return SimpleNamespace(
+                handle=handle, technique=technique, statu=operations.map_statu
+            )
 
         return _run
 
@@ -842,6 +895,14 @@ class TestHandleStepDispatch:
             "some_unknown_key",
             False,
             "",
+        )
+
+    def test_check_e_routes_to_technique_not_move(self, run):
+        result = run({"check_e": 1})
+
+        assert result.technique.calls == [("check_e", 1)]
+        assert not result.handle.called("handle_move"), (
+            "check_e 不能被当成未知键掉进移动分支"
         )
 
     def test_check_key_uses_the_recording_date(self, run, operations):

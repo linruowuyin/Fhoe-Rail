@@ -169,6 +169,11 @@ SETTING_CONFIRM = 0.99
 #: `eat.png`：秘技点不足对话框
 TECHNIQUE_DIALOG = 0.90
 
+#: `silver_wolf_lv999_e.png`：银狼 LV.999 按 E 后的秘技状态图标（模板 7×14，
+#: 左上角约 1630,320）。0.98 来自用户要求：这块要做精确匹配，匹配区域只留 2px
+#: 防抖动外扩，不用 DEFAULT_MATCH 的宽松阈值。
+SILVER_WOLF_LV999_E_ICON = 0.98
+
 #: `qiqiao.png`：奇巧零食图标
 QIQIAO_ICON = 0.95
 

@@ -163,6 +163,14 @@ class TestMapEntries:
         issues = validate_map(make_map(map_steps=[{"fighting": 1, "await": 1}]))
         assert levels(issues) == ["error"]
 
+    def test_check_e_accepts_one(self):
+        assert validate_map(make_map(map_steps=[{"check_e": 1}])) == []
+
+    @pytest.mark.parametrize("value", [0, 2, "1"])
+    def test_check_e_rejects_other_values(self, value):
+        issues = validate_map(make_map(map_steps=[{"check_e": value}]))
+        assert levels(issues) == ["error"]
+
     def test_movement_key_passes(self):
         assert validate_map(make_map(map_steps=[{"w": 1.5}, {"d": 0.5}])) == []
 
