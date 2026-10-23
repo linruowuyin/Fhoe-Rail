@@ -91,6 +91,9 @@ class Lv999Recorder:
     def handle_lv999_fighting(self, value, handle):
         self.calls.append(("lv999_fighting", value))
 
+    def handle_lv999_await(self, value, handle):
+        self.calls.append(("lv999_await", value))
+
 
 class MapStub:
     """Map 的替身，记录地图侧动作。"""
@@ -885,7 +888,7 @@ class TestHandleStepDispatch:
             ({"view_reset": 0.1}, "handle_view_reset", (0.1,)),
             ({"view_rotate": 90}, "handle_view_rotate", (90,)),
             ({"await": 2}, "handle_await", (2,)),
-            ({"w": 1.5}, "handle_move", (1.5, "w", False, "", "")),
+            ({"w": 1.5}, "handle_move", (1.5, "w", False, "", "", "")),
         ],
     )
     def test_key_routes_to_handle_method(self, run, entry, method, args):
@@ -897,6 +900,7 @@ class TestHandleStepDispatch:
             1.2,
             "some_unknown_key",
             False,
+            "",
             "",
             "",
         )
@@ -914,6 +918,15 @@ class TestHandleStepDispatch:
 
         assert result.lv999.calls == [("lv999_fighting", 1)]
         assert not result.handle.called("handle_fighting")
+        assert not result.handle.called("handle_move")
+
+    def test_lv999_await_routes_to_role(self, run):
+        result = run({"lv999_await": 2})
+
+        assert result.lv999.calls == [("lv999_await", 2)]
+        assert not result.handle.called("handle_await"), (
+            "lv999_await 走角色分派，不应直接落到 await"
+        )
         assert not result.handle.called("handle_move")
 
     def test_check_key_uses_the_recording_date(self, run, operations):
@@ -973,10 +986,10 @@ class TestHandleStepDispatch:
 
         moves = [call[1] for call in handle.called("handle_move")]
         assert moves == [
-            (2.0, "a", False, "", ""),
-            (0.8, "aa", False, "", "a"),
-            (1.0, "a", False, "", "aa"),
-        ], "prev_key 每步都要更新，且银狼/其它版本都可用"
+            (2.0, "a", False, "", "", "aa"),
+            (0.8, "aa", False, "", "a", "a"),
+            (1.0, "a", False, "", "aa", ""),
+        ], "prev_key / next_key 每步都要更新，且银狼/其它版本都可用"
 
     def test_f_key_error_breaks_out_and_is_recorded(self, operations):
         write_map(

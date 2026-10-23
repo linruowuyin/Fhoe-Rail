@@ -438,6 +438,11 @@ class MapOperations:
                 log.info(f"执行{map_filename}文件:{map_progress_info}")
 
                 key, value = next(iter(map_value.items()))
+                next_key = ""
+                if map_index + 1 < len(map_data["map"]):
+                    nxt = map_data["map"][map_index + 1]
+                    if isinstance(nxt, dict) and len(nxt) == 1:
+                        next_key = next(iter(nxt))
 
                 # 每一步操作开始前，重置地图内意外战斗为未发生
                 self.handle.combat.fight_in_map = False
@@ -470,6 +475,8 @@ class MapOperations:
                     self.lv999.ensure_lv999_e(value, self.handle)
                 elif key == "lv999_fighting":
                     self.lv999.handle_lv999_fighting(value, self.handle)
+                elif key == "lv999_await":
+                    self.lv999.handle_lv999_await(value, self.handle)
                 elif key == "e":
                     self.handle.handle_e(value)  # 用E进入战斗
                 elif key == "esc":
@@ -488,7 +495,7 @@ class MapOperations:
                     self.handle.handle_await(value)
                 else:
                     self.handle.handle_move(
-                        value, key, normal_run, last_key, prev_key
+                        value, key, normal_run, last_key, prev_key, next_key
                     )
 
                 prev_key = key
@@ -521,6 +528,11 @@ class MapOperations:
             #                     self.handle.fight_e(value=2)
             #                 doubt_result = self.img.scan_screenshot(
             #                     self.img.doubt_ui, offset=(0, 0, -1630, -800))
+
+            # 双键续走可能把方向键保持到循环外（正常走完 / F 键 break）
+            release_held = getattr(self.handle.movement, "release_held", None)
+            if release_held:
+                release_held()
 
             if self.map_info.map_version == "HuangQuan" and last_key == "e":
                 if not self.img.on_main_interface(timeout=0.2):
