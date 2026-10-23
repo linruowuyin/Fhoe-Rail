@@ -18,14 +18,18 @@
 
 两种模式：
 
-    with-e（默认）  只给确实含有 `{"e": 2}` 的地图删 e 并插 `{"lv999_e": 1}`
-    always          区间内**所有**地图都插 `{"lv999_e": 1}`（不管有没有 e 步骤）
+    with-e（默认）  处理含有 e 步骤的地图：e 步骤按下面的规则转换，并插 lv999_e
+    always          区间内**所有**地图都插 `{"lv999_e": 1}`，有 e 的也转换
 
 转换规则（只动 `data["map"]`，`start` 原样保留）：
 
-  * 只删除**单键且值恰好为 2** 的 `{"e": 2}` —— `map_3-4_7.json` 里的
-    `{"e": 1}` 保留。
-  * `with-e` 模式下，没有 e 步骤的文件 map 原样保留，不插 `lv999_e`。
+  * `{"e": 2}` → 最近的前置方向键，固定 **0.8 秒**。连续 e 每一条都换；
+    跨过 `await` 找最近方向；地图开头没有方向时补 `w`。
+  * 如果替换出来这一步与**上一条输出**同方向，就用双键 `aa/ww/ss/dd`
+    （运行时据此在上一段已经疾跑时不断疾跑），否则用单键。
+  * `{"e": 1}` → `{"lv999_fighting": 1}`：运行时走 `fighting: 1` 同一条路径，
+    只是 JSON 侧的名字区分银狼版本。
+  * `with-e` 模式下，没有任何 e 步骤的文件 map 原样保留，不插 `lv999_e`。
   * 插入时保证 `map` 最前面有且只有一条 `{"lv999_e": 1}`：已有条目会被收掉重插，
     值统一成 1，因此重复转换是幂等的。
   * 区间内的文件都会写入输出目录（无需改动的也写，保证目录完整）；区间外的文件
@@ -57,6 +61,16 @@ MODE_PROMPT = {"": MODE_WITH_E, "1": MODE_WITH_E, "2": MODE_ALWAYS}
 #: 因此格式与既有条目完全一致：单独一行 `{`、12 空格缩进的 `"lv999_e": 1`、
 #: 单独一行 `},` —— 不要手工拼字符串，也不要把对象内联。
 LV999_E_STEP = {"lv999_e": 1}
+
+#: `{"e": 2}` 被替换成同方向移动时使用的秒数
+E2_REPLACEMENT_SECONDS = 0.8
+
+#: `{"e": 1}` 的银狼版写法；运行时等价于 `{"fighting": 1}`
+LV999_FIGHTING_STEP = {"lv999_fighting": 1}
+
+#: 方向键 → 保疾跑双键
+DOUBLE_MOVES = {"w": "ww", "a": "aa", "s": "ss", "d": "dd"}
+DIRECTIONS = set(DOUBLE_MOVES)
 
 # 系统语言兼容（issue #428 同类问题）：日文系统 cp932 代码页下中文 print 会崩溃
 for _stream in (sys.stdout, sys.stderr):
@@ -163,10 +177,17 @@ def is_lv999_e_step(entry):
     return next(iter(entry)) == "lv999_e"
 
 
-def strip_e2(steps):
-    """删除所有 `{"e": 2}`，返回 (保留的步骤, 删除条数)。"""
-    kept = [step for step in steps if not is_e2_step(step)]
-    return kept, len(steps) - len(kept)
+def is_e1_step(entry):
+    """单键、键为 `e`、值为 1：要改成 lv999_fighting 的步骤。"""
+    if not isinstance(entry, dict) or len(entry) != 1:
+        return False
+    key, value = next(iter(entry.items()))
+    return key == "e" and value == 1
+
+
+def base_direction(key):
+    """`aa` → `a`；其它键原样返回。"""
+    return {"ww": "w", "aa": "a", "ss": "s", "dd": "d"}.get(key, key)
 
 
 def ensure_lv999_e(steps):
@@ -180,21 +201,66 @@ def ensure_lv999_e(steps):
     return new_steps, new_steps != steps
 
 
-def transform_map(data, mode=MODE_WITH_E):
-    """对一份已解析的地图做转换，返回 (新数据, 删除条数, 是否插入/调整了 lv999_e)。
+def transform_steps(steps):
+    """把 e 步骤按银狼规则重写，返回 (新步骤列表, e2 条数, e1 条数)。
 
-    `with-e` 模式：没有 `{"e": 2}` 的地图完全不碰（不插 lv999_e）。
-    `always` 模式：不论有没有 e，都在最前面插 `lv999_e`。
+    e2 → 最近前置方向 + 0.8 秒；上一条输出同方向时用双键。
+    e1 → lv999_fighting。
+    """
+    result = []
+    last_direction = "w"  # 地图开头没有方向时的兜底（用户确认补 w）
+    prev_key = ""  # 上一条**输出**步骤的原始键
+    e2_count = 0
+    e1_count = 0
+
+    for step in steps:
+        if is_e2_step(step):
+            e2_count += 1
+            direction = last_direction
+            if prev_key in DIRECTIONS or prev_key in DOUBLE_MOVES:
+                direction = base_direction(prev_key)
+            key = (
+                DOUBLE_MOVES[direction]
+                if base_direction(prev_key) == direction
+                else direction
+            )
+            result.append({key: E2_REPLACEMENT_SECONDS})
+            prev_key = key
+            continue
+
+        if is_e1_step(step):
+            e1_count += 1
+            result.append(dict(LV999_FIGHTING_STEP))
+            prev_key = "lv999_fighting"
+            continue
+
+        result.append(step)
+        raw_key = next(iter(step)) if isinstance(step, dict) and len(step) == 1 else ""
+        if raw_key in DIRECTIONS or raw_key in DOUBLE_MOVES:
+            last_direction = base_direction(raw_key)
+        prev_key = raw_key
+
+    return result, e2_count, e1_count
+
+
+def transform_map(data, mode=MODE_WITH_E):
+    """对一份已解析的地图做转换。
+
+    返回 (新数据, e2 条数, e1 条数, 是否插入/调整了 lv999_e)。
+    `with-e` 模式：没有 e 步骤的地图完全不碰；`always` 模式：所有地图都插 lv999_e。
     不修改传入的 `data`；只动 `data["map"]`，`start` 原样保留。
     """
     steps = data["map"]
-    stripped, removed = strip_e2(steps)
+    new_steps, e2_count, e1_count = transform_steps(steps)
     new_data = dict(data)
-    if mode == MODE_WITH_E and not removed:
-        return new_data, 0, False
-    new_steps, inserted = ensure_lv999_e(stripped)
+    has_e = bool(e2_count or e1_count)
+
+    if mode == MODE_WITH_E and not has_e:
+        return new_data, 0, 0, False
+
+    new_steps, inserted = ensure_lv999_e(new_steps)
     new_data["map"] = new_steps
-    return new_data, removed, inserted
+    return new_data, e2_count, e1_count, inserted
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +516,8 @@ def main(argv, repo_root=None, ask=input):
             print(f"！创建输出目录失败：{e}")
             return 1
 
-    total_removed = 0
+    total_e2 = 0
+    total_e1 = 0
     changed = []
     unchanged_count = 0
     skipped = []
@@ -465,7 +532,7 @@ def main(argv, repo_root=None, ask=input):
             skipped.append(f"{path.name}（顶层不是对象，或缺少 map 数组）")
             continue
 
-        new_data, removed, inserted = transform_map(data, mode)
+        new_data, e2_count, e1_count, inserted = transform_map(data, mode)
 
         if opts["write"]:
             try:
@@ -476,9 +543,10 @@ def main(argv, repo_root=None, ask=input):
                 skipped.append(f"{path.name}（写入输出目录失败：{e}）")
                 continue
 
-        total_removed += removed
-        if removed or inserted:
-            changed.append((path.name, removed, inserted))
+        total_e2 += e2_count
+        total_e1 += e1_count
+        if e2_count or e1_count or inserted:
+            changed.append((path.name, e2_count, e1_count, inserted))
         else:
             unchanged_count += 1
 
@@ -507,12 +575,19 @@ def main(argv, repo_root=None, ask=input):
 
     if changed:
         action = "已写出" if opts["write"] else "需要转换"
-        print(f"{action} {len(changed)} 个，共删除 {total_removed} 条 \"e\": 2")
-        for name, removed, inserted in changed:
-            detail = f"删除 {removed} 条 \"e\": 2"
+        print(
+            f"{action} {len(changed)} 个，共替换 {total_e2} 条 \"e\": 2、"
+            f"{total_e1} 条 \"e\": 1"
+        )
+        for name, e2_count, e1_count, inserted in changed:
+            detail = []
+            if e2_count:
+                detail.append(f"替换 {e2_count} 条 \"e\": 2 为 0.8 秒移动")
+            if e1_count:
+                detail.append(f"{e1_count} 条 \"e\": 1 → lv999_fighting")
             if inserted:
-                detail += "，插入 lv999_e"
-            print(f"  {name}: {detail}")
+                detail.append("插入 lv999_e")
+            print(f"  {name}: " + "，".join(detail))
     if unchanged_count:
         verb = "已原样写出" if opts["write"] else "会原样写出"
         print(f"另有 {unchanged_count} 个文件无需改动，{verb}")

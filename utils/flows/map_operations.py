@@ -424,6 +424,7 @@ class MapOperations:
         while dev_restart:
             dev_restart = False  # 不进行重开
             last_key = ""
+            prev_key = ""  # 上一步骤的原始键（所有版本），供 aa/ww/ss/dd 判断
             self.handle.movement.last_step_run = False  # 初始化上一次为走路
             for map_index, map_value in enumerate(map_data["map"]):
                 if self._pause_checkpoint(dev=dev, last_point=last_point):
@@ -467,6 +468,8 @@ class MapOperations:
                     self.handle.handle_shutdown()
                 elif key == "lv999_e":
                     self.lv999.ensure_lv999_e(value, self.handle)
+                elif key == "lv999_fighting":
+                    self.lv999.handle_lv999_fighting(value, self.handle)
                 elif key == "e":
                     self.handle.handle_e(value)  # 用E进入战斗
                 elif key == "esc":
@@ -484,8 +487,11 @@ class MapOperations:
                 elif key == "await":
                     self.handle.handle_await(value)
                 else:
-                    self.handle.handle_move(value, key, normal_run, last_key)
+                    self.handle.handle_move(
+                        value, key, normal_run, last_key, prev_key
+                    )
 
+                prev_key = key
                 if self.map_info.map_version == "HuangQuan":
                     last_key = key
 

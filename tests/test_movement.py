@@ -317,6 +317,45 @@ class TestHandleMoveBranches:
         assert len(calls) == 1
         assert movement.last_step_run is False
 
+    def test_double_move_keeps_sprint_when_previous_is_same_direction(
+        self, running_movement, monkeypatch
+    ):
+        movement, calls = running_movement
+        movement.last_step_run = True
+        monkeypatch.setattr(movement_module, "time", ScriptedClock([0.0, 0.1, 0.9]))
+
+        movement.handle_move(0.8, "aa", prev_key="a")
+
+        assert calls.enable == [1], "先确认疾跑还开着"
+        assert calls.fix == [], "保疾跑时不能调用 move_run_fix（它会按 Shift 关掉）"
+        assert movement.last_step_run is True
+        assert "a" in movement.keyboard.pressed, "双键只按基准方向 a"
+        assert "aa" not in movement.keyboard.pressed, "不能把 aa 当按键名交给 pynput"
+
+    def test_double_move_does_not_keep_sprint_across_another_direction(
+        self, running_movement, monkeypatch
+    ):
+        movement, calls = running_movement
+        movement.last_step_run = True
+        monkeypatch.setattr(movement_module, "time", ScriptedClock([0.0, 0.1, 0.9]))
+
+        movement.handle_move(0.8, "aa", prev_key="w")
+
+        assert calls.fix == [1], "上一步不是 a，按普通短步处理"
+        assert movement.last_step_run is False
+
+    def test_double_move_without_previous_sprint_just_walks(
+        self, running_movement, monkeypatch
+    ):
+        movement, calls = running_movement
+        movement.last_step_run = False
+        monkeypatch.setattr(movement_module, "time", ScriptedClock([0.0, 0.1, 0.9]))
+
+        movement.handle_move(0.8, "aa", prev_key="a")
+
+        assert calls.fix == [1]
+        assert movement.last_step_run is False
+
     def test_normal_run_says_so(self, movement, monkeypatch, log_records):
         monkeypatch.setattr(movement_module, "time", ScriptedClock([0.0, 0.1]))
 

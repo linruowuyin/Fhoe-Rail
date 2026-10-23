@@ -129,6 +129,19 @@ class SilverWolfLv999:
             offset=offset,
         )
 
+    def handle_lv999_fighting(self, value, handle):
+        """`lv999_fighting` 是 `fighting: 1` 的银狼专用别名。
+
+        代码路径与 `{"fighting": 1}` 完全一致；JSON 里单独起名，是为了让地图
+        作者一眼看出这一步属于银狼版本，避免和黄泉的 `e` 语义混在一起。
+        """
+        if value != 1:
+            raise CustomException(
+                f"map数据错误, lv999_fighting只能为1（等同 fighting: 1），"
+                f"实际为 {value!r}"
+            )
+        handle.handle_fighting(value)
+
     def ensure_lv999_e(self, value, handle):
         """执行一步 `{"lv999_e": 1}`。
 

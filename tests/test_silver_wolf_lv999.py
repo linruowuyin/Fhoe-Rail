@@ -49,6 +49,7 @@ class FakeHandle:
         self.settings_ok = settings_ok
         self.settings_calls = 0
         self.e_values = []
+        self.fighting_values = []
         self.img = FakeImg(e_states, template)
 
     def auto_use_technique_consumable(self):
@@ -57,6 +58,9 @@ class FakeHandle:
 
     def handle_e(self, value):
         self.e_values.append(value)
+
+    def handle_fighting(self, value):
+        self.fighting_values.append(value)
 
 
 class TestEStateOffset:
@@ -101,6 +105,23 @@ class TestIsLv999EActive:
         handle = FakeHandle(template=False)
         with pytest.raises(CustomException):
             SilverWolfLv999(sleep=no_sleep).is_lv999_e_active(handle)
+
+
+class TestLv999Fighting:
+    def test_calls_the_same_path_as_fighting_one(self):
+        handle = FakeHandle()
+
+        SilverWolfLv999().handle_lv999_fighting(1, handle)
+
+        assert handle.fighting_values == [1]
+        assert handle.e_values == [], "别名只走 fighting，不该动秘技 E"
+
+    @pytest.mark.parametrize("value", [0, 2, "1", None])
+    def test_rejects_other_values(self, value):
+        handle = FakeHandle()
+        with pytest.raises(CustomException):
+            SilverWolfLv999().handle_lv999_fighting(value, handle)
+        assert handle.fighting_values == []
 
 
 class TestCheckE:

@@ -23,6 +23,10 @@ from utils.core.thresholds import SPRINT_ICON
 # 疾跑比走路快这么多倍
 SPRINT_SPEED_FACTOR = 1.53
 
+#: 「同方向续走、不打断疾跑」的双键变体 → 实际按下的方向键。
+#: JSON 里写 `{"aa": 0.8}`，键盘上仍然只按 `a`；区别在 handle_move 的疾跑分支。
+DOUBLE_MOVES = {"ww": "w", "aa": "a", "ss": "s", "dd": "d"}
+
 
 def sprint_duration(walk_seconds: float) -> float:
     """把「走路走完要多久」换算成「开疾跑走完要多久」。
@@ -57,10 +61,15 @@ class Movement:
         self.thread_check_sprint = None
 
 
-    def handle_move(self, value, key, normal_run=False, last_key: str = ""):
+    def handle_move(
+        self, value, key, normal_run=False, last_key: str = "", prev_key: str = ""
+    ):
         """
         移动，并处理疾跑
         使用 try/finally 保证方向键与 Shift 一定会被释放，避免异常时键盘卡住
+
+        :param prev_key: 上一条 map 步骤的原始键（`aa` 也原样传进来），用于判断
+            「同方向续走」是否要保住疾跑；和只给 HuangQuan 用的 `last_key` 分开。
         """
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
@@ -75,7 +84,8 @@ class Movement:
                     self.combat.fight_in_map = True
 
         self.run_fix_time = 0
-        KeyboardEvent.press_key(key)
+        base_key = DOUBLE_MOVES.get(key, key)
+        KeyboardEvent.press_key(base_key)
 
         try:
             log.info(f"上一次疾跑状态: {self.last_step_run}")
@@ -87,6 +97,18 @@ class Movement:
 
             start_time = time.perf_counter()
             allow_run = self.cfg.config_file.get("auto_run_in_map", False)
+            # 双键 + 上一步同方向 + 上一步确实在疾跑 → 这一段不要断疾跑。
+            # 只按方向键走完 value 秒；move_run_fix 会检测疾跑图标并按 Shift
+            # 把它关掉，所以这条路必须绕开它和两个短步分支。
+            keep_sprint = (
+                key in DOUBLE_MOVES
+                and allow_run
+                and not normal_run
+                and self.last_step_run
+                and prev_key in (base_key, key)
+            )
+            if keep_sprint:
+                self.enable_run()  # 确认疾跑仍在（掉了就重新按一次 Shift）
             add_time = True
             run_in_road = False
             walk_in_road = False
@@ -96,12 +118,10 @@ class Movement:
 
             value_before = value
             while time.perf_counter() - start_time < value:
-                # if not is_normal_run and self.last_step_run:
-                #     # self.start_check_sprint_task(need_run=False, delay=0.03)
-                #     self.disable_run()
-                #     is_normal_run = True
-                # else:
-                #     is_normal_run = True
+                if keep_sprint:
+                    # 已在疾跑，保持方向键按住即可；sleep 防止忙等（R2）
+                    time.sleep(0.05)
+                    continue
                 if (
                     value_before > 2
                     and not run_in_road
@@ -171,7 +191,7 @@ class Movement:
             except Exception:
                 pass
             try:
-                KeyboardEvent.release_key(key)
+                KeyboardEvent.release_key(base_key)
             except Exception:
                 pass
         if allow_run:

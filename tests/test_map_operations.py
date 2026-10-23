@@ -88,6 +88,9 @@ class Lv999Recorder:
     def ensure_lv999_e(self, value, handle):
         self.calls.append(("lv999_e", value))
 
+    def handle_lv999_fighting(self, value, handle):
+        self.calls.append(("lv999_fighting", value))
+
 
 class MapStub:
     """Map 的替身，记录地图侧动作。"""
@@ -882,7 +885,7 @@ class TestHandleStepDispatch:
             ({"view_reset": 0.1}, "handle_view_reset", (0.1,)),
             ({"view_rotate": 90}, "handle_view_rotate", (90,)),
             ({"await": 2}, "handle_await", (2,)),
-            ({"w": 1.5}, "handle_move", (1.5, "w", False, "")),
+            ({"w": 1.5}, "handle_move", (1.5, "w", False, "", "")),
         ],
     )
     def test_key_routes_to_handle_method(self, run, entry, method, args):
@@ -895,6 +898,7 @@ class TestHandleStepDispatch:
             "some_unknown_key",
             False,
             "",
+            "",
         )
 
     def test_lv999_e_routes_to_role_not_move(self, run):
@@ -904,6 +908,13 @@ class TestHandleStepDispatch:
         assert not result.handle.called("handle_move"), (
             "lv999_e 不能被当成未知键掉进移动分支"
         )
+
+    def test_lv999_fighting_routes_to_role(self, run):
+        result = run({"lv999_fighting": 1})
+
+        assert result.lv999.calls == [("lv999_fighting", 1)]
+        assert not result.handle.called("handle_fighting")
+        assert not result.handle.called("handle_move")
 
     def test_check_key_uses_the_recording_date(self, run, operations):
         result = run({"check": [0, 1, 2, 3, 4, 5, 6]})
@@ -940,6 +951,32 @@ class TestHandleStepDispatch:
             "handle_await",
             "handle_move",
         ]
+
+    def test_prev_key_is_tracked_for_double_moves(self, operations):
+        write_map(
+            operations.root,
+            "default",
+            "map_1-1_0.json",
+            {
+                "name": "1-1 空间站「黑塔」",
+                "author": "tester",
+                "start": [],
+                "map": [{"a": 2.0}, {"aa": 0.8}, {"a": 1.0}],
+            },
+        )
+        handle = RecordingHandle()
+        operations.handle = handle
+        operations.calculated = CalculatedRecorder()
+        operations.monthly_pass = SimpleNamespace(monthly_pass_check=lambda: None)
+
+        operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
+
+        moves = [call[1] for call in handle.called("handle_move")]
+        assert moves == [
+            (2.0, "a", False, "", ""),
+            (0.8, "aa", False, "", "a"),
+            (1.0, "a", False, "", "aa"),
+        ], "prev_key 每步都要更新，且银狼/其它版本都可用"
 
     def test_f_key_error_breaks_out_and_is_recorded(self, operations):
         write_map(

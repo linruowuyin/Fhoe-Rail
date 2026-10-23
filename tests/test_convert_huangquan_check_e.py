@@ -1,8 +1,8 @@
 """tools/convert_huangquan_check_e.py —— 黄泉地图批量转换工具。
 
-钉住五件事：**只删 `{"e": 2}`**（`{"e": 1}` 保留）、两种模式下 `lv999_e` 的插入
-规则、`lv999_e` 与普通步骤同构、**按序号区间导出**（区间之前一个字节都不动）、
-**源目录只读**（输入输出同目录直接拒绝）、写盘必须走 R22 的规范序列化。
+钉住：**e:2 → 0.8 秒同向移动**（同向前缀用双键保疾跑）、**e:1 → lv999_fighting**、
+`lv999_e` 永远在最前面且只有一条、**按序号区间导出**、**源目录只读**、
+写盘必须走 R22 的规范序列化。
 """
 
 import json
@@ -51,83 +51,105 @@ def read_map(path):
 
 
 class TestTransformMap:
-    def test_removes_only_e_with_value_2(self):
-        steps = [{"e": 2}, {"w": 1.5}, {"e": 1}, {"fighting": 1}]
-        data, removed, inserted = convert.transform_map({"map": steps})
+    def test_e2_at_map_start_gets_w_and_lv999_e(self):
+        data, e2, e1, inserted = convert.transform_map({"map": [{"e": 2}]})
 
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1.5}, {"e": 1}, {"fighting": 1}]
-        assert removed == 1, "只删 {\"e\": 2}"
+        assert data["map"] == [{"lv999_e": 1}, {"w": 0.8}]
+        assert (e2, e1) == (1, 0)
         assert inserted
 
-    def test_accepts_2_as_float(self):
-        data, removed, _ = convert.transform_map({"map": [{"e": 2.0}, {"w": 1}]})
-        assert removed == 1
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
+    def test_e2_after_same_direction_uses_double_key(self):
+        data, e2, _, _ = convert.transform_map({"map": [{"a": 2}, {"e": 2}]})
 
-    def test_does_not_touch_multi_key_entries(self):
-        # 结构上不是单键步骤，就不是这次要删的东西 —— 宁可放过，也不猜
-        steps = [{"e": 2, "drag": 1}, {"w": 1}]
-        data, removed, inserted = convert.transform_map({"map": steps})
-        assert removed == 0
-        assert not inserted, "没有删掉任何 e 步骤就不插 lv999_e"
+        assert data["map"] == [{"lv999_e": 1}, {"a": 2}, {"aa": 0.8}]
+        assert e2 == 1
+
+    def test_every_e_in_a_block_is_replaced(self):
+        data, e2, _, _ = convert.transform_map(
+            {"map": [{"a": 2}, {"e": 2}, {"e": 2}, {"e": 2}]}
+        )
+
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"a": 2},
+            {"aa": 0.8},
+            {"aa": 0.8},
+            {"aa": 0.8},
+        ]
+        assert e2 == 3
+
+    def test_await_looks_back_to_the_last_direction_but_uses_single_key(self):
+        data, _, _, _ = convert.transform_map(
+            {"map": [{"s": 2}, {"await": 1.5}, {"e": 2}]}
+        )
+
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"s": 2},
+            {"await": 1.5},
+            {"s": 0.8},
+        ]
+
+    def test_e1_becomes_lv999_fighting(self):
+        data, e2, e1, _ = convert.transform_map(
+            {"map": [{"s": 2}, {"e": 1}]}
+        )
+
+        assert data["map"] == [{"lv999_e": 1}, {"s": 2}, {"lv999_fighting": 1}]
+        assert (e2, e1) == (0, 1)
+
+    def test_mixed_e2_and_e1(self):
+        data, e2, e1, _ = convert.transform_map(
+            {"map": [{"s": 2}, {"e": 2}, {"e": 1}]}
+        )
+
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"s": 2},
+            {"ss": 0.8},
+            {"lv999_fighting": 1},
+        ]
+        assert (e2, e1) == (1, 1)
+
+    def test_with_e_leaves_map_without_e_alone(self):
+        steps = [{"w": 1}, {"fighting": 2}]
+        data, e2, e1, inserted = convert.transform_map({"map": steps})
+
         assert data["map"] == steps
+        assert (e2, e1, inserted) == (0, 0, False)
 
-    def test_lv999_e_goes_first_and_order_is_preserved(self):
-        steps = [{"w": 1}, {"a": 2}, {"e": 2}, {"s": 3}]
-        data, _, _ = convert.transform_map({"map": steps})
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"a": 2}, {"s": 3}]
+    def test_always_mode_inserts_lv999_e_even_without_e(self):
+        data, _, _, inserted = convert.transform_map(
+            {"map": [{"w": 1}]}, convert.MODE_ALWAYS
+        )
+
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
+        assert inserted
+
+    def test_existing_lv999_e_is_normalized_when_converting(self):
+        data, _, _, inserted = convert.transform_map(
+            {"map": [{"w": 1}, {"lv999_e": 5}, {"e": 2}]}
+        )
+
+        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"w": 0.8}]
+        assert inserted
 
     def test_is_idempotent(self):
-        once, removed, _ = convert.transform_map({"map": [{"e": 2}, {"w": 1}]})
-        assert removed == 1
+        once, _, _, _ = convert.transform_map({"map": [{"a": 2}, {"e": 2}]})
+        twice, e2, e1, inserted = convert.transform_map(once)
 
-        twice, removed, inserted = convert.transform_map(once)
-        assert removed == 0
-        assert not inserted
+        assert (e2, e1, inserted) == (0, 0, False)
         assert twice == once
-
-    def test_existing_lv999_e_is_moved_to_front_and_normalized(self):
-        steps = [{"w": 1}, {"lv999_e": 5}, {"e": 2}, {"lv999_e": 1}]
-        data, removed, inserted = convert.transform_map({"map": steps})
-        assert removed == 1
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
-        assert inserted
-
-    def test_with_e_mode_leaves_map_without_e_alone(self):
-        steps = [{"w": 1}, {"e": 1}, {"fighting": 2}]
-        data, removed, inserted = convert.transform_map(
-            {"map": steps}, convert.MODE_WITH_E
-        )
-        assert removed == 0
-        assert not inserted
-        assert data["map"] == steps
-
-    def test_always_mode_adds_lv999_e_even_without_e(self):
-        steps = [{"w": 1}, {"fighting": 2}]
-        data, removed, inserted = convert.transform_map(
-            {"map": steps}, convert.MODE_ALWAYS
-        )
-        assert removed == 0
-        assert inserted
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"fighting": 2}]
-
-    def test_always_mode_still_removes_e2(self):
-        data, removed, inserted = convert.transform_map(
-            {"map": [{"e": 2}, {"w": 1}]}, convert.MODE_ALWAYS
-        )
-        assert removed == 1
-        assert inserted
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}]
 
     def test_start_is_untouched(self):
         start = [{"map": 1}, {"e": 2}]
-        data, _, _ = convert.transform_map({"start": start, "map": [{"e": 2}]})
+        data, _, _, _ = convert.transform_map({"start": start, "map": [{"e": 2}]})
         assert data["start"] == start, "只改 map，start 一个字节都不动"
 
     def test_does_not_mutate_input(self):
-        original = {"map": [{"e": 2}, {"w": 1}]}
+        original = {"map": [{"a": 2}, {"e": 2}]}
         convert.transform_map(original)
-        assert original == {"map": [{"e": 2}, {"w": 1}]}
+        assert original == {"map": [{"a": 2}, {"e": 2}]}
 
 
 class TestOrdering:
@@ -268,7 +290,7 @@ class TestPreview:
         out = capsys.readouterr().out
         assert code == 0
         assert "需要转换 1 个" in out
-        assert "删除 1 条" in out
+        assert "替换 1 条" in out
         assert "没有写盘" in out
         assert source.read_text(encoding="utf-8") == before
         assert not (repo / "map" / "SilverWolfLv999").exists(), "预览不该建输出目录"
@@ -298,7 +320,12 @@ class TestWrite:
 
         output = repo / "map" / "SilverWolfLv999" / "map_1-1_1.json"
         data = read_map(output)
-        assert data["map"] == [{"lv999_e": 1}, {"w": 1}, {"e": 1}]
+        assert data["map"] == [
+            {"lv999_e": 1},
+            {"w": 0.8},
+            {"w": 1},
+            {"lv999_fighting": 1},
+        ]
         assert is_canonical(output.read_text(encoding="utf-8")), (
             "写盘必须走 utils/core/json_io.py（CLAUDE.md R22）"
         )
@@ -319,8 +346,7 @@ class TestWrite:
             "        },\n"
             "        {\n"
             '            "w": 1\n'
-            "        }\n"
-            "    ]"
+            "        }"
         ) in text
         assert '"lv999_e":1' not in text, "冒号后要有空格，与其它键一致"
         assert '{"lv999_e": 1}' not in text, "对象不能内联成一行"
@@ -328,17 +354,13 @@ class TestWrite:
     def test_map_without_e_is_copied_without_lv999_e(self, repo):
         write_map(
             repo / "map" / "HuangQuan" / "map_no_e.json",
-            [{"w": 1}, {"e": 1}, {"fighting": 2}],
+            [{"w": 1}, {"fighting": 2}],
         )
 
         convert.main(BASE + ["--write"], repo_root=repo, ask=boom)
 
         output = repo / "map" / "SilverWolfLv999" / "map_no_e.json"
-        assert read_map(output)["map"] == [
-            {"w": 1},
-            {"e": 1},
-            {"fighting": 2},
-        ]
+        assert read_map(output)["map"] == [{"w": 1}, {"fighting": 2}]
 
     def test_always_mode_adds_lv999_e_to_every_file(self, repo):
         write_map(repo / "map" / "HuangQuan" / "map_1-1_0.json", [{"w": 1}])
@@ -353,7 +375,10 @@ class TestWrite:
             {"lv999_e": 1},
             {"w": 1},
         ]
-        assert read_map(output / "map_1-1_1.json")["map"] == [{"lv999_e": 1}]
+        assert read_map(output / "map_1-1_1.json")["map"] == [
+            {"lv999_e": 1},
+            {"w": 0.8},
+        ]
 
     def test_unchanged_maps_are_copied_too(self, repo):
         write_map(
@@ -454,7 +479,6 @@ class TestRangeExport:
 
     def test_deleted_earlier_file_is_not_recreated(self, repo):
         self._three_maps(repo)
-        # 第一次全量导出，然后模拟用户把第 1 个图删掉
         convert.main(BASE + ["--from", "1", "--write"], repo_root=repo, ask=boom)
         output = repo / "map" / "SilverWolfLv999"
         (output / "map_1-1_0.json").unlink()
