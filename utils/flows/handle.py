@@ -429,9 +429,19 @@ class Handle(metaclass=SingletonMeta):
 
     # --- 移动：委派给 self.movement（见 flows/movement.py）-------------------
 
-    def handle_move(self, value, key, normal_run=False, last_key: str = ""):
+    def handle_move(
+        self,
+        value,
+        key,
+        normal_run=False,
+        last_key: str = "",
+        prev_key: str = "",
+        next_key: str = "",
+    ):
         """移动并处理疾跑。"""
-        return self.movement.handle_move(value, key, normal_run, last_key)
+        return self.movement.handle_move(
+            value, key, normal_run, last_key, prev_key, next_key
+        )
 
     def handle_await(self, value):
         """

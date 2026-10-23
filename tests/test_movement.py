@@ -247,12 +247,8 @@ class TestHandleMove:
 
         movement.handle_move(0.1, "w")  # 不该抛
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="计时循环体内没有任何 time.sleep：疾跑分支触发后（或关闭疾跑时），"
-        "三个 elif 条件全部为假，剩余的等待时间变成 100% CPU 忙等",
-    )
     def test_does_not_burn_cpu_while_waiting(self, movement):
+        """三个分支都不命中时循环里要 sleep，否则 100% CPU 忙等（R2）。"""
         cpu_before = time.process_time()
         movement.handle_move(0.4, "w")
         cpu_used = time.process_time() - cpu_before
@@ -354,6 +350,44 @@ class TestHandleMoveBranches:
         movement.handle_move(0.8, "aa", prev_key="a")
 
         assert calls.fix == [1]
+        assert movement.last_step_run is False
+
+    def test_runs_without_letting_go_between_s_and_ss(
+        self, running_movement, monkeypatch
+    ):
+        movement, calls = running_movement
+        monkeypatch.setattr(
+            movement_module, "time", ScriptedClock([0.0, 0.1, 2.0, 2.31])
+        )
+        movement.handle_move(2.5, "s", next_key="ss")
+
+        assert movement.held_key == "s"
+        assert "s" not in movement.keyboard.released, "s 段结束不能松开方向键"
+        assert "shift" not in movement.keyboard.released, "s 段结束不能松开 Shift"
+        assert movement.last_step_run is True
+
+        monkeypatch.setattr(movement_module, "time", ScriptedClock([0.0, 0.1, 0.9]))
+        movement.handle_move(0.8, "ss", prev_key="s")
+
+        assert movement.held_key is None
+        assert "s" in movement.keyboard.released
+        assert "shift" in movement.keyboard.released
+        assert movement.keyboard.pressed.count("s") == 1, "续走不应再按一次方向键"
+
+    def test_normal_run_walks_without_sprinting_or_busy_waiting(
+        self, running_movement, monkeypatch
+    ):
+        """normal_run 的长距离（>2 秒）没有分支会命中，只能靠循环里的 sleep 等待。"""
+        movement, calls = running_movement
+        clock = ScriptedClock([0.0, 0.1, 2.0, 3.31])
+        monkeypatch.setattr(movement_module, "time", clock)
+
+        movement.handle_move(3.0, "w", normal_run=True)
+
+        assert calls.enable == [], "normal_run 不能开疾跑"
+        assert calls.fix == []
+        assert calls.sprint == []
+        assert 0.005 in clock.slept, "等待期间必须 sleep，不能忙等（R2）"
         assert movement.last_step_run is False
 
     def test_normal_run_says_so(self, movement, monkeypatch, log_records):

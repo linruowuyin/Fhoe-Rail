@@ -21,6 +21,21 @@ from utils.vision.img import Img
 from utils.vision.matcher import Matcher
 
 
+class TestMoveDelegation:
+    def test_forwards_prev_key_to_movement(self, make_instance):
+        calls = []
+        instance = make_instance(
+            Handle,
+            movement=SimpleNamespace(
+                handle_move=lambda *args: calls.append(args)
+            ),
+        )
+
+        instance.handle_move(0.8, "aa", False, "", "a")
+
+        assert calls == [(0.8, "aa", False, "", "a", "")]
+
+
 class TickingTime:
     """每次读时间就前进 1 秒，让带超时的循环能确定性地退出。"""
 
