@@ -1,0 +1,59 @@
+{
+    "name": "酒店梦境-1",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_5.png": 1.5
+        },
+        {
+            "picture\\map_4-3.png": 2
+        },
+        {
+            "picture\\1floor.png": 2
+        },
+        {
+            "picture\\map_4-3_point_1.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "lv999_e": 1
+        },
+        {
+            "w": 0.4
+        },
+        {
+            "await": 0.5
+        },
+        {
+            "d": 1.855
+        },
+        {
+            "f": 15
+        },
+        {
+            "main": 1
+        },
+        {
+            "w": 4.88
+        },
+        {
+            "a": 0.1
+        },
+        {
+            "d": 0.1
+        },
+        {
+            "w": 0.1
+        }
+    ]
+}

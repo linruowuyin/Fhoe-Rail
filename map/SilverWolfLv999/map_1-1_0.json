@@ -1,0 +1,43 @@
+{
+    "name": "主控舱段-1",
+    "author": "lrwy",
+    "start": [
+        {
+            "main": 1
+        },
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_2.png": 1.5
+        },
+        {
+            "picture\\map_index.png": 2
+        },
+        {
+            "picture\\map_index_1.png": 1.5
+        },
+        {
+            "picture\\map_index_2.png": 1.5
+        },
+        {
+            "picture\\map_index_3.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        },
+        {
+            "await": 2
+        },
+        {
+            "main": 1
+        }
+    ],
+    "map": []
+}

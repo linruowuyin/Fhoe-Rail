@@ -1,0 +1,36 @@
+{
+    "name": "影视乐园-1",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_5.png": 1.5
+        },
+        {
+            "picture\\map_4-5.png": 2,
+            "scene": 1
+        },
+        {
+            "picture\\map_4-5_point_9.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "a": 0.3
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}

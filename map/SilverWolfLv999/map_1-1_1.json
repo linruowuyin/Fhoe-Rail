@@ -1,0 +1,59 @@
+{
+    "name": "基座舱段-1",
+    "author": "Starry-Wind,小明,喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_2.png": 1.5
+        },
+        {
+            "picture\\map_1.png": 2
+        },
+        {
+            "picture\\map_1_point.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "lv999_e": 1
+        },
+        {
+            "a": 1.66
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "a": 1.49
+        },
+        {
+            "w": 1.0
+        },
+        {
+            "d": 1.9
+        },
+        {
+            "s": 2.88
+        },
+        {
+            "d": 1.37
+        },
+        {
+            "w": 3.65
+        },
+        {
+            "s": 6.55
+        }
+    ]
+}
