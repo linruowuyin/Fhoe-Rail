@@ -280,6 +280,20 @@ def _cross_day(
     map_instance.process_map(start_map, start_in_mid, dev=dev)
 
 
+def _summary_value(source, *path):
+    """按属性路径读一个统计值；路径上任何一层缺失都返回 None，不抛。
+
+    Handle 拆分后战斗计数在 `handle.combat`、疾跑/卡顿在 `handle.movement`，
+    不能再直接读 `handle.total_fight_cnt` —— 那样会 AttributeError，被外层
+    的 except 吞掉，结束通知就再也不会发出去。
+    """
+    for attr in path:
+        source = getattr(source, attr, None)
+        if source is None:
+            return None
+    return source
+
+
 def run_once(
     start,
     start_in_mid,
@@ -332,21 +346,19 @@ def run_once(
     # 结束通知（含统计摘要）
     try:
         summary = {
-            "总计用时": map_instance.map_statu.total_time
-            if hasattr(map_instance, "map_statu")
-            else None,
-            "战斗次数": map_instance.handle.total_fight_cnt
-            if hasattr(map_instance, "handle")
-            else None,
-            "未战斗次数": map_instance.handle.total_no_fight_cnt
-            if hasattr(map_instance, "handle")
-            else None,
-            "疾跑节约": map_instance.handle.tatol_save_time
-            if hasattr(map_instance, "handle")
-            else None,
-            "系统卡顿": map_instance.handle.time_error_cnt
-            if hasattr(map_instance, "handle")
-            else None,
+            "总计用时": _summary_value(map_instance, "map_statu", "total_time"),
+            "战斗次数": _summary_value(
+                map_instance, "handle", "combat", "total_fight_cnt"
+            ),
+            "未战斗次数": _summary_value(
+                map_instance, "handle", "combat", "total_no_fight_cnt"
+            ),
+            "疾跑节约": _summary_value(
+                map_instance, "handle", "movement", "tatol_save_time"
+            ),
+            "系统卡顿": _summary_value(
+                map_instance, "handle", "movement", "time_error_cnt"
+            ),
         }
         summary = {k: v for k, v in summary.items() if v is not None}
         notify.send_end(summary)
