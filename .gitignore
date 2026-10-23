@@ -193,3 +193,8 @@ test.bat
 # 图片样本收集的产物（开发者模式；见 utils/vision/samples.py）
 # 只忽略这一层子目录 —— picture/ 本身是受版本管理的样板图仓库
 /picture/new_pic/
+
+# WebUI 保存前的时间戳备份（webui/server.py::_backup_file），不入库
+/backups/
+# 旧版 .bakN 备份命名也一并忽略
+*.bak*

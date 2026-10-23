@@ -26,10 +26,12 @@ Fhoe-Rail WebUI 本地服务（零依赖，仅标准库）
 """
 
 import base64
+import datetime
 import json
 import os
 import re
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -553,17 +555,106 @@ def run_image_probe(name, threshold):
     )
 
 
-def _backup_file(path):
-    """原子写入前自动备份，保留最近 3 份 .bakN"""
+#: 备份保留份数：config 10 份、每张地图 5 份。按文件名里的时间戳排序清理。
+CONFIG_BACKUP_KEEP = 10
+MAP_BACKUP_KEEP = 5
+
+
+def _backup_dir_for(path, kind):
+    """备份目录。放仓库根的 backups/ 下，**不要放 map/ 里** —— 校验器会把
+    map/ 的每个子目录都当版本目录扫，备份会被当成地图校验。
+
+    :param kind: "config" 或 "map"
+    """
+    path = os.path.abspath(path)
+    if kind == "map":
+        version_dir = os.path.dirname(path)
+        map_dir = os.path.dirname(version_dir)
+        base = os.path.dirname(map_dir)
+        return os.path.join(base, "backups", "maps", os.path.basename(version_dir))
+    return os.path.join(os.path.dirname(path), "backups", "config")
+
+
+def _backup_file(path, kind):
+    """把 path 复制成 backups/<kind>/<名字>.<YYYYmmdd-HHMMSS>.<ext>。
+
+    同一秒内重名时依次加 `-2`、`-3`；成功后按份数清理旧备份。
+    返回备份文件路径；源文件不存在或复制失败返回 None。
+    """
     if not os.path.exists(path):
+        return None
+    target_dir = _backup_dir_for(path, kind)
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+    except OSError as e:
+        log.warning(f"创建备份目录失败（{target_dir}）: {e}")
+        return None
+
+    stem, ext = os.path.splitext(os.path.basename(path))
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # 序号从 01 开始、始终带上：同一秒内的多份备份按文件名排序仍然等于时间顺序。
+    # 取「当前同一时间戳的最大序号 + 1」，而不是第一个空缺 —— 否则最旧一份被
+    # 清理后，下一次会重新占用 -01，序号永远不会增长。
+    prefix = f"{stem}.{stamp}-"
+    used = []
+    for existing in os.listdir(target_dir):
+        if existing.startswith(prefix) and existing.endswith(ext):
+            middle = existing[len(prefix) : -len(ext)]
+            if middle.isdigit():
+                used.append(int(middle))
+    serial = max(used, default=0) + 1
+    name = f"{stem}.{stamp}-{serial:02d}{ext}"
+
+    target = os.path.join(target_dir, name)
+    try:
+        shutil.copy2(path, target)
+    except OSError as e:
+        log.warning(f"备份失败（{path}）: {e}")
+        return None
+
+    _prune_backups(
+        target_dir,
+        stem,
+        ext,
+        CONFIG_BACKUP_KEEP if kind == "config" else MAP_BACKUP_KEEP,
+    )
+    return target
+
+
+def _prune_backups(directory, stem, ext, keep):
+    """只保留最近 `keep` 份同名前缀的备份（按时间戳文件名排序）。"""
+    try:
+        names = sorted(
+            name
+            for name in os.listdir(directory)
+            if name.startswith(stem + ".") and name.endswith(ext)
+        )
+    except OSError:
         return
-    # 轮转: bak2 -> bak3, bak1 -> bak2, 原文件 -> bak1
-    for i in range(2, 0, -1):
-        src = f"{path}.bak{i}"
-        dst = f"{path}.bak{i + 1}"
-        if os.path.exists(src):
-            os.replace(src, dst)
-    os.replace(path, f"{path}.bak1")
+    for name in names[:-keep] if keep > 0 else names:
+        try:
+            os.remove(os.path.join(directory, name))
+        except OSError:
+            pass
+
+
+def _backup_if_changed(path, data, kind):
+    """内容和备份前文件（按 JSON 语义比较）不同才备份。返回是否有变化。
+
+    WebUI 每次点保存都会走到这里；没有实际改动就不该轮转备份、也不该让
+    三个旧槽位被无意义保存挤掉。
+    """
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            old = json.load(f)
+    except (OSError, ValueError):
+        old = None  # 读不出来（可能被手改坏了）—— 反而更该备份
+    if old == data:
+        return False
+    _backup_file(path, kind)
+    return True
 
 
 def save_config_patch(changed, removed):
@@ -592,12 +683,17 @@ def save_config_patch(changed, removed):
     if unknown:
         raise ValueError("未知配置项：" + ", ".join(unknown))
 
-    # 这是用户主动点保存的一刻，回滚价值最高，仍然留一份备份
-    _backup_file(CONFIG_PATH)
+    # 用户主动点保存的一刻，回滚价值最高；但只有内容真的变了才留备份，
+    # 否则无意义的保存会把保留份数挤光。
+    original = dict(current)
     for key, value in changed.items():
         current[key] = value
     for key in removed:
         current.pop(key, None)
+    if current == original:
+        return len(changed) + len(removed)
+    if os.path.exists(CONFIG_PATH):
+        _backup_file(CONFIG_PATH, "config")
     ConfigurationManager.write_config(CONFIG_PATH, current)
     return len(changed) + len(removed)
 
@@ -1245,7 +1341,7 @@ class Handler(BaseHTTPRequestHandler):
                     data["map"], list
                 ):
                     raise ValueError("start 和 map 必须是数组")
-                _backup_file(fpath)
+                _backup_if_changed(fpath, data, "map")
                 tmp = fpath + ".tmp"
                 with open(tmp, "w", encoding="utf-8") as f:
                     f.write(dumps_map(data))
