@@ -596,6 +596,8 @@ class CalculatedRecorder:
     def __init__(self, allow_buy=True):
         self.calls = []
         self.allow_buy = allow_buy
+        #: 1 号位校验收到的 map_version 列表
+        self.first_role_versions = []
 
     def run_mapload_check(self, *args, **kwargs):
         self.calls.append("run_mapload_check")
@@ -604,8 +606,9 @@ class CalculatedRecorder:
         self.calls.append("allow_buy_item")
         return self.allow_buy
 
-    def first_role_check(self, *args, **kwargs):
+    def first_role_check(self, map_version="", *args, **kwargs):
         self.calls.append("first_role_check")
+        self.first_role_versions.append(map_version)
 
 
 class MouseRecorder:
@@ -904,6 +907,12 @@ class TestHandleStepDispatch:
             "",
             "",
         )
+
+    def test_first_role_check_gets_the_map_version(self, run, operations):
+        """1 号位角色校验要知道当前版本 —— 只有黄泉/银狼版本才强制。"""
+        run({"await": 1})
+
+        assert operations.calculated.first_role_versions == ["default"]
 
     def test_lv999_e_routes_to_role_not_move(self, run):
         result = run({"lv999_e": 1})

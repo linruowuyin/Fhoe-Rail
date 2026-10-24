@@ -320,7 +320,7 @@ def run_once(
     """
     cfg.config_fix()
     log.info(f"config.json:{cfg.load_config()}")
-    log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
+    log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉，银狼LV.999地图1号位为银狼LV.999")
     check_screens()
     window_factory().switch_window()
 

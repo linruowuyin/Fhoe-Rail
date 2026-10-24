@@ -17,6 +17,7 @@ from utils.core.thresholds import (
 )
 from utils.vision.mini_asu import ASU
 from utils.flows.monthly_pass import MonthlyPass
+from utils.flows.roles.first_role import check_first_role
 from utils.drivers.mouse_event import MouseEvent
 from utils.drivers.window import Window
 
@@ -150,12 +151,17 @@ class Calculated:
         else:
             return True
 
-    def first_role_check(self):
+    def first_role_check(self, map_version):
         """
-        按下'1'，确认队伍中的1号位属于跑图角色
+        按下'1'，确认队伍中的1号位属于跑图角色。
+
+        黄泉 / 银狼 LV.999 地图还要求 1 号位是对应角色（见
+        `flows/roles/first_role.py` 的 `REQUIRED_FIRST_ROLE`），不符时抛
+        `CustomException` 终止本轮 —— 对应原 TODO「黄泉情况下必须为黄泉角色」。
         """
         log.info("开始判断1号位")
         image, *_ = self.img.take_screenshot(offset=(1670, 339, -160, -739))
         if color.any_pixel_in_ranges(image, color.FIRST_ROLE_RANGES):
             KeyboardEvent.keyboard_press("1")
             log.info("设置1号位为跑图角色")
+        check_first_role(map_version, self.img)

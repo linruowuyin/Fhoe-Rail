@@ -149,6 +149,16 @@ class TestAllowBuyItem:
 
 
 class TestFirstRoleCheck:
+    @pytest.fixture(autouse=True)
+    def stub_role_check(self, monkeypatch):
+        """1 号位角色校验本身在 test_first_role.py 里测；这里只钉住调用参数。"""
+        self.role_checks = []
+        monkeypatch.setattr(
+            calculated_module,
+            "check_first_role",
+            lambda map_version, img: self.role_checks.append(map_version),
+        )
+
     def test_presses_1_when_slot_matches_colour_range(self, make_instance, monkeypatch):
         image = np.empty((20, 20, 3), dtype=np.uint8)
         image[:, :] = (255, 255, 155)  # RGB，经 RGB2HSV 落在 [28,49,253]-[32,189,255]
@@ -159,7 +169,7 @@ class TestFirstRoleCheck:
         pressed = []
         monkeypatch.setattr(calculated_module, "KeyboardEvent", SimpleNamespace(keyboard_press=lambda key, delay=0: pressed.append(key)))
 
-        computed.first_role_check()
+        computed.first_role_check("default")
 
         assert pressed == ["1"]
 
@@ -172,9 +182,19 @@ class TestFirstRoleCheck:
         pressed = []
         monkeypatch.setattr(calculated_module, "KeyboardEvent", SimpleNamespace(keyboard_press=lambda key, delay=0: pressed.append(key)))
 
-        computed.first_role_check()
+        computed.first_role_check("default")
 
         assert pressed == []
+
+    def test_forwards_the_map_version_to_the_role_check(self, make_instance):
+        computed = make_instance(Calculated)
+        computed.img = SimpleNamespace(
+            take_screenshot=lambda **kwargs: (np.zeros((2, 2, 3), np.uint8), 0, 0, 2, 2)
+        )
+
+        computed.first_role_check("HuangQuan")
+
+        assert self.role_checks == ["HuangQuan"]
 
 
 class TestRunMaploadCheck:

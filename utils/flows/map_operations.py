@@ -414,9 +414,9 @@ class MapOperations:
         self.handle.combat.current_fighting_index = 0
         total_map_count = len(map_data['map'])
 
-        # 1号位相关检测
-        self.calculated.first_role_check()  # 1号位为跑图角色
-        # TODO: 黄泉情况下必须为黄泉角色
+        # 1号位相关检测：先切到 1 号位；黄泉 / 银狼 LV.999 版本还强制校验
+        # 1 号位是对应角色，不符直接终止（原 TODO：黄泉情况下必须为黄泉角色）
+        self.calculated.first_role_check(self.map_info.map_version)
 
         dev_restart = True  # 初始化开发者重开
         self.handle.handle_view_set(0.1)
