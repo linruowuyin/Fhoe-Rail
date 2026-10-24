@@ -426,8 +426,14 @@ class Map:
                     return
 
     def handle_planet(self, key):
-        """点击星球"""
-        if self.check_planet(key):
+        """点击星球。
+
+        `key` 是地图 JSON 里的资源引用（`picture\\orientation_4.png`），星球身份
+        必须过 `assets.asset_id()` 再和 `self.planet` 比 —— 否则「已经是该星球」
+        永远判不出来，会白找一轮点位（2026-10 实机回归）。
+        """
+        planet = assets.asset_id(key)
+        if self.check_planet(planet):
             return
         else:
             self.find_transfer_point(
@@ -456,7 +462,7 @@ class Map:
                     # 这个循环也没有硬上限（只有星轨航图出现或黑屏才退）
                     self.pause_gate()
                     if self.blackscreen.check_blackscreen():
-                        self.planet = assets.asset_id(key)
+                        self.planet = planet
                         break
                     delay_time += 0.1
                     delay_time = max(delay_time, 1)
@@ -468,7 +474,7 @@ class Map:
                     )
                     time.sleep(5)
                 else:
-                    self.planet = assets.asset_id(key)
+                    self.planet = planet
             time.sleep(1.7)
 
     def handle_floor(self, key):

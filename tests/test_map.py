@@ -521,6 +521,22 @@ class TestHandlePlanetClickOffset:
         assert clicks[0]["click_offset"] == (60, 0)
         assert game_map.planet == "orientation_7"
 
+    def test_same_planet_skips_even_with_a_json_reference(self, game_map):
+        """回归：`self.planet` 是 ID，key 是 JSON 引用，必须归一化后再比。
+
+        修复前这里会把 `picture\\orientation_7.png` 和 `orientation_7` 比成不同，
+        于是「已在目标星球」还要白找一轮点位（实机表现为 _move_default 左右拖）。
+        """
+        game_map.planet = "orientation_7"
+        game_map.find_transfer_point = lambda *a, **k: pytest.fail(
+            "已经在目标星球，不该再找点位"
+        )
+        game_map.img = SimpleNamespace(
+            click_target=lambda *a, **k: pytest.fail("已经在目标星球，不该再点击")
+        )
+
+        game_map.handle_planet("picture\\orientation_7.png")
+
     def test_retry_click_also_carries_the_offset(self, game_map, monkeypatch):
         """重试那一击同样要带偏移 —— 只改第一击的话，重试会落回锚点，白点 7 次
         （日志里那次连点 7 次全失败就是这个形状）。"""
