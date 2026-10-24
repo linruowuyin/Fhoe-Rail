@@ -237,6 +237,54 @@ class TestWebuiServerMode:
         assert fhoe_mod._is_webui_server_mode([]) is False
 
 
+class TestElevationArguments:
+    """提权重启必须原样带参数。
+
+    打包版里 `sys.executable == sys.argv[0]`；pyuac 默认用
+    `[sys.executable] + sys.argv`，会把 exe 路径当第一个参数再传一遍，
+    子进程的 `sys.argv[1]` 就成了 exe 路径 —— 所有启动模式退化成默认跑图。
+    """
+
+    def test_frozen_command_does_not_duplicate_the_exe(self, fhoe_mod, monkeypatch):
+        monkeypatch.setattr(fhoe_mod.sys, "frozen", True, raising=False)
+        monkeypatch.setattr(
+            fhoe_mod.sys, "argv", [r"C:\pkg\Fhoe-Rail.exe", "--debug"]
+        )
+
+        assert fhoe_mod._admin_relaunch_command() == [
+            fhoe_mod.sys.executable,
+            "--debug",
+        ]
+
+    def test_source_command_keeps_the_script_path(self, fhoe_mod, monkeypatch):
+        monkeypatch.delattr(fhoe_mod.sys, "frozen", raising=False)
+        monkeypatch.setattr(fhoe_mod.sys, "argv", ["fhoe.py", "--white"])
+
+        command = fhoe_mod._admin_relaunch_command()
+
+        assert command[0] == fhoe_mod.sys.executable
+        assert command[1].endswith("fhoe.py")
+        assert command[2:] == ["--white"]
+
+    def test_ensure_admin_relaunches_only_when_needed(self, fhoe_mod, monkeypatch):
+        calls = []
+        monkeypatch.setattr(fhoe_mod.sys, "platform", "win32")
+        monkeypatch.setattr(fhoe_mod.pyuac, "isUserAdmin", lambda: False)
+        monkeypatch.setattr(
+            fhoe_mod.pyuac,
+            "runAsAdmin",
+            lambda cmdLine=None: calls.append(cmdLine),
+        )
+        monkeypatch.setattr(fhoe_mod.sys, "argv", ["fhoe.py", "--dev"])
+
+        assert fhoe_mod._ensure_admin() is True
+        assert calls and calls[0][-1] == "--dev"
+
+        monkeypatch.setattr(fhoe_mod.pyuac, "isUserAdmin", lambda: True)
+        assert fhoe_mod._ensure_admin() is False
+        assert len(calls) == 1
+
+
 class TestParseRangeArg:
     def test_reads_two_map_ids(self, fhoe_mod, monkeypatch):
         monkeypatch.setattr(

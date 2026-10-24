@@ -2,6 +2,12 @@ name: Generate application
 on:
   workflow_dispatch:
   push:
+    # 分支 push 只在源码/地图有改动时跑；标签 push 不受 paths 过滤（GitHub 规则），
+    # 这里显式列出 tags，任意分支上打的标签都会走完整的测试 + 打包 + 发布。
+    branches:
+      - '**'
+    tags:
+      - '**'
     paths:
       - '**.py'
       - 'map/**.json'
@@ -50,7 +56,15 @@ jobs:
       # 每改一张图还会跟本地冲突。github.event.before 在新分支首次推送时是 40 个 0，
       # 工具会自动退回默认分支的 merge-base。
       - name: Check changed map JSON format
-        run: python tools/format_maps.py --base "${{ github.event.before }}"
+        run: |
+          # 标签 push / 手动触发时 github.event.before 是空或一串 0，拿它当基线
+          # 会把整条分支相对 master 的所有地图都算成「改过」，非 master 分支的
+          # 标签会被一大堆历史格式地图卡红。这里退回到 HEAD~1（本次提交）。
+          $base = "${{ github.event.before }}"
+          if ([string]::IsNullOrWhiteSpace($base) -or $base -match '^0+$') {
+            $base = (git rev-parse "HEAD~1")
+          }
+          python tools/format_maps.py --base $base
 
   build:
     name: Build
@@ -60,6 +74,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'false'
+          # 标签可能打在非 master 分支上；打包要用 git describe 找到当前标签，
+          # 浅克隆在 tag 提交上拿不到完整的 tag 历史
+          fetch-depth: 0
 
       - name: Set up python
         uses: actions/setup-python@v5
@@ -99,6 +116,17 @@ jobs:
           @echo off
           chcp 65001 >nul
           cd /d "%~dp0"
+          REM Self-elevate the whole menu (same trick as the repo-root Fhoe-Rail.bat).
+          REM Otherwise the exe relaunches itself elevated in a new window and can
+          REM lose/duplicate its arguments -- every menu choice then falls back to
+          REM the default run.
+          >nul 2>&1 REG.exe query "HKU\S-1-5-19" || (
+              ECHO Set UAC = CreateObject^("Shell.Application"^) > "%TEMP%\Getadmin.vbs"
+              ECHO UAC.ShellExecute "%~f0", "%1", "", "runas", 1 >> "%TEMP%\Getadmin.vbs"
+              "%TEMP%\Getadmin.vbs"
+              DEL /f /q "%TEMP%\Getadmin.vbs" 2>NUL
+              Exit /b
+          )
           type menu.txt
           echo.
           choice /C 123456 /T 30 /D 2 /N >nul
