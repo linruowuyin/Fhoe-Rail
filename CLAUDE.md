@@ -166,6 +166,7 @@ Fhoe-Rail/
 │  ├─ shutdown.py             #   倒计时关机 GUI（GUI 收在 main() 内，见 §3.5 R16）
 │  ├─ validate_maps.py        #   地图 JSON 校验（CI 门）
 │  ├─ validate_pictures.py    #   图片命名唯一 + 引用可解析（CI 门，R25）
+│  ├─ classify_pictures.py    #   图片按用途分类迁移（dry-run / --write，R25）
 │  ├─ format_maps.py          #   地图写盘格式：检查 / --write 重排（CI 门，R22）
 │  └─ convert_to_webp.py / map_res_list.py / map_simplify.py / test.py
 │
@@ -466,8 +467,16 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
   （大小写不敏感，`new_pic/` 除外）：目录只是分类，名字才是身份
 - `tools/validate_pictures.py` 在 CI 拦两件事：stem 重名、地图 JSON 的图片引用
   解析不到（拼错图片名不用等跑图才炸）。新增图片时名字撞了，改名而不是换目录
-- 物理目录暂时保持平铺：WebUI / 样本收集 / 匹配探针都还在按 `picture/` 平铺扫描，
-  迁目录时一起改成递归或走 `resolve_path`。分类先落在 `Asset.category` 上
+- `picture/` 已按用途分类：`ui/`（界面/战斗/购买/设置/月卡/解谜）、`f_icon/`、
+  `map_ui/`（传送/楼层/返回/索引）、`map_points/<星球>/`、`orientation/`、`role/`；
+  `new_pic/` 是采样产物，不参与分类与扫描。分类规则与迁移在
+  `tools/classify_pictures.py`（改分类时先 dry-run 再 `--write`）
+- **所有扫目录的代码一律走 `assets.iter_picture_files()`**（递归、跳过
+  `new_pic/` 与隐藏目录）：WebUI 图片库/探针、样本收集、黑屏判定、匹配探针
+  都已改。别再写 `os.listdir("picture")`
+- `update_file` 的哈希校验按远程清单里的路径读文件，而它当前**没有调用方**
+  （休眠）。将来重新启用时，要么按新目录重新生成远程清单，要么让它走
+  `resolve_path` 映射
 
 ---
 

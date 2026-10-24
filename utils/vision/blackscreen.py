@@ -38,20 +38,25 @@ class BlackScreen:
         return False
 
     def load_finish_fighting_images(self):
-        """加载所有以 'finish_fighting' 开头的图像"""
+        """加载所有以 'finish_fighting' 开头的图像（递归，跳过采样目录）。"""
         return [
-            f for f in os.listdir(self.image_folder) if f.startswith("finish_fighting")
+            path
+            for path in assets.iter_picture_files(self.image_folder)
+            if os.path.basename(path).startswith("finish_fighting")
         ]
 
     def match_finish_fighting_images(self, finish_fighting_images, max_attempts=3):
         """尝试匹配 'finish_fighting' 图像"""
         attempts = 0
         while attempts < max_attempts:
-            for image_name in finish_fighting_images:
-                target = Img.get_img(os.path.join(self.image_folder, image_name))
+            for image_path in finish_fighting_images:
+                target = Img.get_img(image_path)
                 result = self.img.scan_screenshot(target)
                 if result and result["max_val"] > FINISH_FIGHTING:
-                    log.info(f"匹配到{image_name}，匹配度{result['max_val']:.3f}")
+                    log.info(
+                        f"匹配到{os.path.basename(image_path)}，"
+                        f"匹配度{result['max_val']:.3f}"
+                    )
                     return False  # 如果匹配度超过 FINISH_FIGHTING，表示不是黑屏，返回False
             attempts += 1
             time.sleep(2)  # 等待2秒再尝试匹配

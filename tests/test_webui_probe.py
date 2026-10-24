@@ -267,6 +267,21 @@ class TestPictureFiles:
 
         assert server.list_probe_images() == []
 
+    def test_includes_subdirectories(self, tmp_path, monkeypatch):
+        (tmp_path / "map_ui").mkdir()
+        (tmp_path / "map_ui" / "transfer.webp").write_bytes(b"")
+        monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path))
+
+        assert server.list_probe_images("trans") == ["transfer.webp"]
+
+    def test_sample_output_directory_is_ignored(self, tmp_path, monkeypatch):
+        folder = tmp_path / "new_pic" / "20261024"
+        folder.mkdir(parents=True)
+        (folder / "transfer.webp").write_bytes(b"")
+        monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path))
+
+        assert server.list_probe_images() == []
+
     def test_missing_directory_yields_nothing(self, tmp_path, monkeypatch):
         monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path / "nope"))
 

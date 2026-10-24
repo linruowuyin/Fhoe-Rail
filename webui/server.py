@@ -477,23 +477,29 @@ def dev_mode_enabled():
 
 
 def picture_files():
-    """`picture/` 下的图片：`{不带后缀的名字: 实际文件名}`。
+    """`picture/` 下的图片（递归，跳过 `new_pic/`）：`{不带后缀的名字: 实际文件名}`。
 
     同名多后缀时只留优先级最高的那个（webp > png > jpg），与图库自己的查找顺序一致。
-    返回值里的文件名可以直接喂给 `/api/picture?p=`。
+    返回值里的文件名可以直接喂给 `/api/picture?p=` —— 这个 API 只认名字不认目录，
+    与地图 JSON 里的资源 ID 是同一套：目录只是分类（R25）。
     """
+    from utils.vision import assets as asset_registry
+
+    best = {}
     try:
-        entries = os.listdir(PICTURE_DIR)
+        for path in asset_registry.iter_picture_files(PICTURE_DIR):
+            entry = os.path.basename(path)
+            base, ext = os.path.splitext(entry)
+            ext = ext.lower().lstrip(".")
+            if ext not in _PROBE_EXT_PRIORITY or not base:
+                continue
+            if (
+                base not in best
+                or _PROBE_EXT_PRIORITY[ext] < _PROBE_EXT_PRIORITY[best[base][1]]
+            ):
+                best[base] = (entry, ext)
     except OSError:
         return {}
-    best = {}
-    for entry in entries:
-        base, ext = os.path.splitext(entry)
-        ext = ext.lower().lstrip(".")
-        if ext not in _PROBE_EXT_PRIORITY or not base:
-            continue
-        if base not in best or _PROBE_EXT_PRIORITY[ext] < _PROBE_EXT_PRIORITY[best[base][1]]:
-            best[base] = (entry, ext)
     return {base: filename for base, (filename, _) in best.items()}
 
 
@@ -522,6 +528,7 @@ def run_image_probe(name, threshold):
     # 重活 import 一律放函数里 —— 这个文件的启动契约是「只依赖标准库」
     from utils.drivers.screen import ScreenSource
     from utils.drivers.window import Window
+    from utils.vision import assets as asset_registry
     from utils.vision import images as image_library
     from utils.vision import probe as probe_module
 
@@ -532,7 +539,12 @@ def run_image_probe(name, threshold):
     if not 0.0 <= threshold <= 1.0:
         raise ValueError("阈值应落在 0~1")
 
-    template = image_library.get_img(os.path.join(PICTURE_DIR, name))
+    # 与 /api/picture 一样按 stem 查递归索引（图片可能在任何子目录里，R25）
+    index, _ = asset_registry.scan_picture_files(PICTURE_DIR)
+    template_path = index.get(name.rsplit(".", 1)[0].lower())
+    if not template_path:
+        raise FileNotFoundError(f"图片不存在：{name}")
+    template = image_library.get_img(template_path)
     if template is None:
         raise FileNotFoundError(f"图片读不出来：{name}")
 
@@ -1205,6 +1217,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/picture":
                 from urllib.parse import parse_qs
 
+                from utils.vision import assets as asset_registry
+
                 qs = parse_qs(parsed.query)
                 p = qs.get("p", [""])[0]
                 if not p or "/" in p or "\\" in p or ".." in p:
@@ -1213,13 +1227,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not re.match(r"^[\w\-]+\.(png|jpg|jpeg|webp|gif)$", p, re.I):
                     self._send(400, {"error": "bad path"})
                     return
-                base = p.rsplit(".", 1)[0]
-                found = None
-                for ext in ("webp", "png", "jpg", "jpeg"):
-                    cand = os.path.join(BASE_DIR, "picture", base + "." + ext)
-                    if os.path.exists(cand):
-                        found = cand
-                        break
+                # 按 stem 查递归索引：图片分目录后仍然只凭名字取（R25）
+                stem = p.rsplit(".", 1)[0].lower()
+                try:
+                    index, _ = asset_registry.scan_picture_files(PICTURE_DIR)
+                except OSError:
+                    index = {}
+                found = index.get(stem)
                 if not found:
                     self._send(404, {"error": "not found"})
                     return

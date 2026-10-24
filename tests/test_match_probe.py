@@ -96,6 +96,18 @@ class TestSuggestNames:
 
         assert match_probe.suggest_names("a", str(tmp_path), limit=2) == ["a1", "a2"]
 
+    def test_finds_images_in_subdirectories(self, tmp_path):
+        (tmp_path / "map_ui").mkdir()
+        (tmp_path / "map_ui" / "transfer.webp").write_bytes(b"")
+
+        assert match_probe.suggest_names("trans", str(tmp_path)) == ["transfer"]
+
+    def test_sample_output_directory_is_ignored(self, tmp_path):
+        (tmp_path / "new_pic" / "20261024").mkdir(parents=True)
+        (tmp_path / "new_pic" / "20261024" / "transfer.webp").write_bytes(b"")
+
+        assert match_probe.suggest_names("trans", str(tmp_path)) == []
+
     def test_missing_directory_yields_nothing(self, tmp_path):
         assert match_probe.suggest_names("x", str(tmp_path / "nope")) == []
 

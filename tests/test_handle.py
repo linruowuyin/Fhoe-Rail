@@ -17,6 +17,7 @@ import utils.flows.handle as handle_module
 from utils.core.exceptions import CustomException
 from utils.flows.combat import Combat
 from utils.flows.handle import Handle
+from utils.vision import assets
 from utils.vision.img import Img
 from utils.vision.matcher import Matcher
 
@@ -547,7 +548,7 @@ class TestTechniquePointsDialog:
 
         combat.technique_points_dialog()
 
-        assert combat.mouse.clicks == ["./picture/cancel.png"]
+        assert combat.mouse.clicks == [assets.path("cancel")]
 
     def test_taps_e_again_after_buying(self, combat, monkeypatch):
         combat.cfg = SimpleNamespace(config_file={"allow_fight_e_buy_prop": True})

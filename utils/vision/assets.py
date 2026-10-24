@@ -96,98 +96,98 @@ class Asset(NamedTuple):
 ASSETS = {
     # --- 主界面 / 加载 / 脱离战斗 -----------------------------------------
     "finish_fighting": Asset(
-        "./picture/finish_fighting.png", CATEGORY_MAIN_UI, "主界面判定（Img.main_ui）"
+        "./picture/ui/finish_fighting.webp", CATEGORY_MAIN_UI, "主界面判定（Img.main_ui）"
     ),
-    "finish_fighting2": Asset("./picture/finish_fighting2.png", CATEGORY_MAIN_UI),
+    "finish_fighting2": Asset("./picture/ui/finish_fighting2.webp", CATEGORY_MAIN_UI),
     "finish_fighting2_1": Asset(
-        "./picture/finish_fighting2_1.png", CATEGORY_MAIN_UI
+        "./picture/ui/finish_fighting2_1.webp", CATEGORY_MAIN_UI
     ),
     "finish_fighting2_2": Asset(
-        "./picture/finish_fighting2_2.png", CATEGORY_MAIN_UI
+        "./picture/ui/finish_fighting2_2.webp", CATEGORY_MAIN_UI
     ),
-    "finish_fighting3": Asset("./picture/finish_fighting3.png", CATEGORY_MAIN_UI),
-    "finish_fighting4": Asset("./picture/finish_fighting4.png", CATEGORY_MAIN_UI),
-    "finish_fighting5": Asset("./picture/finish_fighting5.png", CATEGORY_MAIN_UI),
-    "doubt": Asset("./picture/doubt.png", CATEGORY_MAIN_UI, "疑问气泡（附近有敌人）"),
-    "warn": Asset("./picture/warn.png", CATEGORY_MAIN_UI),
+    "finish_fighting3": Asset("./picture/ui/finish_fighting3.webp", CATEGORY_MAIN_UI),
+    "finish_fighting4": Asset("./picture/ui/finish_fighting4.webp", CATEGORY_MAIN_UI),
+    "finish_fighting5": Asset("./picture/ui/finish_fighting5.webp", CATEGORY_MAIN_UI),
+    "doubt": Asset("./picture/ui/doubt.webp", CATEGORY_MAIN_UI, "疑问气泡（附近有敌人）"),
+    "warn": Asset("./picture/ui/warn.webp", CATEGORY_MAIN_UI),
     "battle_esc_check": Asset(
-        "./picture/battle_esc_check.png", CATEGORY_MAIN_UI, "战斗中按 ESC 的确认画面"
+        "./picture/ui/battle_esc_check.webp", CATEGORY_MAIN_UI, "战斗中按 ESC 的确认画面"
     ),
-    "switch_run": Asset("./picture/switch_run.png", CATEGORY_MAIN_UI, "疾跑图标"),
-    "map_load": Asset("./picture/map_load.png", CATEGORY_MAIN_UI, "地图加载中"),
-    "round": Asset("./picture/round.png", CATEGORY_MAIN_UI, "必定不在战斗中"),
+    "switch_run": Asset("./picture/ui/switch_run.webp", CATEGORY_MAIN_UI, "疾跑图标"),
+    "map_load": Asset("./picture/map_ui/map_load.webp", CATEGORY_MAIN_UI, "地图加载中"),
+    "round": Asset("./picture/ui/round.webp", CATEGORY_MAIN_UI, "必定不在战斗中"),
     # --- 战斗 --------------------------------------------------------------
-    "auto": Asset("./picture/auto.png", CATEGORY_COMBAT, "自动战斗已开启"),
-    "not_auto": Asset("./picture/not_auto.png", CATEGORY_COMBAT, "自动战斗未开启"),
+    "auto": Asset("./picture/ui/auto.webp", CATEGORY_COMBAT, "自动战斗已开启"),
+    "not_auto": Asset("./picture/ui/not_auto.webp", CATEGORY_COMBAT, "自动战斗未开启"),
     "continue_fighting": Asset(
-        "./picture/continue_fighting.png", CATEGORY_COMBAT, "继续战斗按钮"
+        "./picture/ui/continue_fighting.webp", CATEGORY_COMBAT, "继续战斗按钮"
     ),
-    "defeat": Asset("./picture/defeat.png", CATEGORY_COMBAT),
+    "defeat": Asset("./picture/ui/defeat.webp", CATEGORY_COMBAT),
     # --- 购买 / 零食 / 弹窗 ------------------------------------------------
-    "eat": Asset("./picture/eat.png", CATEGORY_PURCHASE, "秘技点不足对话框"),
-    "qiqiao": Asset("./picture/qiqiao.png", CATEGORY_PURCHASE, "奇巧零食图标"),
-    "qiqiao_lab": Asset("./picture/qiqiao_lab.png", CATEGORY_PURCHASE),
-    "cancel": Asset("./picture/cancel.png", CATEGORY_PURCHASE),
-    "round_disable": Asset("./picture/round_disable.png", CATEGORY_PURCHASE, "无法购买"),
-    "max": Asset("./picture/max.png", CATEGORY_PURCHASE, "购买数量拉满"),
+    "eat": Asset("./picture/ui/eat.webp", CATEGORY_PURCHASE, "秘技点不足对话框"),
+    "qiqiao": Asset("./picture/ui/qiqiao.webp", CATEGORY_PURCHASE, "奇巧零食图标"),
+    "qiqiao_lab": Asset("./picture/ui/qiqiao_lab.webp", CATEGORY_PURCHASE),
+    "cancel": Asset("./picture/ui/cancel.webp", CATEGORY_PURCHASE),
+    "round_disable": Asset("./picture/ui/round_disable.webp", CATEGORY_PURCHASE, "无法购买"),
+    "max": Asset("./picture/ui/max.webp", CATEGORY_PURCHASE, "购买数量拉满"),
     # --- F 键交互 ----------------------------------------------------------
-    "sw": Asset("./picture/sw.png", CATEGORY_F_ICON, "F 图标（通用）"),
-    "f_teleport": Asset("./picture/F_Teleport.png", CATEGORY_F_ICON),
-    "f_space_anchor": Asset("./picture/F_SpaceAnchor.png", CATEGORY_F_ICON),
-    "f_dream_module": Asset("./picture/F_DreamModule.png", CATEGORY_F_ICON),
-    "f_dream_pop": Asset("./picture/F_DreamPop.png", CATEGORY_F_ICON),
-    "f_dream_scape": Asset("./picture/F_DreamScape.png", CATEGORY_F_ICON),
-    "f_listen": Asset("./picture/F_Listen.png", CATEGORY_F_ICON),
-    "f_goto": Asset("./picture/F_Goto.png", CATEGORY_F_ICON),
+    "sw": Asset("./picture/f_icon/sw.webp", CATEGORY_F_ICON, "F 图标（通用）"),
+    "f_teleport": Asset("./picture/f_icon/F_Teleport.webp", CATEGORY_F_ICON),
+    "f_space_anchor": Asset("./picture/f_icon/F_SpaceAnchor.webp", CATEGORY_F_ICON),
+    "f_dream_module": Asset("./picture/f_icon/F_DreamModule.webp", CATEGORY_F_ICON),
+    "f_dream_pop": Asset("./picture/f_icon/F_DreamPop.webp", CATEGORY_F_ICON),
+    "f_dream_scape": Asset("./picture/f_icon/F_DreamScape.webp", CATEGORY_F_ICON),
+    "f_listen": Asset("./picture/f_icon/F_Listen.webp", CATEGORY_F_ICON),
+    "f_goto": Asset("./picture/f_icon/F_Goto.webp", CATEGORY_F_ICON),
     # --- 地图 / 星轨航图 ---------------------------------------------------
-    "transfer": Asset("./picture/transfer.png", CATEGORY_MAP_UI, "传送锚点"),
-    "contraction": Asset("./picture/contraction.png", CATEGORY_MAP_UI, "地图收缩图标"),
-    "map_back": Asset("./picture/map_back.png", CATEGORY_MAP_UI, "地图返回按钮"),
-    "kaituoli_1": Asset("./picture/kaituoli_1.png", CATEGORY_MAP_UI, "星轨航图"),
+    "transfer": Asset("./picture/map_ui/transfer.webp", CATEGORY_MAP_UI, "传送锚点"),
+    "contraction": Asset("./picture/map_ui/contraction.webp", CATEGORY_MAP_UI, "地图收缩图标"),
+    "map_back": Asset("./picture/map_ui/map_back.webp", CATEGORY_MAP_UI, "地图返回按钮"),
+    "kaituoli_1": Asset("./picture/map_ui/kaituoli_1.webp", CATEGORY_MAP_UI, "星轨航图"),
     # --- 视角 / 小地图 -----------------------------------------------------
     "screenshot_arrow": Asset(
-        "./picture/screenshot_arrow.png", CATEGORY_ORIENTATION, "视角校准箭头"
+        "./picture/orientation/screenshot_arrow.webp", CATEGORY_ORIENTATION, "视角校准箭头"
     ),
-    "orientation_2": Asset("./picture/orientation_2.png", CATEGORY_ORIENTATION),
-    "orientation_3": Asset("./picture/orientation_3.png", CATEGORY_ORIENTATION),
-    "orientation_4": Asset("./picture/orientation_4.png", CATEGORY_ORIENTATION),
-    "orientation_5": Asset("./picture/orientation_5.png", CATEGORY_ORIENTATION),
-    "orientation_6": Asset("./picture/orientation_6.png", CATEGORY_ORIENTATION),
-    "orientation_7": Asset("./picture/orientation_7.png", CATEGORY_ORIENTATION),
-    "loc_arrow": Asset("./picture/loc_arrow.jpg", CATEGORY_ORIENTATION, "小地图箭头"),
+    "orientation_2": Asset("./picture/orientation/orientation_2.webp", CATEGORY_ORIENTATION),
+    "orientation_3": Asset("./picture/orientation/orientation_3.webp", CATEGORY_ORIENTATION),
+    "orientation_4": Asset("./picture/orientation/orientation_4.webp", CATEGORY_ORIENTATION),
+    "orientation_5": Asset("./picture/orientation/orientation_5.webp", CATEGORY_ORIENTATION),
+    "orientation_6": Asset("./picture/orientation/orientation_6.webp", CATEGORY_ORIENTATION),
+    "orientation_7": Asset("./picture/orientation/orientation_7.webp", CATEGORY_ORIENTATION),
+    "loc_arrow": Asset("./picture/orientation/loc_arrow.webp", CATEGORY_ORIENTATION, "小地图箭头"),
     # --- 设置菜单 ----------------------------------------------------------
-    "setting_icon": Asset("./picture/setting_icon.png", CATEGORY_SETTING),
-    "setting_other": Asset("./picture/setting_other.png", CATEGORY_SETTING),
-    "setting_yes": Asset("./picture/setting_yes.png", CATEGORY_SETTING),
+    "setting_icon": Asset("./picture/ui/setting_icon.webp", CATEGORY_SETTING),
+    "setting_other": Asset("./picture/ui/setting_other.webp", CATEGORY_SETTING),
+    "setting_yes": Asset("./picture/ui/setting_yes.webp", CATEGORY_SETTING),
     "auto_use_technique_consumable": Asset(
-        "./picture/auto_use_technique_consumable.png", CATEGORY_SETTING
+        "./picture/ui/auto_use_technique_consumable.webp", CATEGORY_SETTING
     ),
     # --- 月卡 --------------------------------------------------------------
-    "monthly_pass_pic": Asset("./picture/monthly_pass_pic.png", CATEGORY_MONTHLY_PASS),
+    "monthly_pass_pic": Asset("./picture/ui/monthly_pass_pic.webp", CATEGORY_MONTHLY_PASS),
     "monthly_pass_pic_2": Asset(
-        "./picture/monthly_pass_pic_2.png", CATEGORY_MONTHLY_PASS
+        "./picture/ui/monthly_pass_pic_2.webp", CATEGORY_MONTHLY_PASS
     ),
     "monthly_pass_pic_3": Asset(
-        "./picture/monthly_pass_pic_3.png", CATEGORY_MONTHLY_PASS
+        "./picture/ui/monthly_pass_pic_3.webp", CATEGORY_MONTHLY_PASS
     ),
     # --- 角色 --------------------------------------------------------------
     "silver_wolf_lv999_e": Asset(
-        "./picture/silver_wolf_lv999_e.png", CATEGORY_ROLE, "银狼 LV.999 秘技状态"
+        "./picture/role/silver_wolf_lv999_e.png", CATEGORY_ROLE, "银狼 LV.999 秘技状态"
     ),
     "role_acheron": Asset(
-        "./picture/roles_pic/role_acheron.png", CATEGORY_ROLE, "1 号位黄泉头像"
+        "./picture/role/role_acheron.png", CATEGORY_ROLE, "1 号位黄泉头像"
     ),
     "role_silver_wolf_lv999": Asset(
-        "./picture/roles_pic/role_silver_wolf_lv999.png",
+        "./picture/role/role_silver_wolf_lv999.png",
         CATEGORY_ROLE,
         "1 号位银狼 LV.999 头像",
     ),
     # --- 解谜 --------------------------------------------------------------
     "puzzle_exit_prompt": Asset(
-        "./picture/puzzle_exit_prompt.png", CATEGORY_PUZZLE, "放弃游玩？提示"
+        "./picture/ui/puzzle_exit_prompt.png", CATEGORY_PUZZLE, "放弃游玩？提示"
     ),
     "puzzle_exit_confirm": Asset(
-        "./picture/puzzle_exit_confirm.png", CATEGORY_PUZZLE, "放弃游玩确认按钮"
+        "./picture/ui/puzzle_exit_confirm.png", CATEGORY_PUZZLE, "放弃游玩确认按钮"
     ),
 }
 
@@ -206,6 +206,25 @@ def path(key):
         ) from None
 
 
+def iter_picture_files(root=None):
+    """递归列出图片文件路径（跳过 `new_pic/` 与隐藏目录），顺序稳定。
+
+    所有"扫目录"的工具（WebUI 图片库、样本收集、匹配探针、黑屏判定）都从这里
+    拿列表，别各自 `os.listdir` —— 目录分类以后，平铺扫描会漏掉子目录。
+    """
+    root = root or PICTURE_ROOT
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(
+            name
+            for name in dirnames
+            if name not in SCAN_SKIP_DIRS and not name.startswith(".")
+        )
+        for filename in sorted(filenames):
+            ext = os.path.splitext(filename)[1].lower().lstrip(".")
+            if ext in SCAN_EXT_PRIORITY:
+                yield os.path.join(dirpath, filename)
+
+
 def scan_picture_files(root=None):
     """扫描图片目录，返回 `(索引, 重名表)`。
 
@@ -220,23 +239,12 @@ def scan_picture_files(root=None):
     `new_pic/` 跳过：采样产物按日期分目录，重名是设计使然。
     用 `os.walk` 且不缓存：调用方（`images`）负责缓存与清理（R15）。
     """
-    root = root or PICTURE_ROOT
     candidates = {}
-    for dirpath, dirnames, filenames in os.walk(root):
-        # 排掉跳过目录与隐藏目录，并排序保证结果稳定（重名时路径可复现）
-        dirnames[:] = sorted(
-            name
-            for name in dirnames
-            if name not in SCAN_SKIP_DIRS and not name.startswith(".")
+    for path in iter_picture_files(root):
+        stem, ext = os.path.splitext(os.path.basename(path))
+        candidates.setdefault(stem.lower(), []).append(
+            (SCAN_EXT_PRIORITY[ext.lower().lstrip(".")], path)
         )
-        for filename in sorted(filenames):
-            stem, ext = os.path.splitext(filename)
-            ext = ext.lower().lstrip(".")
-            if not stem or ext not in SCAN_EXT_PRIORITY:
-                continue
-            candidates.setdefault(stem.lower(), []).append(
-                (SCAN_EXT_PRIORITY[ext], os.path.join(dirpath, filename))
-            )
 
     index = {}
     duplicates = {}

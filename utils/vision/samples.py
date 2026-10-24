@@ -52,6 +52,7 @@ from utils.config.config import ConfigurationManager
 from utils.core.log import log
 from utils.core.match_offsets import padded_offset_for_box
 from utils.core.thresholds import DEFAULT_MATCH
+from utils.vision import assets
 
 #: 样板图目录与产物目录（相对仓库根，与代码里其它地方用 `picture/` 的方式一致）
 PICTURE_DIR = "picture"
@@ -408,15 +409,13 @@ def _write_sample_images(paths, frame, region, box):
 
 
 def _picture_names():
-    """`picture/` 下所有图片的文件名（不含 `new_pic/` 自己）。"""
-    try:
-        entries = os.listdir(PICTURE_DIR)
-    except OSError:
-        return []
+    """`picture/` 下所有图片的文件名（递归，跳过 `new_pic/` 自己）。
+
+    清单按**文件名**记（`_seen.json` 与样本都按 basename 命名）—— 文件名全局
+    唯一是 R25 的约定，所以分目录后不会串。
+    """
     return sorted(
-        entry
-        for entry in entries
-        if os.path.splitext(entry)[1].lower() in _PICTURE_EXTS
+        os.path.basename(path) for path in assets.iter_picture_files(PICTURE_DIR)
     )
 
 

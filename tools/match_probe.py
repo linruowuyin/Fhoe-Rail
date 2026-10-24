@@ -42,6 +42,7 @@ from utils.drivers.screen import (
     ScreenSource,
 )
 from utils.drivers.window import Window
+from utils.vision import assets as asset_registry
 from utils.vision import images as image_library
 from utils.vision import probe, viewer
 
@@ -118,15 +119,11 @@ def suggest_names(fragment, picture_dir=PICTURE_DIR, limit=None):
 
     :param limit: None 表示不截断；调用方按自己的展示上限截
     """
-    try:
-        entries = os.listdir(picture_dir)
-    except OSError:
-        return []
     fragment = fragment.lower()
     hits = {
-        os.path.splitext(entry)[0]
-        for entry in entries
-        if fragment in os.path.splitext(entry)[0].lower()
+        os.path.splitext(os.path.basename(path))[0]
+        for path in asset_registry.iter_picture_files(picture_dir)
+        if fragment in os.path.splitext(os.path.basename(path))[0].lower()
     }
     hits = sorted(hits)
     return hits if limit is None else hits[:limit]

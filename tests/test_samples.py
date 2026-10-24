@@ -122,6 +122,17 @@ class TestEnabled:
         assert samples.enabled() is False
 
 
+class TestPictureNames:
+    def test_lists_recursively_and_skips_new_pic(self, picture_dir):
+        (picture_dir / "ui").mkdir()
+        (picture_dir / "ui" / "gamma.webp").write_bytes(b"")
+        folder = picture_dir / "new_pic" / "20261024"
+        folder.mkdir(parents=True)
+        (folder / "delta.webp").write_bytes(b"")
+
+        assert samples._picture_names() == ["alpha.webp", "beta.webp", "gamma.webp"]
+
+
 class TestWhenDisabled:
     """开关关着时一个字节都不该写。"""
 
