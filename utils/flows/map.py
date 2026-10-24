@@ -28,6 +28,21 @@ from utils.core.thresholds import (
 )
 
 
+#: 星球识别用的**地图 JSON 步骤键**（资源 ID，不是文件路径）。
+#: `start` 里出现这些键时，说明这张图要先切到对应星球；`handle_orientation` 就是拿
+#: 地图数据里的字符串和这张表比对。后缀写 `.png` 是地图数据的历史约定（磁盘上
+#: 早已是 `.webp`），**不能换成 `assets.path()`** —— 那是给加载图片用的物理路径，
+#: 字符串对不上会让 planet_dict 变空（R25 的数据契约例外，tests/test_assets.py 已登记）。
+PLANET_STEP_IDS = [
+    "picture\\orientation_2.png",
+    "picture\\orientation_3.png",
+    "picture\\orientation_4.png",
+    "picture\\orientation_5.png",
+    "picture\\orientation_6.png",
+    "picture\\orientation_7.png",
+]
+
+
 class Map:
     def __init__(self):
         self.cfg = ConfigurationManager()
@@ -51,14 +66,7 @@ class Map:
         self.allowlist_mode = False
         self.map_statu_minimize = False  # 地图最小化
         self.planet = None  # 当前星球初始化
-        self.planet_png_lst = [
-            assets.path("orientation_2"),
-            assets.path("orientation_3"),
-            assets.path("orientation_4"),
-            assets.path("orientation_5"),
-            assets.path("orientation_6"),
-            assets.path("orientation_7"),
-        ]
+        self.planet_png_lst = PLANET_STEP_IDS
 
     def open_map(self):
         """

@@ -180,6 +180,59 @@ class TestCheckPlanet:
         assert game_map.check_planet("2") is False
 
 
+class TestHandleOrientation:
+    """星球判定用的是地图 JSON 的步骤键，不是图片物理路径。
+
+    2026-10 的回归：把 `planet_png_lst` 换成 `assets.path()` 后，JSON 里的
+    `picture\\orientation_2.png` 与物理路径 `./picture/orientation/orientation_2.webp`
+    对不上，planet_dict 为空 → `IndexError: list index out of range`。
+    """
+
+    def test_planet_ids_match_the_map_json_convention(self):
+        assert map_module.PLANET_STEP_IDS == [
+            "picture\\orientation_2.png",
+            "picture\\orientation_3.png",
+            "picture\\orientation_4.png",
+            "picture\\orientation_5.png",
+            "picture\\orientation_6.png",
+            "picture\\orientation_7.png",
+        ]
+
+    def test_orientation_finds_the_planet_from_start_keys(self, game_map):
+        game_map.planet_png_lst = map_module.PLANET_STEP_IDS
+        game_map.planet = "picture\\orientation_2.png"
+        map_data = {
+            "start": [
+                {"picture\\orientation_1.png": 1},
+                {"picture\\orientation_2.png": 1},
+            ]
+        }
+
+        # 命中已在该星球时直接返回；空 planet_dict 会在这里抛 IndexError
+        game_map.handle_orientation("picture\\orientation_1.png", map_data)
+
+    def test_every_map_that_opens_the_star_map_has_a_planet_key(self, repo_root):
+        """全库核对 `handle_orientation` 的隐含前提：有 orientation_1 就必须有 2..7 之一。"""
+        import json
+        from pathlib import Path
+
+        checked = 0
+        for path in Path("map").glob("*/*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            keys = {
+                key
+                for item in data.get("start", [])
+                if isinstance(item, dict)
+                for key in item
+            }
+            if "picture\\orientation_1.png" not in keys:
+                continue
+            checked += 1
+            assert keys & set(map_module.PLANET_STEP_IDS), f"{path} 缺星球判定键"
+
+        assert checked > 100, "地图目录为空或路径不对"
+
+
 class TestResetRoundCount:
     def test_zeroes_per_round_handle_counters(self, game_map):
         reset_calls = []

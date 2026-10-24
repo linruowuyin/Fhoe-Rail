@@ -35,6 +35,8 @@ ALLOWED_LITERALS = {
     "utils/core/schema.py": 3,
     # 地图 JSON 步骤键的分发（数据里的键，不是代码资源）。
     "utils/flows/map_operations.py": 11,
+    # 星球判定用的地图 JSON 步骤键（资源 ID，不是路径；见 map.PLANET_STEP_IDS）。
+    "utils/flows/map.py": 6,
     # 调试参数 `use_sample_image` 的历史路径，文件已不存在；只影响调试分支。
     "utils/vision/get_angle.py": 1,
     # 报告文案里的字符串，不是路径。
