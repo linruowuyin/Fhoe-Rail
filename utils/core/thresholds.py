@@ -152,8 +152,11 @@ DREAM_BUILD = 0.90
 #: `setting_icon.png`
 SETTING_ICON = 0.98
 
-#: `setting_other.png`
-SETTING_OPTION = 0.98
+#: `setting_other.png`：设置菜单里的「其他设置」页签。
+#: 2026-10-24 实机探针：正样本（页签选中/高亮态）0.973，次优峰值 0.823。
+#: 原来的 0.98 会把这一帧判成「没找到」，表现为设置流程静默等 30 秒超时；
+#: 取 0.94，正/负两侧余量都 ≥0.03。
+SETTING_OPTION = 0.94
 
 #: `auto_use_technique_consumable.png` 开关
 TECHNIQUE_CONSUMABLE = 0.98
