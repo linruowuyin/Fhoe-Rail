@@ -50,11 +50,29 @@ for _stream in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError, OSError):
         pass
 
+def _frozen_base_dir(executable):
+    """打包环境的项目根：从 exe 所在目录向上找同时含 `map/` 和 `webui/` 的目录。
+
+    兼容两种布局：
+      * 单入口：`<根>/Fhoe-Rail.exe --webui-server`（exe 就在根下）
+      * 旧版独立服务：`<根>/webui/webui-server/webui-server.exe`
+    找不到标记目录时退回 exe 所在目录（由调用方承担后果）。
+    """
+    candidate = os.path.dirname(os.path.abspath(executable))
+    for _ in range(4):
+        if os.path.isdir(os.path.join(candidate, "map")) and os.path.isdir(
+            os.path.join(candidate, "webui")
+        ):
+            return candidate
+        parent = os.path.dirname(candidate)
+        if parent == candidate:
+            break
+        candidate = parent
+    return os.path.dirname(os.path.abspath(executable))
+
+
 if getattr(sys, "frozen", False):
-    # PyInstaller 打包环境: exe 位于 <项目根>/webui/webui-server/ 下,向上三级到项目根
-    BASE_DIR = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(sys.executable)))
-    )
+    BASE_DIR = _frozen_base_dir(sys.executable)
 else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:

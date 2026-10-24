@@ -228,6 +228,15 @@ class TestRunOnceBasics:
         assert ("process_map", "1-1_0") not in order
 
 
+class TestWebuiServerMode:
+    def test_detects_the_single_entry_flag(self, fhoe_mod):
+        assert fhoe_mod._is_webui_server_mode(["--webui-server"]) is True
+
+    def test_other_modes_are_not_webui_server(self, fhoe_mod):
+        assert fhoe_mod._is_webui_server_mode(["--map", "3-5_1"]) is False
+        assert fhoe_mod._is_webui_server_mode([]) is False
+
+
 class TestParseRangeArg:
     def test_reads_two_map_ids(self, fhoe_mod, monkeypatch):
         monkeypatch.setattr(

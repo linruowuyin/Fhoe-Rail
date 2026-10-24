@@ -26,6 +26,31 @@ for _stream in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError, OSError):
         pass  # 部分环境（如某些重定向场景）不支持 reconfigure，忽略即可
 
+
+def _is_webui_server_mode(argv=None):
+    """命令行里是否带 `--webui-server`（单入口 WebUI 模式）。"""
+    return "--webui-server" in (sys.argv[1:] if argv is None else argv)
+
+
+def _run_webui_server():
+    """`Fhoe-Rail.exe --webui-server`：用同一个 exe 启动 WebUI 服务。
+
+    必须在导入产品代码之前处理：WebUI 只依赖标准库和少量 utils，不需要主程序的
+    装配（`Setting()` / `MapInfo()` / `Notify()` 在模块级就会读配置和地图目录）。
+    以前 WebUI 是独立的 `webui-server.exe`，图片探针上线后它也要带 cv2 / numpy，
+    等于把同一套库在发布包里打了两份（约 +50MB）。单入口后只保留主程序这一份。
+    """
+    if sys.platform == "win32" and not pyuac.isUserAdmin():
+        pyuac.runAsAdmin()
+        sys.exit(0)
+    from webui.server import main as webui_main
+
+    sys.exit(webui_main())
+
+
+if _is_webui_server_mode():
+    _run_webui_server()
+
 from get_width import check_mult_screen
 from utils.config.config import ConfigurationManager
 from utils.core.log import fetch_php_file_content, log
@@ -37,6 +62,8 @@ from utils.core.ports import SYSTEM_CLOCK
 from utils.ui.setting import Setting
 from utils.core.time_utils import TimeUtils
 from utils.drivers.window import Window
+
+cfg = ConfigurationManager()
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
