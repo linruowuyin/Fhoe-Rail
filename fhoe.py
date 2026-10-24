@@ -32,6 +32,27 @@ def _is_webui_server_mode(argv=None):
     return "--webui-server" in (sys.argv[1:] if argv is None else argv)
 
 
+def _admin_relaunch_command():
+    """非管理员时重新启动本程序的命令行（保留原始参数）。
+
+    pyuac 默认用 `[sys.executable] + sys.argv`：在 PyInstaller 打包的 exe 里
+    `sys.executable == sys.argv[0]`，exe 路径会被当成第一个参数再传一遍 ——
+    子进程看到的是 `Fhoe-Rail.exe <exe路径> --debug`，`mode = sys.argv[1]`
+    变成 exe 路径，所有启动模式都退化成默认跑图。必须显式拼命令行。
+    """
+    if getattr(sys, "frozen", False):
+        return [sys.executable] + sys.argv[1:]
+    return [sys.executable, os.path.abspath(sys.argv[0])] + sys.argv[1:]
+
+
+def _ensure_admin():
+    """非管理员时提权重启；返回 True 表示已交给子进程，当前进程应退出。"""
+    if sys.platform != "win32" or pyuac.isUserAdmin():
+        return False
+    pyuac.runAsAdmin(cmdLine=_admin_relaunch_command())
+    return True
+
+
 def _run_webui_server():
     """`Fhoe-Rail.exe --webui-server`：用同一个 exe 启动 WebUI 服务。
 
@@ -40,8 +61,7 @@ def _run_webui_server():
     以前 WebUI 是独立的 `webui-server.exe`，图片探针上线后它也要带 cv2 / numpy，
     等于把同一套库在发布包里打了两份（约 +50MB）。单入口后只保留主程序这一份。
     """
-    if sys.platform == "win32" and not pyuac.isUserAdmin():
-        pyuac.runAsAdmin()
+    if _ensure_admin():
         sys.exit(0)
     from webui.server import main as webui_main
 
@@ -62,8 +82,6 @@ from utils.core.ports import SYSTEM_CLOCK
 from utils.ui.setting import Setting
 from utils.core.time_utils import TimeUtils
 from utils.drivers.window import Window
-
-cfg = ConfigurationManager()
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
@@ -458,8 +476,8 @@ def run_once(
 
 if __name__ == "__main__":
     try:
-        if not pyuac.isUserAdmin():
-            pyuac.runAsAdmin()
+        if _ensure_admin():
+            pass  # 已提权，子进程继续；runAsAdmin(wait=True) 会等它结束
         else:
             print_info()
             main()

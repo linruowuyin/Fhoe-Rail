@@ -99,6 +99,17 @@ jobs:
           @echo off
           chcp 65001 >nul
           cd /d "%~dp0"
+          REM Self-elevate the whole menu (same trick as the repo-root Fhoe-Rail.bat).
+          REM Otherwise the exe relaunches itself elevated in a new window and can
+          REM lose/duplicate its arguments -- every menu choice then falls back to
+          REM the default run.
+          >nul 2>&1 REG.exe query "HKU\S-1-5-19" || (
+              ECHO Set UAC = CreateObject^("Shell.Application"^) > "%TEMP%\Getadmin.vbs"
+              ECHO UAC.ShellExecute "%~f0", "%1", "", "runas", 1 >> "%TEMP%\Getadmin.vbs"
+              "%TEMP%\Getadmin.vbs"
+              DEL /f /q "%TEMP%\Getadmin.vbs" 2>NUL
+              Exit /b
+          )
           type menu.txt
           echo.
           choice /C 123456 /T 30 /D 2 /N >nul
