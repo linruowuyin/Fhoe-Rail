@@ -421,6 +421,7 @@
     padding: 12px 14px; height: 520px; overflow-y: auto; font-family: var(--font-mono);
     font-size: 14px; line-height: 1.75; white-space: pre-wrap; word-break: break-all;
   }
+  .log-box:focus { outline: 1px solid var(--border-strong); outline-offset: -1px; }
 
   /* 自定义细滚动条（Linear 风格） */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -686,7 +687,7 @@
         <button class="btn ghost" id="log-filter-all">全部</button>
         <button class="btn ghost" id="log-clear-filter">清屏显示</button>
       </div>
-      <div class="log-box" id="log-box"><div class="loading">正在读取日志…</div></div>
+      <div class="log-box" id="log-box" tabindex="0"><div class="loading">正在读取日志…</div></div>
     </section>
 
     <!-- 新图注意 -->
@@ -797,6 +798,48 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------------- 日志框：选择 / 复制 ----------------
+ * 两个日志框（航行日志、实时输出）都是周期性整体重写 innerHTML 的。如果用户
+ * 正在框内拖选，旧的文本节点被销毁，浏览器会把选区重置到开头 —— 表现就是
+ * “往上选几行之后变成从第一行往下选”。所以：框内存在未折叠选区时，周期刷新
+ * 只更新状态文本、不动 DOM；用户点走（选区消失）后下一个 tick 自动恢复。
+ * Ctrl+A 也只在焦点 / 选区位于日志框内时接管，选中框内内容而不是整页。
+ */
+function selectionInBox(box) {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
+  const anchor = sel.anchorNode;
+  return !!anchor && (box === anchor || box.contains(anchor));
+}
+const renderedHtml = new WeakMap();
+function updateLogBox(box, html, autoScroll, force = false) {
+  if (renderedHtml.get(box) === html) return;      // 内容没变，别碰 DOM
+  if (!force && selectionInBox(box)) return;       // 正在框内选择/复制，先冻结
+  box.innerHTML = html;
+  renderedHtml.set(box, html);
+  if (autoScroll) box.scrollTop = box.scrollHeight;
+}
+function selectBoxContents(box) {
+  const range = document.createRange();
+  range.selectNodeContents(box);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+document.addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey) || String(e.key).toLowerCase() !== "a") return;
+  const active = document.activeElement;
+  let box = active && active.closest ? active.closest(".log-box") : null;
+  if (!box) {
+    const sel = window.getSelection();
+    const node = sel && sel.anchorNode;
+    box = node && node.parentElement ? node.parentElement.closest(".log-box") : null;
+  }
+  if (!box) return;              // 页面其它位置的 Ctrl+A 保持浏览器默认
+  e.preventDefault();
+  selectBoxContents(box);
+});
 
 let toastTimer = null;
 function toast(msg, isErr = false) {
@@ -1136,8 +1179,8 @@ async function loadRun() {
       </div>
     </div>
     <div class="glass">
-      <div class="card-title">🖥️ 实时输出 <span style="font-size: 13px;color:var(--txt-faint);font-weight:400">（每 1.5 秒刷新，最多保留 500 行）</span></div>
-      <div class="log-box" id="run-output" style="height:340px"><div class="loading">等待运行…</div></div>
+      <div class="card-title">🖥️ 实时输出 <span style="font-size: 13px;color:var(--txt-faint);font-weight:400">（每 1.5 秒刷新，最多保留 500 行；选中文本时暂停刷新，点空白处恢复）</span></div>
+      <div class="log-box" id="run-output" tabindex="0" style="height:340px"><div class="loading">等待运行…</div></div>
     </div>`;
 
   const startBtn = $("#run-start");
@@ -1241,10 +1284,11 @@ async function pollRun() {
       const lines = (st.output || []);
       // 双保险：渲染前再清洗一次 ANSI 颜色码
       const stripAnsi = s => s.replace(/\x1b\[[0-9;]*m/g, "");
-      outEl.innerHTML = lines.length
+      const html = lines.length
         ? lines.map(l => `<div class="log-line-info">${esc(stripAnsi(l))}</div>`).join("")
         : '<div class="empty">暂无输出</div>';
-      if (autoScroll) outEl.scrollTop = outEl.scrollHeight;
+      // 用户正在框内选中时，updateLogBox 会自动跳过这次重渲染（见文件顶部说明）
+      updateLogBox(outEl, html, autoScroll);
     } catch (e) { /* 服务暂不可用，静默 */ }
   };
   await tick();
@@ -1984,7 +2028,7 @@ async function fetchLogs() {
     return Array.isArray(data) ? data : [];
   } catch { return null; }
 }
-function renderLogs(lines) {
+function renderLogs(lines, force = false) {
   const box = $("#log-box");
   const autoScroll = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
   const html = lines.filter(l => {
@@ -2001,17 +2045,28 @@ function renderLogs(lines) {
     const colored = esc(l).replace(/^\d{2}:\d{2}:\d{2}(?:\.\d+)?/, t => `<span class="log-time">${t}</span>`);
     return `<div class="${cls}">${colored}</div>`;
   }).join("");
-  box.innerHTML = html || '<div class="empty">暂无日志（清屏状态或日志为空）</div>';
-  if (autoScroll) box.scrollTop = box.scrollHeight;
+  // force：筛选 / 清屏这类用户主动操作必须立刻生效；周期轮询不传 force，
+  // 用户正在框内选择时会自动冻结 DOM（见文件顶部说明）
+  updateLogBox(
+    box,
+    html || '<div class="empty">暂无日志（清屏状态或日志为空）</div>',
+    autoScroll,
+    force
+  );
 }
 async function startLogs() {
   stopLogs();
   const data = await fetchLogs();
   if (data === null) {
-    $("#log-box").innerHTML = '<div class="error-box">无法读取日志。请确认项目根目录存在 logs/日志文件.log（运行过一次锄地后生成）。</div>';
+    updateLogBox(
+      $("#log-box"),
+      '<div class="error-box">无法读取日志。请确认项目根目录存在 logs/日志文件.log（运行过一次锄地后生成）。</div>',
+      false,
+      true
+    );
     return;
   }
-  renderLogs(data);
+  renderLogs(data, true);
   $("#log-count").textContent = data.length + " 行";
   logTimer = setTimeout(async function poll() {
     const d = await fetchLogs();
@@ -2025,12 +2080,12 @@ function setLogFilter(f) {
   const map = { info: "#log-filter-info", warn: "#log-filter-warn", all: "#log-filter-all" };
   const btn = $(map[f]);
   if (btn) btn.classList.add("active");
-  fetchLogs().then(renderLogs);
+  fetchLogs().then(lines => renderLogs(lines, true));
 }
 $("#log-filter-info").addEventListener("click", () => setLogFilter("info"));
 $("#log-filter-warn").addEventListener("click", () => setLogFilter("warn"));
 $("#log-filter-all").addEventListener("click", () => setLogFilter("all"));
-$("#log-clear-filter").addEventListener("click", () => { logCleared = true; renderLogs([]); });
+$("#log-clear-filter").addEventListener("click", () => { logCleared = true; renderLogs([], true); });
 
 /* ---------------- 粒子背景（轻量 Canvas，无外部依赖，颜色跟随主题） ---------------- */
 (function ParticleField() {
