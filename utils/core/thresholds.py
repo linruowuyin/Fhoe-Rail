@@ -154,8 +154,8 @@ SETTING_ICON = 0.98
 
 #: `setting_other.png`：设置菜单里的「其他设置」页签。**形状匹配**（见
 #: `vision/matcher.py::Matcher.shape_features`）：底色随游戏内模糊背景变化，
-#: 只比梯度轮廓。合成背景实测正样本 0.94–0.998、负样本（另一个图标）≤0.33；
-#: 取 0.85，两侧余量都 ≥0.09。实机可用 `tools/match_probe.py setting_other` 复核。
+#: 只比梯度轮廓。2026-10-24 实机探针（PrintWindow，设置菜单打开）：正样本 0.9982、
+#: 次优 0.5067，对 0.85 的余量 +0.148；合成背景实测正样本 0.94–0.998、负样本 ≤0.33。
 SETTING_OPTION = 0.85
 
 #: `auto_use_technique_consumable.png` 开关
