@@ -27,5 +27,23 @@ def pump() -> None:
     cv2.waitKey(1)
 
 
+def wait_key(poll_ms: int = 50) -> int:
+    """阻塞到用户按键、或把窗口关掉为止。返回按下的键码（关窗口返回 -1）。
+
+    与 `pump()` 的区别是它**真的等人**：探针弹出预览时要让窗口停在那儿看完再走。
+    没有直接 `cv2.waitKey(0)` —— 用户点窗口右上角关掉时那个会一直挂住，
+    这里每轮用 `getWindowProperty` 探一下窗口还在不在（CLAUDE.md R3：任何等待都要能退出）。
+    """
+    while True:
+        key = cv2.waitKey(poll_ms)
+        if key != -1:
+            return key
+        try:
+            if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
+                return -1
+        except cv2.error:
+            return -1
+
+
 def close_all() -> None:
     cv2.destroyAllWindows()

@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from utils.flows import puzzle_exit as flow
+from utils.vision import assets
 from utils.vision.puzzle_exit import find_puzzle_exit_confirmation
 
 
@@ -20,8 +21,8 @@ def samples():
     dialog = cv2.imread(str(ROOT / "tests/fixtures/puzzle_exit/dialog.png"))
     frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
     frame[350:750, 460:1460] = dialog
-    prompt = cv2.imread(str(ROOT / "picture/puzzle_exit_prompt.png"))
-    confirm = cv2.imread(str(ROOT / "picture/puzzle_exit_confirm.png"))
+    prompt = cv2.imread(str(ROOT / assets.path("puzzle_exit_prompt")))
+    confirm = cv2.imread(str(ROOT / assets.path("puzzle_exit_confirm")))
     return frame, prompt, confirm
 
 

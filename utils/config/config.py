@@ -66,13 +66,35 @@ class ConfigurationManager(metaclass=SingletonMeta):
             != self._last_mtime
         )
 
+    @staticmethod
+    def dumps_config(data: dict) -> str:
+        """config.json 的唯一写盘格式：4 空格缩进、中文不转义。
+
+        4 空格是为了让人能读 —— 多处日志会直接让用户「把 config.json 里的
+        allow_map_buy 改为 True」。不转义同理：taskkill_name 常是中文进程名，
+        转成 unicode escape 就没法看了。
+        """
+        return json.dumps(data, ensure_ascii=False, indent=4)
+
+    @classmethod
+    def write_config(cls, path: str, data: dict) -> None:
+        """config.json 的唯一落盘口：先写同目录 .tmp，再原子替换。
+
+        原地 open(..., "w") 会在写到一半崩溃时留下半个文件，而 read_json_file
+        碰到坏 JSON 会直接抛。这里先把整段序列化好再落地，序列化失败时原文件完好。
+        """
+        text = cls.dumps_config(data)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as file:
+            file.write(text)
+        os.replace(tmp, path)
+
     @classmethod
     def save_config(cls, config: dict):
         """
         保存配置文件
         """
-        with open(cls.CONFIG_FILE_NAME, "w", encoding="utf-8") as file:
-            json.dump(config, file, indent=4)
+        cls.write_config(cls.CONFIG_FILE_NAME, config)
 
     @classmethod
     def load_config(cls) -> dict:
@@ -139,8 +161,22 @@ class ConfigurationManager(metaclass=SingletonMeta):
         # 先读，再写
         data, file_path = ConfigurationManager.read_json_file(filename, path=True)
         data[key] = value
-        with open(file_path, "wb") as f:
-            f.write(orjson.dumps(data))
+        ConfigurationManager.write_config(file_path, data)
+
+    @classmethod
+    def swap_map_version(cls, new_version):
+        """把 map_version 换成 new_version，返回被换掉的原值；没给新版本时返回 None。
+
+        原值必须在写入**之前**读出来。顺序反了（先写再读）的话，读到的就是刚写进去的
+        新值，调用方拿它去「恢复」等于恢复成自己 —— 临时切换再也回不去。曾经
+        fhoe.py 就是这么写的：临时跑一次别的地图版本，config.json 的版本就永久停在那里，
+        用户下次正常锄大地会静默变成那个版本的行为。
+        """
+        if not new_version:
+            return None
+        old_version = cls.load_config().get("map_version", "default")
+        cls.modify_json_file(cls.CONFIG_FILE_NAME, "map_version", new_version)
+        return old_version
 
     @staticmethod
     def config_keys(real_width=0, real_height=0):
@@ -157,6 +193,14 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "star_version": "0",
             "open_map": "m",
             "script_debug": False,
+            # 开发者模式：跑图时把「游戏里实际长什么样」收进 picture/new_pic/，并累计统计
+            # 哪些图没被用到。见 utils/vision/samples.py。
+            # 三档：off / single（每张图本轮第一次命中）/ multi（每次命中都存）
+            "collect_picture_samples": "off",
+            # WebUI 的「开发者模式」：开启后设置页之外多一个图片探针页。
+            # 带 webui_ 前缀是因为 CLI 已经有 --dev（开发者选图运行）和 devmap
+            # 运行模式，再叫 dev_mode 会混。
+            "webui_dev_mode": False,
             "auto_shutdown": 0,
             "taskkill_name": "",
             "auto_final_fight_e": True,
@@ -171,6 +215,7 @@ class ConfigurationManager(metaclass=SingletonMeta):
             "allow_map_buy": False,
             "allow_snack_buy": False,
             "allow_memory_token": False,
+            "auto_use_technique_consumable": False,
             "refresh_hour": 4,
             "refresh_minute": 0,
             "forbid_map": [],
@@ -200,8 +245,9 @@ class ConfigurationManager(metaclass=SingletonMeta):
     @classmethod
     def init_config_file(cls, real_width, real_height):
         if ConfigurationManager.normalize_file_path(cls.CONFIG_FILE_NAME) is None:
-            with open(cls.CONFIG_FILE_NAME, "wb+") as f:
-                f.write(orjson.dumps(cls.config_keys(real_width, real_height)))
+            cls.write_config(
+                cls.CONFIG_FILE_NAME, cls.config_keys(real_width, real_height)
+            )
 
     @classmethod
     def config_issubset(cls) -> bool:
@@ -281,7 +327,8 @@ class ConfigurationManager(metaclass=SingletonMeta):
         # HuangQuan 地图版本强制开启购买战斗E道具
         if config["map_version"] == "HuangQuan":
             config["allow_fight_e_buy_prop"] = True
-        # SilverWolfLv999 地图版本强制开启自动使用秘技消耗品
+        # 预置：map/SilverWolfLv999/ 还没建，这一段现在进不去（CLAUDE.md R24）。
+        # 版本目录建好后自动生效，属于有意留的骨架，不要当死代码删。
         if config["map_version"] == "SilverWolfLv999":
             config["auto_use_technique_consumable"] = True
         cls.save_config(config)

@@ -14,7 +14,48 @@ import numpy as np
 
 from utils.core.log import log
 from utils.vision import arrow
+from utils.vision import assets
 from utils.vision.img import Img
+
+# 校准最多转几次就放弃
+MAX_ALIGN_TRIES = 4
+# 转到位判定：角度差小于 1 度就认为对齐了
+ALIGN_TOLERANCE = 1
+# 连续两次读数之差超过这些度数的，当成离群值丢掉
+OUTLIER_TOLERANCE = 5
+
+
+def signed_rotation_to(ang: float) -> float:
+    """把 `arrow.cal_ang` 给的 0..359 夹角，换成鼠标该转的角度。
+
+    先反向（箭头转了 ang，视角就要转 -ang），再折成 (-180, 180]。
+
+    结果正好是 0 时替换成一个极小值：调用方拿它去判断「是否已对齐」并做除法的
+    中间量，0 会让循环空转。
+    """
+    sub = 360 - ang
+    sub = (sub + 180) % 360 - 180
+    return sub if sub != 0 else 1e-9
+
+
+def unwrap_angle_delta(delta: float, direction: float) -> float:
+    """把相邻两次读数之差折到 `direction` 那一侧，消掉跨过 0 度的那一跳。
+
+    朝正方向转却读出负的差值，说明中间跨了 0 度（比如 179 → -179），加回 360。
+    """
+    if direction >= 0 and delta < 0:
+        return delta + 360
+    if direction < 0 and delta > 0:
+        return delta - 360
+    return delta
+
+
+def median_filtered(angles: list, tolerance: float = OUTLIER_TOLERANCE) -> list:
+    """丢掉偏离中位数超过 `tolerance` 的读数。读数为空时返回空表。"""
+    if not angles:
+        return []
+    median = float(np.median(angles))
+    return [a for a in angles if abs(a - median) <= tolerance]
 
 
 class Orientation:
@@ -28,63 +69,46 @@ class Orientation:
 
         self.arrow_begin = None  # 初始箭头
         self.multi_config = 1.0
-        self.arrow_0 = Img.get_img("./picture/screenshot_arrow.png")
-
+        self.arrow_0 = Img.get_img(assets.path("screenshot_arrow"))
 
     def handle_view_set(self, value):
         """设置初始视角"""
         time.sleep(value)
         self.arrow_begin = arrow.take_arrow(self.img)
 
+    def _align_to(self, target_arrow, label: str):
+        """转视角直到箭头对齐 `target_arrow`，最多试 `MAX_ALIGN_TRIES` 次。
+
+        `handle_view_reset` 与 `handle_view_rotate` 只有目标箭头和日志前缀不同，
+        收敛过程是同一段 —— 原先两处逐行重复。
+        """
+        for _ in range(MAX_ALIGN_TRIES):
+            arrow_temp = arrow.take_arrow(self.img)
+            ang = arrow.cal_ang(self.img, arrow_temp, target_arrow)
+            sub = signed_rotation_to(ang)
+            log.info(f"{label}，计算角度ang:{ang}，旋转角度sub:{sub}")
+            self.mouse_event.mouse_move(sub)
+            self.move(value=0.01, key="w")
+            if abs(sub) <= ALIGN_TOLERANCE:
+                break
+            time.sleep(0.6)
+
     def handle_view_reset(self, value):
         """重置视角"""
         time.sleep(value)
-        sub = 0
-        cnt = 0
         self.move(value=0.01, key="w")  # 重置箭头指向为视角方向
         time.sleep(0.6)
-        while cnt < 4:
-            arrow_temp = arrow.take_arrow(self.img)
-            ang = arrow.cal_ang(self.img, arrow_temp, self.arrow_begin)
-            sub = 360 - ang
-            sub = (sub + 180) % 360 - 180
-            sub = sub if sub != 0 else 1e-9
-            log.info(f"开始重置视角，计算角度ang:{ang}，旋转角度sub:{sub}")
-            # KeyboardEvent.keyboard_press("caps_lock", 0.2)
-            # time.sleep(1)
-            self.mouse_event.mouse_move(sub)
-            self.move(value=0.01, key="w")
-            cnt += 1
-            if abs(sub) <= 1:
-                break
-            time.sleep(0.6)
+        self._align_to(self.arrow_begin, "开始重置视角")
 
     def handle_view_rotate(self, value):
         """
         旋转视角至value度，顺时针
         """
         time.sleep(1)
-        sub = 0
-        cnt = 0
         self.move(value=0.01, key="w")  # 重置箭头指向为视角方向
         time.sleep(0.6)
-        arrow_temp = self.arrow_0
-        final_arrow = self.img.image_rotate(arrow_temp, -value)
-        while cnt < 4:
-            arrow_temp = arrow.take_arrow(self.img)
-            ang = arrow.cal_ang(self.img, arrow_temp, final_arrow)
-            sub = 360 - ang
-            sub = (sub + 180) % 360 - 180
-            sub = sub if sub != 0 else 1e-9
-            log.info(f"开始旋转视角，计算角度ang:{ang}，旋转角度sub:{sub}")
-            # KeyboardEvent.keyboard_press("caps_lock", 0.2)
-            # time.sleep(1)
-            self.mouse_event.mouse_move(sub)
-            self.move(value=0.01, key="w")
-            cnt += 1
-            if abs(sub) <= 1:
-                break
-            time.sleep(0.6)
+        final_arrow = self.img.image_rotate(self.arrow_0, -value)
+        self._align_to(final_arrow, "开始旋转视角")
 
     def set_angle(self, ang=None):
         """校准视角旋转"""
@@ -116,26 +140,15 @@ class Orientation:
                     arrow_temp = arrow.take_arrow(self.img)
                     now_ang = arrow.cal_ang(self.img, arrow_temp, self.arrow_begin)
                     log.debug(f"now_ang: {now_ang}")
-                    sub = now_ang - last_ang
-                    sub = (
-                        sub + 360
-                        if (move_num >= 0 and sub < 0)
-                        else sub - 360
-                        if (move_num < 0 and sub > 0)
-                        else sub
-                    )
-                    ang_list.append(sub)
+                    ang_list.append(unwrap_angle_delta(now_ang - last_ang, move_num))
                     last_ang = now_ang
 
-                valid_angles = [
-                    a for a in ang_list if abs(a - np.median(ang_list)) <= 5
-                ]
+                valid_angles = median_filtered(ang_list)
                 if valid_angles:
-                    ax = sum([move_num for _ in valid_angles])
-                    ay = sum(valid_angles)
-
-                    if ay != 0:
-                        offset_list.append(ax / ay)
+                    # 鼠标走了 move_num×n 像素、视角转了 sum 度 → 比例就是 ax/ay
+                    total_angle = sum(valid_angles)
+                    if total_angle != 0:
+                        offset_list.append(move_num * len(valid_angles) / total_angle)
                     else:
                         log.info("疑似校准错误")
                         offset_list.append(1)

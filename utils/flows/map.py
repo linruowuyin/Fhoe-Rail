@@ -5,8 +5,10 @@ from utils.vision.blackscreen import BlackScreen
 from utils.config.config import ConfigurationManager
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
+from utils.vision import assets
 from utils.vision.img import Img
 from utils.core.map_info import MapInfo
+from utils.core.exceptions import CustomException
 from utils.flows.monthly_pass import MonthlyPass
 from utils.drivers.mouse_event import MouseEvent
 from utils.core.map_move import MAP_MOVE_NAV_DATA, STAR_MAP_DIRECTIONS
@@ -24,6 +26,20 @@ from utils.core.thresholds import (
     STAR_MAP,
     TRANSFER_POINT_MIN,
     TRANSFER_POINT_SEARCH,
+)
+
+
+#: 星球识别的资源 ID（`assets.asset_id` 归一化后的 stem，不是文件路径）。
+#: `start` 里出现这些 ID 时，说明这张图要先切到对应星球。地图数据里写的是
+#: `picture\\orientation_N.png` —— 前缀、分隔符、后缀都由 `assets.asset_id()`
+#: 剥掉，这里只认身份（R25）。
+PLANET_IDS = (
+    "orientation_2",
+    "orientation_3",
+    "orientation_4",
+    "orientation_5",
+    "orientation_6",
+    "orientation_7",
 )
 
 
@@ -49,22 +65,15 @@ class Map:
 
         self.allowlist_mode = False
         self.map_statu_minimize = False  # 地图最小化
-        self.planet = None  # 当前星球初始化
-        self.planet_png_lst = [
-            "picture\\orientation_2.png",
-            "picture\\orientation_3.png",
-            "picture\\orientation_4.png",
-            "picture\\orientation_5.png",
-            "picture\\orientation_6.png",
-            "picture\\orientation_7.png",
-        ]
+        self.planet = None  # 当前星球初始化（资源 ID）
+        self.planet_ids = PLANET_IDS
 
     def open_map(self):
         """
         尝试打开地图并识别地图标志性的目标图片
         """
-        target = Img.get_img("./picture/contraction.png")
-        target_back = Img.get_img("./picture/map_back.png")
+        target = Img.get_img(assets.path("contraction"))
+        target_back = Img.get_img(assets.path("map_back"))
         start_time = time.time()
         attempts = 0
         speed_open = False
@@ -260,6 +269,30 @@ class Map:
 
         return map_list
 
+    def get_map_list_range(self, start, end) -> list:
+        """区间运行：按 `map_list` 的顺序返回 `start` 到 `end`（**含两端**）。
+
+        :raises CustomException: 起点/终点不存在，或终点排在起点之前
+        """
+        names = self.map_info.map_list
+        start_file, end_file = f"map_{start}.json", f"map_{end}.json"
+        for label, filename, value in (
+            ("起点", start_file, start),
+            ("终点", end_file, end),
+        ):
+            if filename not in names:
+                raise CustomException(
+                    f"区间运行的{label}地图不存在：{value}（版本 "
+                    f"{self.map_info.map_version}）"
+                )
+        start_index = names.index(start_file)
+        end_index = names.index(end_file)
+        if end_index < start_index:
+            raise CustomException(
+                f"区间运行的终点 {end} 排在起点 {start} 之前，请调换顺序"
+            )
+        return names[start_index:end_index + 1]
+
     def reset_round_count(self):
         """
         重置该锄地轮次相关的计数
@@ -365,12 +398,12 @@ class Map:
         已在当前星球，跳过点击星轨航图
         未在当前星球，点击星轨航图后进行黑屏检测，如果因为客户端黑屏，则返回重试点击星轨航图
         """
-        keys_to_find = self.planet_png_lst
+        keys_to_find = set(self.planet_ids)
         planet_dict = {
-            k: v
+            assets.asset_id(k): v
             for item in map_data["start"]
             for k, v in item.items()
-            if k in keys_to_find
+            if assets.asset_id(k) in keys_to_find
         }
         planet = list(planet_dict.keys())[0]
         if self.check_planet(planet):
@@ -393,8 +426,14 @@ class Map:
                     return
 
     def handle_planet(self, key):
-        """点击星球"""
-        if self.check_planet(key):
+        """点击星球。
+
+        `key` 是地图 JSON 里的资源引用（`picture\\orientation_4.png`），星球身份
+        必须过 `assets.asset_id()` 再和 `self.planet` 比 —— 否则「已经是该星球」
+        永远判不出来，会白找一轮点位（2026-10 实机回归）。
+        """
+        planet = assets.asset_id(key)
+        if self.check_planet(planet):
             return
         else:
             self.find_transfer_point(
@@ -410,7 +449,7 @@ class Map:
                 key, PLANET_CLICK, delay=0.1, click_offset=self.click_offset
             ):
                 time.sleep(5)
-                img = Img.get_img("./picture/kaituoli_1.png")
+                img = Img.get_img(assets.path("kaituoli_1"))
                 delay_time = 0.5
                 while not self.img.on_interface(
                     check_list=[img],
@@ -423,7 +462,7 @@ class Map:
                     # 这个循环也没有硬上限（只有星轨航图出现或黑屏才退）
                     self.pause_gate()
                     if self.blackscreen.check_blackscreen():
-                        self.planet = key
+                        self.planet = planet
                         break
                     delay_time += 0.1
                     delay_time = max(delay_time, 1)
@@ -435,7 +474,7 @@ class Map:
                     )
                     time.sleep(5)
                 else:
-                    self.planet = key
+                    self.planet = planet
             time.sleep(1.7)
 
     def handle_floor(self, key):
@@ -447,7 +486,7 @@ class Map:
 
     def handle_back(self, key):
         """点击右上角返回"""
-        img = Img.get_img("./picture/kaituoli_1.png")
+        img = Img.get_img(assets.path("kaituoli_1"))
         if not self.img.on_interface(
             check_list=[img],
             timeout=1,

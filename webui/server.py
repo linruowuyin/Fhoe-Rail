@@ -16,7 +16,7 @@ Fhoe-Rail WebUI 本地服务（零依赖，仅标准库）
     GET  /api/ping          -> 身份 + 关停令牌 + 有没有在跑锄地（供新实例接管用）
     POST /api/shutdown      -> 优雅关停本实例（需 X-Fhoe-Token 头；body {stop_run} 一并停锄地）
     GET  /api/config        -> 读取 config.json
-    POST /api/config        -> 保存 config.json（请求体为完整 JSON 对象）
+    POST /api/config        -> 保存 config.json（请求体 {changed:{...}, removed:[...]}，按字段合并）
     GET  /api/maps          -> 地图树（按版本 -> 星球 -> 地图）
     GET  /api/map?file=&version= -> 读取单个地图 JSON
     POST /api/map            -> 保存地图 JSON（请求体 {file, version, data}）
@@ -26,10 +26,12 @@ Fhoe-Rail WebUI 本地服务（零依赖，仅标准库）
 """
 
 import base64
+import datetime
 import json
 import os
 import re
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -60,6 +62,8 @@ if BASE_DIR not in sys.path:
 # 地图写盘格式（CLAUDE.md R22）。放在这里而不是文件开头：按路径运行
 # `python webui/server.py` 时 sys.path[0] 是 webui/，得先补上仓库根才 import 得到。
 from utils.core.json_io import dumps_map
+# config.json 的唯一落盘口（4 空格 + 中文不转义 + 原子写）。同样要放在补完 sys.path 之后。
+from utils.config.config import ConfigurationManager
 # 展示名（版本 / 星球 / 区域）只有一处维护，见 CLAUDE.md R23 —— 以前这里有一份、
 # ui/map_selector.py 有一份、setting.py 的提示语里还有一份，default_lite 就是这么漏的。
 from utils.core.map_names import (
@@ -71,6 +75,7 @@ from utils.core.map_names import (
 )
 WEBUI_DIR = os.path.join(BASE_DIR, "webui")
 NOTES_DIR = os.path.join(BASE_DIR, "新图注意事项")
+PICTURE_DIR = os.path.join(BASE_DIR, "picture")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 LOG_PATH = os.path.join(BASE_DIR, "logs", "日志文件.log")
 PORT = 8666
@@ -454,26 +459,255 @@ def read_config():
         return {}
 
 
-def _backup_file(path):
-    """原子写入前自动备份，保留最近 3 份 .bakN"""
+# ============ 图片探针（开发者模式） ============
+# 探针抓一帧游戏画面并量一张模板匹配到哪里。它能读到你的屏幕内容，所以**门禁在
+# 服务端**：只在前端把入口藏起来，直接 fetch 一下就绕过去了（同 /api/shutdown 走
+# 令牌而不是只把按钮藏掉的道理）。开关本身是配置项 webui_dev_mode。
+
+#: 未指定 limit 时一次返回多少张候选；367 张图全塞给浏览器没意义
+PROBE_IMAGE_LIMIT = 200
+
+#: 同一个名字有多个后缀时的优先级，跟 utils/vision/images.py::resolve_path 对齐
+_PROBE_EXT_PRIORITY = {"webp": 0, "png": 1, "jpg": 2, "jpeg": 3}
+
+
+def dev_mode_enabled():
+    """开发者模式开着没有。"""
+    return read_config().get("webui_dev_mode") is True
+
+
+def picture_files():
+    """`picture/` 下的图片（递归，跳过 `new_pic/`）：`{不带后缀的名字: 实际文件名}`。
+
+    同名多后缀时只留优先级最高的那个（webp > png > jpg），与图库自己的查找顺序一致。
+    返回值里的文件名可以直接喂给 `/api/picture?p=` —— 这个 API 只认名字不认目录，
+    与地图 JSON 里的资源 ID 是同一套：目录只是分类（R25）。
+    """
+    from utils.vision import assets as asset_registry
+
+    best = {}
+    try:
+        for path in asset_registry.iter_picture_files(PICTURE_DIR):
+            entry = os.path.basename(path)
+            base, ext = os.path.splitext(entry)
+            ext = ext.lower().lstrip(".")
+            if ext not in _PROBE_EXT_PRIORITY or not base:
+                continue
+            if (
+                base not in best
+                or _PROBE_EXT_PRIORITY[ext] < _PROBE_EXT_PRIORITY[best[base][1]]
+            ):
+                best[base] = (entry, ext)
+    except OSError:
+        return {}
+    return {base: filename for base, (filename, _) in best.items()}
+
+
+def list_probe_images(fragment="", limit=None):
+    """按子串过滤图片名（不区分大小写），返回可直接喂给 `/api/picture` 的文件名。
+
+    :param limit: None 表示不截断。调用方需要总条数时先不截断、自己再切。
+    """
+    fragment = (fragment or "").lower()
+    files = picture_files()
+    hits = [files[base] for base in sorted(files) if fragment in base.lower()]
+    return hits if limit is None else hits[:limit]
+
+
+def run_image_probe(name, threshold):
+    """抓一帧，量一张模板。返回 `vision/probe.py::measure()` 的结果。
+
+    这里是 WebUI 唯一构造 `ScreenSource` 的地方。先 `Window.is_game_running()` 看一眼，
+    **不构造 `Window()`** —— 构造它会连带 `switch_window()`：把鼠标挪到游戏窗口中心，
+    游戏没开时还会启动游戏并连点 30 秒。点一个网页按钮不该有这种副作用。
+
+    :raises ValueError: 图片名非法、阈值越界、或模板比截图区域还大（都是参数问题）
+    :raises FileNotFoundError: 图片不存在或读不出来
+    :raises RuntimeError: 没检测到游戏窗口
+    """
+    # 重活 import 一律放函数里 —— 这个文件的启动契约是「只依赖标准库」
+    from utils.drivers.screen import ScreenSource
+    from utils.drivers.window import Window
+    from utils.vision import assets as asset_registry
+    from utils.vision import images as image_library
+    from utils.vision import probe as probe_module
+
+    if "/" in name or "\\" in name or ".." in name:
+        raise ValueError("图片名非法")
+    if not re.match(r"^[\w\-]+\.(png|jpg|jpeg|webp|gif)$", name, re.I):
+        raise ValueError("图片名非法")
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError("阈值应落在 0~1")
+
+    # 与 /api/picture 一样按 stem 查递归索引（图片可能在任何子目录里，R25）
+    index, _ = asset_registry.scan_picture_files(PICTURE_DIR)
+    template_path = index.get(name.rsplit(".", 1)[0].lower())
+    if not template_path:
+        raise FileNotFoundError(f"图片不存在：{name}")
+    template = image_library.get_img(template_path)
+    if template is None:
+        raise FileNotFoundError(f"图片读不出来：{name}")
+
+    hwnd = Window.find_window_hwnd()
+    if not hwnd:
+        # 多用户 / RDP 多开时，游戏很可能开在**别的 Windows 会话**里 —— 会话隔离让
+        # EnumWindows 看不见它，报错要说清这一点，不然会一直往「是不是最小化了」上查
+        raise RuntimeError(Window.describe_missing_window())
+
+    # 抓帧重试压到 2 次 × 0.5 秒：默认的 50 次 × 2 秒是主程序等游戏加载用的，
+    # 不能让一个 HTTP 请求挂在那里一百秒。
+    # measure 默认**不接受**「回退去抓屏幕」那一帧（那种帧可能根本不是游戏画面），
+    # 它会抛 ScreenFallbackRejected —— 它是 RuntimeError 的子类，走上面的 503 分支。
+    return probe_module.measure(
+        ScreenSource(window=Window.attach(hwnd)),
+        template,
+        threshold,
+        max_retries=2,
+        retry_interval=0.5,
+    )
+
+
+#: 备份保留份数：config 10 份、每张地图 5 份。按文件名里的时间戳排序清理。
+CONFIG_BACKUP_KEEP = 10
+MAP_BACKUP_KEEP = 5
+
+
+def _backup_dir_for(path, kind):
+    """备份目录。放仓库根的 backups/ 下，**不要放 map/ 里** —— 校验器会把
+    map/ 的每个子目录都当版本目录扫，备份会被当成地图校验。
+
+    :param kind: "config" 或 "map"
+    """
+    path = os.path.abspath(path)
+    if kind == "map":
+        version_dir = os.path.dirname(path)
+        map_dir = os.path.dirname(version_dir)
+        base = os.path.dirname(map_dir)
+        return os.path.join(base, "backups", "maps", os.path.basename(version_dir))
+    return os.path.join(os.path.dirname(path), "backups", "config")
+
+
+def _backup_file(path, kind):
+    """把 path 复制成 backups/<kind>/<名字>.<YYYYmmdd-HHMMSS>.<ext>。
+
+    同一秒内重名时依次加 `-2`、`-3`；成功后按份数清理旧备份。
+    返回备份文件路径；源文件不存在或复制失败返回 None。
+    """
     if not os.path.exists(path):
+        return None
+    target_dir = _backup_dir_for(path, kind)
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+    except OSError as e:
+        log.warning(f"创建备份目录失败（{target_dir}）: {e}")
+        return None
+
+    stem, ext = os.path.splitext(os.path.basename(path))
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    # 序号从 01 开始、始终带上：同一秒内的多份备份按文件名排序仍然等于时间顺序。
+    # 取「当前同一时间戳的最大序号 + 1」，而不是第一个空缺 —— 否则最旧一份被
+    # 清理后，下一次会重新占用 -01，序号永远不会增长。
+    prefix = f"{stem}.{stamp}-"
+    used = []
+    for existing in os.listdir(target_dir):
+        if existing.startswith(prefix) and existing.endswith(ext):
+            middle = existing[len(prefix) : -len(ext)]
+            if middle.isdigit():
+                used.append(int(middle))
+    serial = max(used, default=0) + 1
+    name = f"{stem}.{stamp}-{serial:02d}{ext}"
+
+    target = os.path.join(target_dir, name)
+    try:
+        shutil.copy2(path, target)
+    except OSError as e:
+        log.warning(f"备份失败（{path}）: {e}")
+        return None
+
+    _prune_backups(
+        target_dir,
+        stem,
+        ext,
+        CONFIG_BACKUP_KEEP if kind == "config" else MAP_BACKUP_KEEP,
+    )
+    return target
+
+
+def _prune_backups(directory, stem, ext, keep):
+    """只保留最近 `keep` 份同名前缀的备份（按时间戳文件名排序）。"""
+    try:
+        names = sorted(
+            name
+            for name in os.listdir(directory)
+            if name.startswith(stem + ".") and name.endswith(ext)
+        )
+    except OSError:
         return
-    # 轮转: bak2 -> bak3, bak1 -> bak2, 原文件 -> bak1
-    for i in range(2, 0, -1):
-        src = f"{path}.bak{i}"
-        dst = f"{path}.bak{i + 1}"
-        if os.path.exists(src):
-            os.replace(src, dst)
-    os.replace(path, f"{path}.bak1")
+    for name in names[:-keep] if keep > 0 else names:
+        try:
+            os.remove(os.path.join(directory, name))
+        except OSError:
+            pass
 
 
-def save_config(data):
-    _backup_file(CONFIG_PATH)
-    tmp = CONFIG_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, CONFIG_PATH)
+def _backup_if_changed(path, data, kind):
+    """内容和备份前文件（按 JSON 语义比较）不同才备份。返回是否有变化。
+
+    WebUI 每次点保存都会走到这里；没有实际改动就不该轮转备份、也不该让
+    三个旧槽位被无意义保存挤掉。
+    """
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path, "r", encoding="utf-8-sig") as f:
+            old = json.load(f)
+    except (OSError, ValueError):
+        old = None  # 读不出来（可能被手改坏了）—— 反而更该备份
+    if old == data:
+        return False
+    _backup_file(path, kind)
     return True
+
+
+def save_config_patch(changed, removed):
+    """把改动按字段合并进 config.json 的当前内容，而不是整份覆盖。
+
+    整份覆盖会把「打开配置页之后、别处写进文件的改动」一并抹掉 —— 脚本每次启动都会写
+    config.json（`version` / 临时 `map_version` / `allowlist_mode_once` / `angle` …），
+    所以只要配置页开着跑过一次，点保存就会静默回滚那些值。按字段合并只在「同一字段双方
+    都改」时才冲突 —— 那在设置页里几乎不会发生。
+
+    返回实际写入的字段数。
+    """
+    # 这里不用 read_config()：它解析失败时返回 {}，拿它合并会把整个配置写没
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8-sig") as f:
+            current = json.load(f)
+    except FileNotFoundError:
+        current = {}
+    except Exception as e:
+        raise ValueError(f"config.json 读不出来（{e}），拒绝按字段合并，请先修好文件")
+    if not isinstance(current, dict):
+        raise ValueError("config.json 顶层不是 JSON 对象")
+
+    known = set(ConfigurationManager.config_keys()) | set(current)
+    unknown = sorted(k for k in list(changed) + list(removed) if k not in known)
+    if unknown:
+        raise ValueError("未知配置项：" + ", ".join(unknown))
+
+    # 用户主动点保存的一刻，回滚价值最高；但只有内容真的变了才留备份，
+    # 否则无意义的保存会把保留份数挤光。
+    original = dict(current)
+    for key, value in changed.items():
+        current[key] = value
+    for key in removed:
+        current.pop(key, None)
+    if current == original:
+        return len(changed) + len(removed)
+    if os.path.exists(CONFIG_PATH):
+        _backup_file(CONFIG_PATH, "config")
+    ConfigurationManager.write_config(CONFIG_PATH, current)
+    return len(changed) + len(removed)
 
 
 def build_map_tree():
@@ -612,13 +846,36 @@ def _run_reader(proc):
 FHOE_EXE = os.path.join(BASE_DIR, "Fhoe-Rail.exe")
 
 
-def run_start(mode, map_id=None, map_version=None):
+def _is_admin():
+    """Windows 下是否管理员。非 Windows 视为可用（测试/开发环境）。"""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return True
+
+
+def run_start(mode, map_id=None, map_version=None, map_end=None):
     """启动锄地进程（单例：已有进程时拒绝）
-    mode: normal/white/record/install/map/devmap
-    map_id: 仅 map/devmap 模式需要，如 '3-5_1'
-    map_version: 仅 map/devmap 模式可选，如 'default' / 'HuangQuan'
+
+    mode: normal/white/record/install/map/devmap/range
+        - map    单图运行（--map）
+        - devmap 开发者单图运行（--dev --map）
+        - range  区间运行（--range 起点 终点）
+    map_id: 仅 map/devmap/range 模式需要，如 '3-5_1'
+    map_version: 仅 map/devmap/range 模式可选，如 'default' / 'HuangQuan'
+    map_end: 仅 range 模式需要，如 '3-5_2'
     打包环境（同目录有 Fhoe-Rail.exe）直接用 exe；源码环境用 python + launch.py
     """
+    if mode != "install" and not _is_admin():
+        return {
+            "ok": False,
+            "error": "WebUI 没有管理员权限：游戏以管理员运行，UIPI 会阻止窗口截图和前台切换。"
+            "请关闭后用 Start-WebUI.bat（或右键 Start-WebUI.exe 以管理员身份运行）重新打开。",
+        }
     with _RUN["lock"]:
         if _RUN["proc"] is not None and _RUN["proc"].poll() is None:
             return {"ok": False, "error": "已有锄地进程在运行，请先停止"}
@@ -631,6 +888,13 @@ def run_start(mode, map_id=None, map_version=None):
                 if mode == "devmap"
                 else ["webui/launch.py", "--map", map_id]
             )
+            if map_version:
+                base_args += ["--map-version", map_version]
+            args = base_args
+        elif mode == "range":
+            if not map_id or not map_end:
+                return {"ok": False, "error": "区间运行需要提供起点和终点地图 ID"}
+            base_args = ["webui/launch.py", "--range", map_id, map_end]
             if map_version:
                 base_args += ["--map-version", map_version]
             args = base_args
@@ -657,6 +921,10 @@ def run_start(mode, map_id=None, map_version=None):
                     exe_args += ["--map-version", map_version]
             elif mode == "devmap":
                 exe_args += ["--dev", "--map", map_id]
+                if map_version:
+                    exe_args += ["--map-version", map_version]
+            elif mode == "range":
+                exe_args += ["--range", map_id, map_end]
                 if map_version:
                     exe_args += ["--map-version", map_version]
             args = exe_args
@@ -687,7 +955,8 @@ def run_start(mode, map_id=None, map_version=None):
         _RUN["proc"] = proc
         _RUN["mode"] = mode
         if map_id:
-            _RUN["mode"] = f"{mode}:{map_id}"
+            detail = f"{map_id}→{map_end}" if mode == "range" else map_id
+            _RUN["mode"] = f"{mode}:{detail}"
         _RUN["started_at"] = time.time()
         _RUN["exited_at"] = None
         _RUN["exit_code"] = None
@@ -965,6 +1234,8 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/picture":
                 from urllib.parse import parse_qs
 
+                from utils.vision import assets as asset_registry
+
                 qs = parse_qs(parsed.query)
                 p = qs.get("p", [""])[0]
                 if not p or "/" in p or "\\" in p or ".." in p:
@@ -973,13 +1244,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not re.match(r"^[\w\-]+\.(png|jpg|jpeg|webp|gif)$", p, re.I):
                     self._send(400, {"error": "bad path"})
                     return
-                base = p.rsplit(".", 1)[0]
-                found = None
-                for ext in ("webp", "png", "jpg", "jpeg"):
-                    cand = os.path.join(BASE_DIR, "picture", base + "." + ext)
-                    if os.path.exists(cand):
-                        found = cand
-                        break
+                # 按 stem 查递归索引：图片分目录后仍然只凭名字取（R25）
+                stem = p.rsplit(".", 1)[0].lower()
+                try:
+                    index, _ = asset_registry.scan_picture_files(PICTURE_DIR)
+                except OSError:
+                    index = {}
+                found = index.get(stem)
                 if not found:
                     self._send(404, {"error": "not found"})
                     return
@@ -994,6 +1265,30 @@ class Handler(BaseHTTPRequestHandler):
                     "gif": "image/gif",
                 }.get(ext, "application/octet-stream")
                 self._send(200, data, ct)
+            elif path == "/api/probe/images":
+                """图片探针的候选列表（开发者模式）。缩略图仍走 /api/picture。"""
+                if not dev_mode_enabled():
+                    self._send(403, {"ok": False, "error": "开发者模式未开启"})
+                    return
+                from urllib.parse import parse_qs
+
+                qs = parse_qs(parsed.query)
+                try:
+                    limit = int(qs.get("limit", [PROBE_IMAGE_LIMIT])[0])
+                except ValueError:
+                    limit = PROBE_IMAGE_LIMIT
+                limit = max(1, min(limit, PROBE_IMAGE_LIMIT))
+                # 先不截断拿总数：前端要能分清「就这么多」和「被上限截断了」
+                matches = list_probe_images(qs.get("q", [""])[0])
+                self._send(
+                    200,
+                    {
+                        "ok": True,
+                        "total": len(matches),
+                        "images": matches[:limit],
+                        "limit": limit,
+                    },
+                )
             elif path == "/api/stats":
                 cfg = read_config()
                 tree = build_map_tree()
@@ -1034,11 +1329,19 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(413, {"ok": False, "error": "请求体过大"})
                     return
                 raw = self.rfile.read(length)
-                data = json.loads(raw.decode("utf-8"))
-                if not isinstance(data, dict):
-                    raise ValueError("config 必须是 JSON 对象")
-                save_config(data)
-                self._send(200, {"ok": True, "saved": True})
+                body = json.loads(raw.decode("utf-8"))
+                if not isinstance(body, dict):
+                    raise ValueError("请求体必须是 JSON 对象")
+                changed = body.get("changed")
+                removed = body.get("removed") or []
+                if not isinstance(changed, dict):
+                    raise ValueError("changed 必须是 JSON 对象")
+                if not isinstance(removed, list) or not all(
+                    isinstance(k, str) for k in removed
+                ):
+                    raise ValueError("removed 必须是字符串数组")
+                applied = save_config_patch(changed, removed)
+                self._send(200, {"ok": True, "saved": True, "applied": applied})
             except Exception as e:
                 self._send(400, {"ok": False, "error": str(e)})
         elif parsed.path == "/api/run":
@@ -1051,7 +1354,13 @@ class Handler(BaseHTTPRequestHandler):
                 data = json.loads(raw.decode("utf-8"))
                 mode = data.get("mode", "normal")
                 self._send(
-                    200, run_start(mode, data.get("map"), data.get("map_version"))
+                    200,
+                    run_start(
+                        mode,
+                        data.get("map"),
+                        data.get("map_version"),
+                        data.get("map_end"),
+                    ),
                 )
             except Exception as e:
                 self._send(400, {"ok": False, "error": str(e)})
@@ -1087,7 +1396,7 @@ class Handler(BaseHTTPRequestHandler):
                     data["map"], list
                 ):
                     raise ValueError("start 和 map 必须是数组")
-                _backup_file(fpath)
+                _backup_if_changed(fpath, data, "map")
                 tmp = fpath + ".tmp"
                 with open(tmp, "w", encoding="utf-8") as f:
                     f.write(dumps_map(data))
@@ -1142,6 +1451,44 @@ class Handler(BaseHTTPRequestHandler):
                         else "发送失败，请检查配置（总开关、渠道、密钥）",
                     },
                 )
+            except Exception as e:
+                self._send(500, {"ok": False, "error": str(e)})
+        elif parsed.path == "/api/probe":
+            """跑一次图片探针（开发者模式）。"""
+            from utils.core.thresholds import DEFAULT_MATCH
+            from utils.vision import probe as probe_module
+
+            try:
+                if not dev_mode_enabled():
+                    self._send(403, {"ok": False, "error": "开发者模式未开启"})
+                    return
+                if run_status().get("running"):
+                    # 跑图时截图线程正忙，而且抓到的帧可能正好卡在过场/黑屏
+                    self._send(409, {"ok": False, "error": "正在跑图，先停止运行再探针"})
+                    return
+                length = int(self.headers.get("Content-Length", 0) or 0)
+                if length > self.MAX_BODY:
+                    self._send(413, {"ok": False, "error": "请求体过大"})
+                    return
+                body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+                measurement = run_image_probe(
+                    str(body.get("name", "")),
+                    float(body.get("threshold", DEFAULT_MATCH)),
+                )
+                # frame 是几 MB 的 ndarray，不进 JSON；预览图单独编码
+                payload = {key: value for key, value in measurement.items() if key != "frame"}
+                preview = probe_module.render_preview_png(measurement)
+                payload["preview_png_b64"] = (
+                    base64.b64encode(preview).decode("ascii") if preview else None
+                )
+                payload["ok"] = True
+                self._send(200, payload)
+            except FileNotFoundError as e:
+                self._send(404, {"ok": False, "error": str(e)})
+            except RuntimeError as e:
+                self._send(503, {"ok": False, "error": str(e)})
+            except (TypeError, ValueError) as e:
+                self._send(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
         elif parsed.path == "/api/shutdown":

@@ -1,5 +1,6 @@
 """utils/vision/blackscreen.py —— 黑屏判定与 finish_fighting 图片匹配。"""
 
+import os
 from types import SimpleNamespace
 
 import numpy as np
@@ -69,21 +70,41 @@ class TestLoadFinishFightingImages:
         (folder / "finish_fighting2_1.png").write_bytes(b"")
         (folder / "other.png").write_bytes(b"")
 
-        assert sorted(screen.load_finish_fighting_images()) == [
+        assert sorted(
+            os.path.basename(path) for path in screen.load_finish_fighting_images()
+        ) == [
             "finish_fighting.png",
             "finish_fighting2_1.png",
         ]
+
+    def test_finds_images_in_subdirectories(self, screen, isolated_cwd):
+        folder = isolated_cwd / "picture" / "ui"
+        folder.mkdir(parents=True)
+        (folder / "finish_fighting.webp").write_bytes(b"")
+
+        names = [
+            os.path.basename(path) for path in screen.load_finish_fighting_images()
+        ]
+
+        assert names == ["finish_fighting.webp"]
+
+    def test_sample_output_directory_is_ignored(self, screen, isolated_cwd):
+        folder = isolated_cwd / "picture" / "new_pic" / "20261024"
+        folder.mkdir(parents=True)
+        (folder / "finish_fighting.webp").write_bytes(b"")
+
+        assert screen.load_finish_fighting_images() == []
 
     def test_returns_empty_for_empty_folder(self, screen, isolated_cwd):
         (isolated_cwd / "picture").mkdir()
         assert screen.load_finish_fighting_images() == []
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="图片目录缺失时 os.listdir 抛 FileNotFoundError，"
-        "而调用方 check_exit_blackscreen 本意是返回 True/False",
-    )
     def test_missing_picture_folder_degrades_gracefully(self, screen):
+        """目录不存在时返回空列表。
+
+        以前这里 `os.listdir` 会抛 FileNotFoundError，是本文件里唯一一条 xfail；
+        改成递归 `os.walk`（缺失目录静默为空）后顺带修好了。
+        """
         assert screen.load_finish_fighting_images() == []
 
 

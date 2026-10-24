@@ -5,7 +5,8 @@
 4 空格缩进 + 短数组内联 + 末尾不加换行。
 
 三个写入方（webui 保存 / 录制 / 批量字段替换）必须共用 `utils/core/json_io.py`
-这一个序列化器 —— 各写一套的话格式会再次分叉。
+这一个序列化器 —— 各写一套的话格式会再次分叉。2026-10 新增的黄泉→银狼地图
+转换工具同样是写入方，一并登记。
 """
 
 import json
@@ -21,6 +22,7 @@ WRITER_FILES = (
     "webui/server.py",  # webui 保存地图
     "utils/ui/record.py",  # --record 录制
     "tools/convert.py",  # 批量字段替换
+    "tools/convert_huangquan_check_e.py",  # 黄泉 → 银狼地图批量转换
 )
 
 #: 这三个表达式是分叉的根源：各自序列化、各自定缩进

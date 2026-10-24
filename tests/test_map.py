@@ -6,6 +6,7 @@ import pytest
 
 import utils.flows.map as map_module
 from utils.config.config import ConfigurationManager
+from utils.core.exceptions import CustomException
 from utils.core.map_move import MAP_MOVE_NAV_DATA, STAR_MAP_DIRECTIONS
 from utils.flows.map import Map
 
@@ -21,7 +22,7 @@ def game_map(make_instance, monkeypatch):
         img=SimpleNamespace(),
         handle=SimpleNamespace(),
         monthly_pass=SimpleNamespace(monthly_pass_check=lambda: None),
-        planet_png_lst=["picture\\orientation_2.png"],
+        planet_ids=["orientation_2"],
         planet=None,
         map_statu_minimize=False,
         allowlist_mode=False,
@@ -49,7 +50,8 @@ class TestGetMapList:
     @pytest.fixture
     def ordered(self, game_map):
         game_map.map_info = SimpleNamespace(
-            map_list=["map_1-1_0.json", "map_2-1_0.json", "map_3-1_0.json"]
+            map_list=["map_1-1_0.json", "map_2-1_0.json", "map_3-1_0.json"],
+            map_version="default",
         )
         return game_map
 
@@ -69,6 +71,23 @@ class TestGetMapList:
     def test_unknown_start_raises(self, ordered):
         with pytest.raises(ValueError):
             ordered.get_map_list("9-9_9")
+
+    def test_range_includes_both_ends(self, ordered):
+        assert ordered.get_map_list_range("1-1_0", "2-1_0") == [
+            "map_1-1_0.json",
+            "map_2-1_0.json",
+        ]
+
+    def test_range_can_be_a_single_map(self, ordered):
+        assert ordered.get_map_list_range("2-1_0", "2-1_0") == ["map_2-1_0.json"]
+
+    def test_reversed_range_raises(self, ordered):
+        with pytest.raises(CustomException):
+            ordered.get_map_list_range("3-1_0", "1-1_0")
+
+    def test_missing_end_raises(self, ordered):
+        with pytest.raises(CustomException):
+            ordered.get_map_list_range("1-1_0", "9-9_9")
 
 
 class TestAllowFlags:
@@ -178,6 +197,60 @@ class TestCheckPlanet:
     def test_different_planet_is_not_skipped(self, game_map):
         game_map.planet = "1"
         assert game_map.check_planet("2") is False
+
+
+class TestHandleOrientation:
+    """星球判定用资源 ID，不用地图 JSON 的路径串。
+
+    2026-10 的回归：曾把星球列表换成 `assets.path()`，物理路径与 JSON 的
+    `picture\\orientation_N.png` 对不上，planet_dict 为空 → IndexError。
+    现在两边都过 `assets.asset_id()`，前缀/分隔符/后缀怎么变都不影响比对。
+    """
+
+    def test_planet_ids_are_stable_identifiers(self):
+        assert map_module.PLANET_IDS == (
+            "orientation_2",
+            "orientation_3",
+            "orientation_4",
+            "orientation_5",
+            "orientation_6",
+            "orientation_7",
+        )
+
+    def test_orientation_finds_the_planet_from_start_keys(self, game_map):
+        game_map.planet_ids = map_module.PLANET_IDS
+        game_map.planet = "orientation_2"
+        map_data = {
+            "start": [
+                {"picture\\orientation_1.png": 1},
+                {"picture\\orientation_2.png": 1},
+            ]
+        }
+
+        # 命中已在该星球时直接返回；空 planet_dict 会在这里抛 IndexError
+        game_map.handle_orientation("picture\\orientation_1.png", map_data)
+
+    def test_every_map_that_opens_the_star_map_has_a_planet_key(self, repo_root):
+        """全库核对 `handle_orientation` 的隐含前提：有 orientation_1 就必须有 2..7 之一。"""
+        import json
+        from pathlib import Path
+
+        checked = 0
+        for path in Path("map").glob("*/*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            keys = {
+                key
+                for item in data.get("start", [])
+                if isinstance(item, dict)
+                for key in item
+            }
+            if "picture\\orientation_1.png" not in keys:
+                continue
+            checked += 1
+            ids = {map_module.assets.asset_id(key) for key in keys}
+            assert ids & set(map_module.PLANET_IDS), f"{path} 缺星球判定键"
+
+        assert checked > 100, "地图目录为空或路径不对"
 
 
 class TestResetRoundCount:
@@ -446,7 +519,23 @@ class TestHandlePlanetClickOffset:
         game_map.handle_planet("picture\\orientation_7.png")
 
         assert clicks[0]["click_offset"] == (60, 0)
-        assert game_map.planet == "picture\\orientation_7.png"
+        assert game_map.planet == "orientation_7"
+
+    def test_same_planet_skips_even_with_a_json_reference(self, game_map):
+        """回归：`self.planet` 是 ID，key 是 JSON 引用，必须归一化后再比。
+
+        修复前这里会把 `picture\\orientation_7.png` 和 `orientation_7` 比成不同，
+        于是「已在目标星球」还要白找一轮点位（实机表现为 _move_default 左右拖）。
+        """
+        game_map.planet = "orientation_7"
+        game_map.find_transfer_point = lambda *a, **k: pytest.fail(
+            "已经在目标星球，不该再找点位"
+        )
+        game_map.img = SimpleNamespace(
+            click_target=lambda *a, **k: pytest.fail("已经在目标星球，不该再点击")
+        )
+
+        game_map.handle_planet("picture\\orientation_7.png")
 
     def test_retry_click_also_carries_the_offset(self, game_map, monkeypatch):
         """重试那一击同样要带偏移 —— 只改第一击的话，重试会落回锚点，白点 7 次

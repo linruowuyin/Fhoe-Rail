@@ -71,6 +71,9 @@ MAP_KEYS = {
     "scroll",
     "shutdown",
     "e",
+    "lv999_e",
+    "lv999_fighting",
+    "lv999_await",
     "esc",
     "1",
     "2",
@@ -84,8 +87,9 @@ MAP_KEYS = {
     "await",
 }
 
-#: `map` 的 else 分支把这些键交给 handle_move；其它键名同样会被当成移动键
-MOVEMENT_KEYS = {"w", "a", "s", "d"}
+#: `map` 的 else 分支把这些键交给 handle_move。
+#: `aa/ww/ss/dd` 是「同方向续走、不要打断疾跑」的变体（见 flows/movement.py）。
+MOVEMENT_KEYS = {"w", "a", "s", "d", "ww", "aa", "ss", "dd"}
 
 #: 值必须是数字的键（秒 / 次数 / 角度）
 NUMERIC_KEYS = {
@@ -104,6 +108,9 @@ NUMERIC_KEYS = {
     "normal_run",
     "allow_skip_f",
     "f",
+    "lv999_e",
+    "lv999_fighting",
+    "lv999_await",
     "mouse_move",
 } | MOVEMENT_KEYS
 
@@ -209,6 +216,22 @@ def validate_map(data, filename: str = "") -> list:
                     "error",
                     f"{where}.map[{index}].fighting",
                     f"只接受 1（进入战斗）或 2（打障碍物），实际是 {value!r}",
+                )
+            )
+        if key == "lv999_e" and _is_number(value) and value != 1:
+            issues.append(
+                Issue(
+                    "error",
+                    f"{where}.map[{index}].lv999_e",
+                    f"只接受 1（银狼 LV.999 设置 + 按E），实际是 {value!r}",
+                )
+            )
+        if key == "lv999_fighting" and _is_number(value) and value != 1:
+            issues.append(
+                Issue(
+                    "error",
+                    f"{where}.map[{index}].lv999_fighting",
+                    f"只接受 1（与 fighting: 1 相同），实际是 {value!r}",
                 )
             )
         if key == "check" and not _is_number(value) and not isinstance(value, list):

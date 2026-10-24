@@ -1,0 +1,41 @@
+{
+    "name": "机器聚落-1",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_3.png": 1.5
+        },
+        {
+            "picture\\map_2-7.png": 2
+        },
+        {
+            "picture\\map_2-7_point_3.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "w": 8.7
+        },
+        {
+            "a": 0.31
+        },
+        {
+            "w": 4.42
+        },
+        {
+            "a": 0.8
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}

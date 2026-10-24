@@ -20,6 +20,27 @@ from utils.core.log import log
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.core.thresholds import SPRINT_ICON
 
+# 疾跑比走路快这么多倍
+SPRINT_SPEED_FACTOR = 1.53
+
+#: 「同方向续走、不打断疾跑」的双键变体 → 实际按下的方向键。
+#: JSON 里写 `{"aa": 0.8}`，键盘上仍然只按 `a`；区别在 handle_move 的疾跑分支。
+DOUBLE_MOVES = {"ww": "w", "aa": "a", "ss": "s", "dd": "d"}
+
+
+def sprint_duration(walk_seconds: float) -> float:
+    """把「走路走完要多久」换算成「开疾跑走完要多久」。
+
+    疾跑快 `SPRINT_SPEED_FACTOR` 倍，但起步那 1 秒省不掉 —— 先扣 1 秒、除以倍数、
+    再加回来。省下的时间 = walk_seconds - 返回值。
+    """
+    return round((walk_seconds - 1) / SPRINT_SPEED_FACTOR, 4) + 1
+
+
+def should_toggle_sprint(need_run: bool, is_running: bool) -> bool:
+    """当前状态与目标状态不一致时才需要去动 Shift。"""
+    return need_run != is_running
+
 
 class Movement:
     """移动、疾跑检测与卡顿识别。"""
@@ -36,14 +57,29 @@ class Movement:
         self.tatol_save_time = 0  # 疾跑节约时间
         self.time_error_cnt = 0  # 系统卡顿计数
         self.running = False
+        self.held_key = None  # 跨步骤保持按住的方向键（双键续走）
         self.thread_cancel_sprint = None
         self.thread_check_sprint = None
 
 
-    def handle_move(self, value, key, normal_run=False, last_key: str = ""):
+    def handle_move(
+        self,
+        value,
+        key,
+        normal_run=False,
+        last_key: str = "",
+        prev_key: str = "",
+        next_key: str = "",
+    ):
         """
         移动，并处理疾跑
         使用 try/finally 保证方向键与 Shift 一定会被释放，避免异常时键盘卡住
+
+        :param prev_key: 上一条 map 步骤的原始键（`aa` 也原样传进来），用于判断
+            「同方向续走」是否要保住疾跑；和只给 HuangQuan 用的 `last_key` 分开。
+        :param next_key: 下一条 map 步骤的原始键。如果它是同方向的双键
+            （`ss` 跟在 `s` 后面），这一段结束后**不释放**方向键和 Shift，
+            让下一段在同一口气里继续跑，避免「松开再按」造成疾跑中断。
         """
         if normal_run:
             log.info(f"强制关闭疾跑normal_run:{normal_run}")
@@ -58,8 +94,21 @@ class Movement:
                     self.combat.fight_in_map = True
 
         self.run_fix_time = 0
-        KeyboardEvent.press_key(key)
+        base_key = DOUBLE_MOVES.get(key, key)
+        allow_run = self.cfg.config_file.get("auto_run_in_map", False)
+        # 上一步是不是同一方向的「按住不放」：是的话这段不重新按键
+        continuing = getattr(self, "held_key", None) == base_key
+        # 下一段是不是同方向双键：是的话这段结束后保持按住
+        hold_next = bool(
+            next_key in DOUBLE_MOVES
+            and DOUBLE_MOVES[next_key] == base_key
+            and allow_run
+            and not normal_run
+        )
+        if not continuing:
+            KeyboardEvent.press_key(base_key)
 
+        completed = False
         try:
             log.info(f"上一次疾跑状态: {self.last_step_run}")
             # 疾跑相关逻辑回退2025.2.28版本
@@ -69,7 +118,18 @@ class Movement:
             #     self.stop_cancel_sprint_task()
 
             start_time = time.perf_counter()
-            allow_run = self.cfg.config_file.get("auto_run_in_map", False)
+            # 双键 + 上一步同方向 + 上一步确实在疾跑 → 这一段不要断疾跑。
+            # 只按方向键走完 value 秒；move_run_fix 会检测疾跑图标并按 Shift
+            # 把它关掉，所以这条路必须绕开它和两个短步分支。
+            keep_sprint = (
+                key in DOUBLE_MOVES
+                and allow_run
+                and not normal_run
+                and self.last_step_run
+                and prev_key in (base_key, key)
+            )
+            if keep_sprint:
+                self.enable_run()  # 确认疾跑仍在（掉了就重新按一次 Shift）
             add_time = True
             run_in_road = False
             walk_in_road = False
@@ -79,12 +139,12 @@ class Movement:
 
             value_before = value
             while time.perf_counter() - start_time < value:
-                # if not is_normal_run and self.last_step_run:
-                #     # self.start_check_sprint_task(need_run=False, delay=0.03)
-                #     self.disable_run()
-                #     is_normal_run = True
-                # else:
-                #     is_normal_run = True
+                if keep_sprint:
+                    # 已在疾跑，保持方向键按住即可；sleep 防止忙等（R2）。
+                    # 用 0.02 而不是 0.05：轮询粒度会叠在 value 上，0.05 会让
+                    # 0.1 秒级的短双键步骤多跑半格（标定 ss 时长时尤其明显）。
+                    time.sleep(0.02)
+                    continue
                 if (
                     value_before > 2
                     and not run_in_road
@@ -97,7 +157,7 @@ class Movement:
                         self.start_check_sprint_task(need_run=True)
                         run_in_road = True
                         temp_value = value_before
-                        value = round((value_before - 1) / 1.53, 4) + 1
+                        value = sprint_duration(value_before)
                         self.tatol_save_time += temp_value - value
                         self.last_step_run = True
                 elif (
@@ -111,6 +171,11 @@ class Movement:
                     self.move_run_fix(start_time)
                     walk_in_road = True
                     self.last_step_run = False
+                else:
+                    # 三个分支都不命中（normal_run 走长距离、短步剩下的等待时间等）：
+                    # 必须 sleep，否则就是 100% CPU 忙等（R2），既耗电又会跟后台
+                    # 截图线程抢 GIL，反过来制造出代码自己检测的「系统卡顿」。
+                    time.sleep(0.005)
             temp_time = time.perf_counter() - start_time
 
             # 系统卡顿识别
@@ -128,7 +193,9 @@ class Movement:
             if extra_fix:
                 extra_time = temp_time - value
                 extra_time = (
-                    extra_time if not run_in_road else round(extra_time * 1.53, 4)
+                    extra_time
+                    if not run_in_road
+                    else round(extra_time * SPRINT_SPEED_FACTOR, 4)
                 )
                 if extra_time > 0.05:
                     log.info("强制断开疾跑")
@@ -141,22 +208,43 @@ class Movement:
                         KeyboardEvent.release_key(key_dict.get(key))
                         KeyboardEvent.press_key(key)
                         KeyboardEvent.release_key(key)
+            completed = True
         finally:
-            # 无论移动过程是否异常，都必须释放疾跑键与方向键
+            # 这一段后面还有同方向续走：保持方向键与 Shift 按住，交给下一段接着跑
+            hold_keys = completed and hold_next
             try:
                 self.stop_check_sprint_task()
             except Exception:
                 pass
-            try:
-                KeyboardEvent.release_key("shift")
-            except Exception:
-                pass
-            try:
-                KeyboardEvent.release_key(key)
-            except Exception:
-                pass
-        if allow_run:
+            if hold_keys:
+                self.held_key = base_key
+            else:
+                self.held_key = None
+                try:
+                    KeyboardEvent.release_key("shift")
+                except Exception:
+                    pass
+                try:
+                    KeyboardEvent.release_key(base_key)
+                except Exception:
+                    pass
+        if allow_run and not (completed and hold_next):
             time.sleep(0.03)
+
+    def release_held(self):
+        """释放跨步骤保持按住的键（序列结束 / 异常退出时兜底）。"""
+        key = getattr(self, "held_key", None)
+        if not key:
+            return
+        try:
+            KeyboardEvent.release_key("shift")
+        except Exception:
+            pass
+        try:
+            KeyboardEvent.release_key(key)
+        except Exception:
+            pass
+        self.held_key = None
 
     def is_running(self):
         """
@@ -179,7 +267,7 @@ class Movement:
             await asyncio.sleep(delay)
             is_running = await loop.run_in_executor(None, self.is_running)
 
-            should_act = (need_run and not is_running) or (not need_run and is_running)
+            should_act = should_toggle_sprint(need_run, is_running)
             if not should_act:
                 log.info(f"当前已{action}疾跑")
                 break

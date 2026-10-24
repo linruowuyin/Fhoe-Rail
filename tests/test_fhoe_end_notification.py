@@ -56,7 +56,9 @@ def test_completed_route_sends_summary_from_counter_owners(cli, counts):
 
     cli.main()
 
-    route.process_map.assert_called_once_with('1-1_0', False, dev=False, single_map=True)
+    route.process_map.assert_called_once_with(
+        '1-1_0', False, dev=False, single_map=True, end=None
+    )
     cli.notify.send_end.assert_called_once_with({
         '总计用时': 99,
         '战斗次数': fights,

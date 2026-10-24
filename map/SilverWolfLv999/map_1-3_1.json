@@ -1,0 +1,77 @@
+{
+    "name": "支援舱段-1",
+    "author": "Starry-Wind,喵不可言,小明,ibukiizumi",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_2.png": 1.5
+        },
+        {
+            "picture\\map_1-3.png": 2
+        },
+        {
+            "picture\\map_1-3_point_1.png": 1.5
+        },
+        {
+            "picture\\map_1-3_point_2.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "lv999_e": 1
+        },
+        {
+            "d": 0.8
+        },
+        {
+            "w": 3.8
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "w": 0.16
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "a": 0.13
+        },
+        {
+            "aa": 0.52
+        },
+        {
+            "w": 3.5
+        },
+        {
+            "a": 3.7
+        },
+        {
+            "w": 2.3
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "lv999_await": 2
+        }
+    ]
+}

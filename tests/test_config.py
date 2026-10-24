@@ -2,6 +2,7 @@
 
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -65,6 +66,8 @@ class TestConfigKeys:
             "allow_memory_token",
             "notify_enabled",
             "notify_channel",
+            "webui_dev_mode",
+            "collect_picture_samples",
         ],
     )
     def test_expected_key_present(self, key):
@@ -141,7 +144,67 @@ class TestModifyJsonFile:
         write_config(tmp_path / "x.json", {})
         ConfigurationManager.modify_json_file("x.json", "名字", "值")
         raw = (tmp_path / "x.json").read_text(encoding="utf-8")
-        assert "名字" in raw, "orjson 应输出 UTF-8 而非 \\uXXXX 转义"
+        assert "名字" in raw, "应输出 UTF-8 而非 unicode escape"
+
+
+class TestSwapMapVersion:
+    """临时切换地图版本 —— 回归：原值必须在写入之前读出来。
+
+    曾经 fhoe.py 是「先写新版本、再读原值」，读到的自然是刚写进去的新值，
+    finally 里那句「恢复」就变成了恢复成它自己：临时跑一次别的地图版本，
+    config.json 的版本就永久停在那里，用户下次正常锄大地会静默变成那个版本的行为。
+    """
+
+    def test_returns_the_version_that_was_replaced(self):
+        ConfigurationManager.save_config({"map_version": "default"})
+        assert ConfigurationManager.swap_map_version("reward") == "default"
+        assert ConfigurationManager.load_config()["map_version"] == "reward"
+
+    def test_round_trip_restores_the_original(self):
+        ConfigurationManager.save_config({"map_version": "HuangQuan"})
+        old = ConfigurationManager.swap_map_version("reward")
+        ConfigurationManager.modify_json_file(
+            ConfigurationManager.CONFIG_FILE_NAME, "map_version", old
+        )
+        assert ConfigurationManager.load_config()["map_version"] == "HuangQuan"
+
+    def test_no_new_version_means_no_write(self):
+        ConfigurationManager.save_config({"map_version": "default"})
+        assert ConfigurationManager.swap_map_version(None) is None
+        assert ConfigurationManager.load_config()["map_version"] == "default"
+
+
+class TestConfigWriteFormat:
+    """config.json 只有一个写盘格式：4 空格缩进 + 中文不转义 + 原子写。
+
+    曾经是四个写入口、三种形态 —— `save_config` 缩进 4 空格还把中文转义成
+    unicode escape、`modify_json_file` 用 orjson 写紧凑、WebUI 自己缩进 2 空格、
+    `init_config_file` 也是紧凑。谁最后写，config.json 就长成什么样。
+    """
+
+    def test_format_is_four_spaces_and_unescaped(self):
+        ConfigurationManager.save_config({"中文键": "中文值", "n": 1})
+        raw = Path("config.json").read_text(encoding="utf-8")
+        assert '\n    "中文键": "中文值"' in raw
+        assert "中文键" in raw, "不该转义成 unicode escape"
+
+    def test_all_writers_produce_the_same_bytes(self):
+        # 读原始字节：这样连缩进、行尾、转义任何一项不同都能抓到
+        ConfigurationManager.save_config({"a": 1, "中文": "值"})
+        expected = Path("config.json").read_bytes()
+        ConfigurationManager.modify_json_file("config.json", "a", 1)
+        assert Path("config.json").read_bytes() == expected
+
+    def test_failed_write_leaves_the_original_intact(self):
+        """序列化失败时原文件必须完好 —— 原地 open(..., "w") 会留下半个文件。"""
+        ConfigurationManager.save_config({"a": 1})
+        with pytest.raises(TypeError):
+            ConfigurationManager.save_config({"a": object()})
+        assert ConfigurationManager.load_config() == {"a": 1}
+
+    def test_no_temp_file_is_left_behind(self):
+        ConfigurationManager.save_config({"a": 1})
+        assert not Path("config.json.tmp").exists()
 
 
 class TestSaveAndLoadConfig:

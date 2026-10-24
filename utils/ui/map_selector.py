@@ -135,7 +135,8 @@ def _h_side_map(map_info: MapInfo, main):
     )
     sec_choice = questionary.select(title, sec_opts).ask()
 
-    if sec_choice == "【返回】":
+    # 两个 choice 为 None 都表示用户按了 Ctrl-C / Esc；不拦住的话下面 next() 会 StopIteration
+    if not sec_choice or sec_choice == "【返回】":
         return "back"
 
     # 三级选项
@@ -146,7 +147,7 @@ def _h_side_map(map_info: MapInfo, main):
     ] + ["【返回】"]
     tri_choice = questionary.select(title, tri_opts).ask()
 
-    if tri_choice == "【返回】":
+    if not tri_choice or tri_choice == "【返回】":
         return "back"
 
     idx = next(i for i, v in enumerate(values) if v[0] == tri_choice)

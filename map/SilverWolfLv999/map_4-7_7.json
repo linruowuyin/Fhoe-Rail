@@ -1,0 +1,30 @@
+{
+    "name": "大剧院-7",
+    "author": "smjes3",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\fanhui_1.png": 1.5
+        },
+        {
+            "picture\\map_4-7_point_6.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 1.5
+        },
+        {
+            "a": 0.8
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}

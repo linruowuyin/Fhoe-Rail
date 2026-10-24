@@ -12,6 +12,7 @@ import time
 
 from utils.core.exceptions import CustomException
 from utils.core.log import log
+from utils.vision import assets
 from utils.core.thresholds import (
     ACTION_BAR,
     AUTO_OFF_ICON,
@@ -130,7 +131,7 @@ class Combat:
         """
         if not self.img.on_main_interface(timeout=0.0, allow_log=True):
             time.sleep(0.5)
-            image_a = Img.get_img("./picture/eat.png")
+            image_a = Img.get_img(assets.path("eat"))
             result_a = self.img.scan_screenshot(image_a)
             if result_a["max_val"] > TECHNIQUE_DIALOG:
                 allow_fight_e_buy_prop = self.cfg.config_file.get(
@@ -138,7 +139,7 @@ class Combat:
                 )
                 if allow_fight_e_buy_prop:
                     allow_buy = False
-                    round_disable = Img.get_img("./picture/round_disable.png")
+                    round_disable = Img.get_img(assets.path("round_disable"))
                     if self.img.on_interface(
                         check_list=[round_disable],
                         timeout=0.5,
@@ -147,8 +148,8 @@ class Combat:
                     ):
                         pass
                     else:
-                        food_lab = Img.get_img("./picture/qiqiao_lab.png")
-                        food_icon = Img.get_img("./picture/qiqiao.png")
+                        food_lab = Img.get_img(assets.path("qiqiao_lab"))
+                        food_icon = Img.get_img(assets.path("qiqiao"))
                         find = False
                         drag = 0
                         while not find and drag < 4:
@@ -162,7 +163,7 @@ class Combat:
                                 find = True
                                 for _ in range(2):
                                     self.img.click_target(
-                                        "./picture/qiqiao.png",
+                                        assets.path("qiqiao"),
                                         QIQIAO_ICON,
                                         True,
                                         2,
@@ -177,7 +178,7 @@ class Combat:
                                     ):
                                         time.sleep(0.1)
                                         self.img.click_target(
-                                            "./picture/round.png", SNACK_CRAFT_BUTTON, timeout=8
+                                            assets.path("round"), SNACK_CRAFT_BUTTON, timeout=8
                                         )
                                         self.snack_used += 1
                                         time.sleep(0.5)
@@ -189,7 +190,7 @@ class Combat:
                                 drag += 1
                         time.sleep(1)
                     self.img.click_target(
-                        "./picture/cancel.png", CANCEL_BUTTON, timeout=2
+                        assets.path("cancel"), CANCEL_BUTTON, timeout=2
                     )
                     time.sleep(0.1)
                     if allow_buy:
@@ -200,7 +201,7 @@ class Combat:
                         time.sleep(0.25)
                 else:
                     self.img.click_target(
-                        "./picture/cancel.png", CANCEL_BUTTON, timeout=2
+                        assets.path("cancel"), CANCEL_BUTTON, timeout=2
                     )
                     time.sleep(0.1)
 
@@ -212,7 +213,7 @@ class Combat:
         """
 
         img_list = []
-        img_list.append(Img.get_img("./picture/round.png"))
+        img_list.append(Img.get_img(assets.path("round")))
         for img in img_list:
             result = self.img.scan_screenshot(img)
             log.info(f"未战斗识别，匹配度{result['max_val']:.3f}，需要{ROUND_ICON}")
@@ -289,8 +290,8 @@ class Combat:
 
         start_time = time.time()
         log.info("战斗开始")
-        not_auto = Img.get_img("./picture/auto.png")
-        not_auto_c = Img.get_img("./picture/not_auto.png")
+        not_auto = Img.get_img(assets.path("auto"))
+        not_auto_c = Img.get_img(assets.path("not_auto"))
         auto_switch = False
         auto_switch_clicked = False
         auto_check_cnt = 0
@@ -373,11 +374,11 @@ class Combat:
                     not_auto_result_c = self.img.scan_screenshot(not_auto_c)
 
             if elapsed_time > 90:
-                # self.img.click_target("./picture/auto.png", 0.98, False)
+                # self.img.click_target(assets.path("auto"), 0.98, False)
                 self.img.click_target(
-                    "./picture/continue_fighting.png", CONTINUE_FIGHTING, False
+                    assets.path("continue_fighting"), CONTINUE_FIGHTING, False
                 )
-                self.img.click_target("./picture/defeat.png", DEFEAT, False)
+                self.img.click_target(assets.path("defeat"), DEFEAT, False)
                 # self.img.click_target("./picture/map_4-2_point_3.png", 0.98, False)
                 # self.img.click_target("./picture/orientation_close.png", 0.98, False)
                 if elapsed_time > 600:

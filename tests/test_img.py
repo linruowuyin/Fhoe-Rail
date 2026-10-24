@@ -164,11 +164,6 @@ class TestCalScreenshot:
 
 
 class TestTakeScreenshot:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="check_window_visibility() 为 False 时函数没有任何 return，隐式返回 None；"
-        "而所有调用点都在做 5 元组解包，会抛 TypeError 而不是给出可读的错误",
-    )
     def test_raises_when_window_invisible(self, img_factory, fake_window_factory):
         img = img_factory(window=fake_window_factory(visible=False))
         with pytest.raises(Exception):

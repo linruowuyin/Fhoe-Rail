@@ -40,6 +40,7 @@ PLANET_EMOJI = {
 VERSION_NAMES = {
     "default": "默认",
     "HuangQuan": "黄泉专用",
+    "SilverWolfLv999": "银狼LV.999专用",
     "technique": "秘技版",
     "default_lite": "精简版",
     "reward": "特殊物品领取",

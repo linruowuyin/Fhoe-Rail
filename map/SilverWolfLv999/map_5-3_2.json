@@ -1,0 +1,36 @@
+{
+    "name": "命运重渊-2",
+    "author": "smjes3",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\2floor.png": 1.5
+        },
+        {
+            "picture\\map_5-3_point_4.png": 1.5,
+            "drag": 1
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "lv999_e": 1
+        },
+        {
+            "a": 5
+        },
+        {
+            "w": 1.3
+        },
+        {
+            "ww": 0.52
+        },
+        {
+            "lv999_await": 2
+        }
+    ]
+}

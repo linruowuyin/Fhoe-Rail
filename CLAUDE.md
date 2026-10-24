@@ -138,6 +138,7 @@ Fhoe-Rail/
 │  │  ├─ arrow.py             #   小地图箭头（HSV 取色 + 360 度匹配）
 │  │  ├─ colors.py            #   色域判定（按 HSV 区间找颜色）
 │  │  ├─ viewer.py            #   调试图片窗口（cv2 显示接口）
+│  │  ├─ assets.py            #   图片资源登记表（R25）
 │  │  ├─ blackscreen.py       #   黑屏判定
 │  │  ├─ get_angle.py         #   箭头朝向
 │  │  └─ mini_asu.py          #   小地图方向
@@ -164,6 +165,8 @@ Fhoe-Rail/
 │  ├─ install_requirements.py #   依赖安装（bat / WebUI 按路径调用）
 │  ├─ shutdown.py             #   倒计时关机 GUI（GUI 收在 main() 内，见 §3.5 R16）
 │  ├─ validate_maps.py        #   地图 JSON 校验（CI 门）
+│  ├─ validate_pictures.py    #   图片命名唯一 + 引用可解析（CI 门，R25）
+│  ├─ classify_pictures.py    #   图片按用途分类迁移（dry-run / --write，R25）
 │  ├─ format_maps.py          #   地图写盘格式：检查 / --write 重排（CI 门，R22）
 │  └─ convert_to_webp.py / map_res_list.py / map_simplify.py / test.py
 │
@@ -395,9 +398,10 @@ ALT/SHIFT 被释放前要比较初始状态，避免把用户自己按住的键�
 拆成 9 行，这才是保存后 diff 变脏的大头。代价是某个文件**第一次**被重写会重排
 整份，收益是之后同一文件再改就只剩真正改动的那几行（实测连写三次，后两次零 diff）。
 
-三个写入方 —— webui 保存、`ui/record.py` 录制、`tools/convert.py` 批量替换 ——
-都调这一个序列化器，**别再各写一套**。`tests/test_map_json_format.py` 钉住这个
-契约（内联规则 + 整库收敛 + 三个写入方必须都引用它）。
+四个写入方 —— webui 保存、`ui/record.py` 录制、`tools/convert.py` 批量替换、
+`tools/convert_huangquan_check_e.py` 黄泉→银狼地图转换 —— 都调这一个序列化器，
+**别再各写一套**。`tests/test_map_json_format.py` 钉住这个
+契约（内联规则 + 整库收敛 + 写入方必须都引用它）。
 
 门在 CI：`.github/workflows/run.yml` 的 `Check changed map JSON format` →
 `tools/format_maps.py`，**只拦本次改动的地图**。全库 633 张里 471 张是历史格式
@@ -422,6 +426,82 @@ ALT/SHIFT 被释放前要比较初始状态，避免把用户自己按住的键�
 - 前端不再有名字表：星球名与 emoji 都由 `/api/maps` 下发。
 - README 里那张版本表是**给人看的文档**，保留手写 —— 但改版本中文名时要一起改
   （它是四处副本里唯一保留的一处，因为带说明文字）。
+
+### 3.7 预置与死代码
+
+**R24 — 「预置」和「死代码」在代码里长得一样，所以预置必须写明它依赖什么。**
+
+`config_fix()` 里 `map_version == "SilverWolfLv999"` 那一段永远进不去
+（`map/SilverWolfLv999/` 尚未建立），与死代码无法区分 —— 2026-10 的一次审查里它
+差点被删。而它和 `auto_use_technique_consumable` 都是**有意提前写好的骨架**。
+
+同一次还纠正了一个想当然的判断：把尚未建立的版本加进 `VERSION_NAMES` **不会**弄红
+CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查都是**单向的**
+（磁盘 → 表），表里多一条不影响。**这类"它引用的东西不存在"的检查方向，下手前先实测
+一遍，别按直觉断言。**
+
+**规则**：引用尚未存在的版本目录 / 开关 / 资源的分支，在紧邻处写明它依赖什么、
+什么时候算生效。判据是**用户今天能不能触发它**：
+
+- **能触发 → 不是预置，按活功能对待。** 例：`auto_use_technique_consumable` 今天就能
+  在设置菜单里打开、运行时 `flows/map_operations.py` 今天就会读它并真的去识图点击，
+  所以它缺在 `config_keys()` 里是**当天的缺陷**（新用户配置没有这个键、菜单显示
+  「未设置」、手删后 `ensure_config_complete()` 补不回来），必须补进默认表。
+- **不能触发 → 是预置**：写注释说明依赖什么、别删；也别为了让"它看起来不是死代码"
+  而伪造调用方。
+
+### 3.8 图片资源
+
+**R25 — 代码引用图片一律走 `vision/assets.py` 登记表，不许再写字面量路径。**
+
+曾经有 69 处 `picture\...` / `./picture/...` 字面量散在 22 个文件里，
+和阈值散落是同一类问题：看不出哪些图还在用、哪张属于哪个检测器、
+游戏更新后该先怀疑谁。现在登记表是代码侧图片的唯一入口：
+
+- 新图先在 `assets.py` 加一条（`key` → 路径 + 分类），代码写 `assets.path("key")`
+- **底色会变的图标用形状匹配**：登记时标 `match=MATCH_SHAPE`（范例：`setting_other`，
+  底色随设置菜单的模糊背景变化）。匹配器先把帧和模板转成梯度幅值再跑 CCOEFF，
+  只看轮廓、不看颜色；`match_probe` 的报告会显示「匹配方式」。新增同类图标时优先
+  用形状匹配，阈值按 probe 在实机上重新标定
+- `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
+  裸路径字面量（棘轮，只减不增；数据契约与工具文案在名单里注明原因）
+- 地图 JSON 里的 `picture\xxx.png` 是**资源 ID**，不是物理路径：`images.resolve_path`
+  先按字面找，找不到再按 **stem（文件名去掉后缀）** 查 `picture/` 的递归索引。
+  所以文件搬进子目录不影响 633 张老地图 —— **前提是 stem 全局唯一**
+  （大小写不敏感，`new_pic/` 除外）：目录只是分类，名字才是身份
+- **业务分派只认归一化后的 ID**：`assets.asset_id("picture\\map_4-3_point_5.png")`
+  → `map_4-3_point_5`。前缀、分隔符、目录、后缀全部在这一步剥掉；`map_operations`
+  的图片步骤是一张 `PICTURE_STEP_HANDLERS` 表（前缀家族 / 星球 / 通用点击另有规则），
+  新增特殊语义加一行数据，不要恢复成拿路径串做 `==` / `startswith` 的长分支。
+  `Map.planet_ids` 同样是 ID，`handle_orientation` 两边都过 `asset_id()` 再比
+- `tools/validate_pictures.py` 在 CI 拦两件事：stem 重名、地图 JSON 的图片引用
+  解析不到（拼错图片名不用等跑图才炸）。新增图片时名字撞了，改名而不是换目录
+- `picture/` 已按用途分类：`ui/`（界面/战斗/购买/设置/月卡/解谜）、`f_icon/`、
+  `map_ui/`（传送/楼层/返回/索引）、`map_points/<星球>/`、`orientation/`、`role/`；
+  `new_pic/` 是采样产物，不参与分类与扫描。分类规则与迁移在
+  `tools/classify_pictures.py`（改分类时先 dry-run 再 `--write`）
+- **所有扫目录的代码一律走 `assets.iter_picture_files()`**（递归、跳过
+  `new_pic/` 与隐藏目录）：WebUI 图片库/探针、样本收集、黑屏判定、匹配探针
+  都已改。别再写 `os.listdir("picture")`
+- `update_file` 的哈希校验按远程清单里的路径读文件，而它当前**没有调用方**
+  （休眠）。将来重新启用时，要么按新目录重新生成远程清单，要么让它走
+  `resolve_path` 映射
+
+### 3.9 地图执行契约
+
+**R26 — 每张地图执行 `map` 步骤前，代码固定调用 `handle.back_to_main()`；地图数据不要自己写 `{"main": 1}`，更不要在 `map` 开头写 `{"esc": 1}`。**
+
+以前"第一步从哪开始"取决于录制时的状态：有的图 `start` 末尾写了 `main`，
+有的依赖传送后残留的对话或菜单，有的第一行直接是 `fighting` / `esc`。
+现在 `process_single_map_handle` 在进入 `map` 循环前统一回主界面
+（`first_role_check`、视角设置之前），把契约收敛成两条：
+
+- `map` 第一步可以假设：**当前在主界面**，且**该状态能从主界面按 `ESC` 到达**
+- 依赖"传送落地残留状态"的步骤放 `start` 末尾；`map` 开头多余的 `ESC`
+  会在主界面上把 ESC 菜单打开，是错误写法
+
+`tests/test_map_operations.py::test_back_to_main_precedes_map_steps` 钉住顺序。
+对应的用户文档在 README「执行地图步骤前的固定行为（主界面检测）」。
 
 ---
 

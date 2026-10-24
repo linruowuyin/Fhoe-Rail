@@ -163,6 +163,34 @@ class TestMapEntries:
         issues = validate_map(make_map(map_steps=[{"fighting": 1, "await": 1}]))
         assert levels(issues) == ["error"]
 
+    def test_lv999_e_accepts_one(self):
+        assert validate_map(make_map(map_steps=[{"lv999_e": 1}])) == []
+
+    @pytest.mark.parametrize("value", [0, 2, "1"])
+    def test_lv999_e_rejects_other_values(self, value):
+        issues = validate_map(make_map(map_steps=[{"lv999_e": value}]))
+        assert levels(issues) == ["error"]
+
+    def test_lv999_fighting_accepts_one(self):
+        assert validate_map(make_map(map_steps=[{"lv999_fighting": 1}])) == []
+
+    @pytest.mark.parametrize("value", [0, 2, "1"])
+    def test_lv999_fighting_rejects_other_values(self, value):
+        issues = validate_map(make_map(map_steps=[{"lv999_fighting": value}]))
+        assert levels(issues) == ["error"]
+
+    def test_lv999_await_accepts_a_number(self):
+        assert validate_map(make_map(map_steps=[{"lv999_await": 2}])) == []
+
+    @pytest.mark.parametrize("value", ["2", None])
+    def test_lv999_await_rejects_non_numbers(self, value):
+        issues = validate_map(make_map(map_steps=[{"lv999_await": value}]))
+        assert levels(issues) == ["error"]
+
+    def test_double_movement_keys_pass(self):
+        steps = [{"ww": 1.5}, {"aa": 0.8}, {"ss": 0.5}, {"dd": 2}]
+        assert validate_map(make_map(map_steps=steps)) == []
+
     def test_movement_key_passes(self):
         assert validate_map(make_map(map_steps=[{"w": 1.5}, {"d": 0.5}])) == []
 

@@ -152,8 +152,11 @@ DREAM_BUILD = 0.90
 #: `setting_icon.png`
 SETTING_ICON = 0.98
 
-#: `setting_other.png`
-SETTING_OPTION = 0.98
+#: `setting_other.png`：设置菜单里的「其他设置」页签。**形状匹配**（见
+#: `vision/matcher.py::Matcher.shape_features`）：底色随游戏内模糊背景变化，
+#: 只比梯度轮廓。2026-10-24 实机探针（PrintWindow，设置菜单打开）：正样本 0.9982、
+#: 次优 0.5067，对 0.85 的余量 +0.148；合成背景实测正样本 0.94–0.998、负样本 ≤0.33。
+SETTING_OPTION = 0.85
 
 #: `auto_use_technique_consumable.png` 开关
 TECHNIQUE_CONSUMABLE = 0.98
@@ -168,6 +171,21 @@ SETTING_CONFIRM = 0.99
 
 #: `eat.png`：秘技点不足对话框
 TECHNIQUE_DIALOG = 0.90
+
+#: `silver_wolf_lv999_e.png`：银狼 LV.999 按 E 后的秘技状态图标（模板 7×14，
+#: 左上角约 1630,320）。0.98 来自用户要求：这块要做精确匹配，匹配区域只留 2px
+#: 防抖动外扩，不用 DEFAULT_MATCH 的宽松阈值。
+SILVER_WOLF_LV999_E_ICON = 0.98
+
+
+# ---------------------------------------------------------------------------
+# 1 号位角色
+# ---------------------------------------------------------------------------
+
+#: `roles_pic/role_*.png`：1 号位角色头像。模板 20×30，识别框左上角 1790,310，
+#: 搜索区四周外扩 2px 防抖动。0.98 来自用户要求（与银狼 E 状态图标相同的精确
+#: 匹配标准）；黄泉 / 银狼 LV.999 地图的 1 号位角色不符时直接终止运行。
+FIRST_ROLE_ICON = 0.98
 
 #: `qiqiao.png`：奇巧零食图标
 QIQIAO_ICON = 0.95

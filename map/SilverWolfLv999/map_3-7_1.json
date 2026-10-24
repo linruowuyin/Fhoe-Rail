@@ -1,0 +1,35 @@
+{
+    "name": "鳞渊境-1",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\orientation_1.png": 1.5
+        },
+        {
+            "picture\\orientation_4.png": 1.5
+        },
+        {
+            "picture\\map_3-7.png": 2
+        },
+        {
+            "picture\\map_3-7_point_2.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 8.41
+        },
+        {
+            "d": 0.98
+        },
+        {
+            "fighting": 2
+        }
+    ]
+}

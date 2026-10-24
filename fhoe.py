@@ -12,7 +12,6 @@ for stream_name in ("stdout", "stderr"):
         except Exception:
             pass
 
-import datetime
 import subprocess
 import time
 import traceback
@@ -34,6 +33,7 @@ from utils.flows.map_operations import MapOperations
 from utils.core.map_info import MapInfo
 from utils.ui.map_selector import choose_map, choose_map_debug
 from utils.core.notify import Notify, get_error_summary
+from utils.core.ports import SYSTEM_CLOCK
 from utils.ui.setting import Setting
 from utils.core.time_utils import TimeUtils
 from utils.drivers.window import Window
@@ -89,14 +89,29 @@ def print_end():
 
 
 def parse_map_arg():
-    """解析 --map <地图ID> 参数：非交互指定起始地图（供 WebUI 选图运行/开发者选图使用）
-    例如: fhoe.py --dev --map 3-5_1
+    """解析 --map <地图ID> 参数：非交互单图运行（WebUI 单图运行/开发者单图运行）。
+    例如: fhoe.py --map 3-5_1
     """
     if "--map" in sys.argv:
         idx = sys.argv.index("--map")
         if idx + 1 < len(sys.argv):
             return sys.argv[idx + 1]
     return None
+
+
+def parse_range_arg():
+    """解析 --range <起点地图ID> <终点地图ID>：区间运行（按地图列表顺序，含两端）。
+
+    例如: fhoe.py --range 3-5_1 3-5_2
+    """
+    if "--range" not in sys.argv:
+        return None
+    idx = sys.argv.index("--range")
+    values = [value for value in sys.argv[idx + 1: idx + 3] if not value.startswith("--")]
+    return (
+        values[0] if values else None,
+        values[1] if len(values) > 1 else None,
+    )
 
 
 def parse_map_version_arg():
@@ -108,161 +123,113 @@ def parse_map_version_arg():
     return None
 
 
+# 录制 / 测试模式自己就把事情做完了，不产生起始地图
+_MODE_DONE = object()
+
+
+def _start_for_mode(mode, map_arg, range_arg=None):
+    """按启动模式决定怎么开局，返回 `(start, dev)`。
+
+    `start` 是 `choose_map*` 的产出（也可能是 `(地图, start_in_mid)` 元组）；
+    `_MODE_DONE` 表示这个模式已经做完、不用再跑图。
+
+    各模式的差别只有三件事 —— **准备配置的方式**、**怎么挑起始地图**、**是不是开发者模式**：
+
+        --map     单图运行：用 --map 给的那张图开局
+        --range   区间运行：用 --range 给的起点开局（终点由 run_once 传给 process_map）
+        --debug   三级菜单选图（同时给了 --map 就直接用）
+        --dev     同 --debug，另外跑完自动重选地图
+        --config  先走一遍配置重写，再三级菜单选图
+        --white   按配置直接开局，并开启一次白名单模式
+        --record  进录制模式（不跑图）
+        --test    只切一次窗口（不跑图）
+        其他/无   按配置直接开局
+    """
+    if mode == "--record":
+        from utils.ui.record import record_main
+
+        record_main()
+        return _MODE_DONE, False
+
+    if mode == "--test":
+        cfg.main_start()
+        Window().switch_window()
+        return _MODE_DONE, False
+
+    if mode == "--config":
+        cfg.main_start_rewrite(setting)
+        return choose_map_debug(map_info_instance), False
+
+    cfg.main_start()  # 其余模式都以「补全默认配置」开场，原先在 7 个分支里各写了一遍
+    if mode == "--range":
+        start = (range_arg[0], False)
+    elif mode == "--map":
+        start = (map_arg, False)
+    elif mode in ("--debug", "--dev"):
+        start = (
+            choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
+        )
+    else:  # --white / 未知参数 / 没带参数
+        start = choose_map(map_info_instance)
+
+    if mode == "--white":
+        # 启用一次白名单模式
+        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True)
+    return start, mode == "--dev"
+
+
 def main():
 
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
-    dev = False  # 初始开发者模式，为否
-    map_arg = parse_map_arg()  # --map 参数：非交互指定起始地图（WebUI 选图运行）
-    single_map_mode = map_arg is not None
+    map_arg = parse_map_arg()  # --map：单图运行
+    range_arg = parse_range_arg()  # --range 起点 终点：区间运行
 
-    # WebUI 选图运行：若指定了 --map-version，临时切换地图版本（单图运行完后进程即退出）
+    if range_arg is not None:
+        range_start, range_end = range_arg
+        if not range_start or not range_end:
+            log.error(
+                "区间运行（--range）需要两个参数：起点地图ID 和 终点地图ID，"
+                "例如 --range 3-5_1 3-5_2"
+            )
+            return
+        if map_arg:
+            log.error("单图运行（--map）与区间运行（--range）不能同时使用，请只选一种")
+            return
+    range_end = range_arg[1] if range_arg is not None else None
+    single_map_mode = map_arg is not None or range_arg is not None
+
+    # WebUI 单图/区间运行：若指定了 --map-version，临时切换地图版本（进程退出前恢复）
     map_version_arg = parse_map_version_arg()
-    if map_version_arg and map_arg:
-        cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "map_version", map_version_arg)
+    old_map_version = cfg.swap_map_version(map_version_arg)
+    if old_map_version is not None:
         # 直接同步 MapInfo 单例缓存，避免 property 延迟检测
         map_info_instance._map_version = map_version_arg
-        log.info(f"[单图运行] 临时切换地图版本: {map_version_arg}")
+        cfg._config = None
+        log.info(f"[单次运行] 临时切换地图版本: {map_version_arg}")
 
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "--map":
-            cfg.main_start()
-            start = (map_arg, False)
-        elif sys.argv[1] == "--debug":
-            cfg.main_start()
-            start = (
-                choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
-            )
-        elif sys.argv[1] == "--config":
-            cfg.main_start_rewrite(setting)
-            start = choose_map_debug(map_info_instance)
-        elif sys.argv[1] == "--dev":
-            cfg.main_start()
-            start = (
-                choose_map_debug(map_info_instance) if not map_arg else (map_arg, False)
-            )
-            dev = True  # 设置开发者模式
-        elif sys.argv[1] == "--white":
-            cfg.main_start()
-            start = choose_map(map_info_instance)
-            cfg.modify_json_file(
-                cfg.CONFIG_FILE_NAME, "allowlist_mode_once", True
-            )  # 启用一次白名单模式
-        elif sys.argv[1] == "--record":
-            from utils.ui.record import record_main
-
-            record_main()
-            return
-        elif sys.argv[1] == "--test":
-            # 测试模式：单独测试某个功能
-            cfg.main_start()
-            Window().switch_window()
-            # from utils.flows.handle import Handle
-            # handle = Handle()
-            # handle.auto_use_technique_consumable()
-            return
-        else:
-            cfg.main_start()
-            start = choose_map(map_info_instance)
-    else:
-        cfg.main_start()
-        start = choose_map(map_info_instance)
+    mode = sys.argv[1] if len(sys.argv) > 1 else ""
+    if range_arg is not None:
+        # --range 可能出现在 argv 的任意位置；区间运行本身就是一次跑图，
+        # 与其它启动模式同时给出时以它为准，并明确提示被忽略的模式。
+        if mode and mode != "--range":
+            log.warning(f"检测到 --range，忽略启动模式 {mode}，按区间运行处理")
+        mode = "--range"
+    start, dev = _start_for_mode(mode, map_arg, range_arg)
+    if start is _MODE_DONE:  # 录制 / 测试模式：自己干完了，不再跑图
+        return
 
     if isinstance(start, tuple):
         start_in_mid, start = start[1], start[0]
 
     if start:
-        # 保存原始地图版本（单图运行可能临时切换版本）
-        old_map_version = None
-        if map_version_arg:
-            old_map_version = cfg.load_config().get("map_version", "default")
-            cfg.modify_json_file(cfg.CONFIG_FILE_NAME, "map_version", map_version_arg)
-            map_info_instance._map_version = map_version_arg
-            cfg._config = None  # 让 config_file property 重新加载新值
-            log.info(f"[单图运行] 临时切换地图版本: {map_version_arg}")
-
         try:
-            cfg.config_fix()
-            log.info(f"config.json:{cfg.load_config()}")
-            log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉")
-            check_mult_screen()
-            Window().switch_window()
-
-            map_instance = MapOperations()
-            time.sleep(0.5)
-            log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
-            log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
-            log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
-            log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
-            start_time = datetime.datetime.now()
-            notify.send_start(start)
-            map_instance.process_map(
-                start, start_in_mid, dev=dev, single_map=single_map_mode
-            )  # 读取配置
-            start_map = "1-1_0"
-            allow_run_again = not single_map_mode and cfg.read_json_file(
-                cfg.CONFIG_FILE_NAME, False
-            ).get("allow_run_again", False)
-            if allow_run_again:
-                map_instance.process_map(start_map, start_in_mid, dev=dev)
-            end_time = datetime.datetime.now()
-
-            # 结束通知（含统计摘要）
-            try:
-                summary = {
-                    "总计用时": map_instance.map_statu.total_time
-                    if hasattr(map_instance, "map_statu")
-                    else None,
-                    "战斗次数": map_instance.handle.combat.total_fight_cnt
-                    if hasattr(map_instance, "handle")
-                    else None,
-                    "未战斗次数": map_instance.handle.combat.total_no_fight_cnt
-                    if hasattr(map_instance, "handle")
-                    else None,
-                    "疾跑节约": map_instance.handle.movement.tatol_save_time
-                    if hasattr(map_instance, "handle")
-                    else None,
-                    "系统卡顿": map_instance.handle.movement.time_error_cnt
-                    if hasattr(map_instance, "handle")
-                    else None,
-                }
-                summary = {k: v for k, v in summary.items() if v is not None}
-                notify.send_end(summary)
-            except Exception as e:
-                log.warning(f"结束通知发送失败: {e}")
-            shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
-                "auto_shutdown", 0
+            run_once(
+                start,
+                start_in_mid,
+                dev=dev,
+                single_map_mode=single_map_mode,
+                range_end=range_end,
             )
-            shutdown_computer(shutdown_type)
-            if not single_map_mode and cfg.read_json_file(
-                cfg.CONFIG_FILE_NAME, False
-            ).get("allow_run_next_day", False):
-                log.info("开始执行跨日连锄")
-                if time_mgr.has_crossed_4am(start=start_time, end=end_time):
-                    log.info("检测到换日，即将从头开锄")
-                    map_instance.process_map(start_map, start_in_mid, dev=dev)
-                else:
-                    map_instance.handle.back_to_main(delay=2.0)
-                    now = datetime.datetime.now()
-                    refresh_hour = cfg.config_file.get("refresh_hour", 4)
-                    refresh_minute = cfg.config_file.get("refresh_minute", 0)
-                    next_4am = now.replace(
-                        hour=refresh_hour,
-                        minute=refresh_minute,
-                        second=0,
-                        microsecond=0,
-                    )
-                    if now.hour >= refresh_hour and now.minute >= refresh_minute:
-                        next_4am += datetime.timedelta(days=1)
-                    wait_time = (next_4am - now).total_seconds()
-                    wait_time += 60
-                    if wait_time <= 14400:
-                        log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
-                        time.sleep(wait_time)
-                        map_instance.process_map(start_map, start_in_mid, dev=dev)
-                    else:
-                        log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
-            # shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get('auto_shutdown', 0)
-            # shutdown_computer(shutdown_type)
             if dev:  # 开发者模式自动重选地图
                 main()
         finally:
@@ -273,7 +240,7 @@ def main():
                     )
                     map_info_instance._map_version = old_map_version
                     cfg._config = None
-                    log.info(f"[单图运行] 恢复地图版本: {old_map_version}")
+                    log.info(f"[单次运行] 恢复地图版本: {old_map_version}")
                 except Exception:
                     pass
     else:
@@ -300,6 +267,166 @@ def shutdown_computer(shutdown_type):
             subprocess.call(["taskkill", "/im", taskkill_name, "/f"])
     else:
         log.info("shutdown_type参数不正确")
+
+
+def _cross_day(
+    map_instance,
+    start_map,
+    start_in_mid,
+    dev,
+    start_time,
+    end_time,
+    *,
+    single_map_mode=False,
+    cfg=cfg,
+    time_mgr=time_mgr,
+    clock=SYSTEM_CLOCK,
+):
+    """跨日连锄：这一趟跑完之后，要不要等到刷新点再跑一趟。
+
+    三种结局：
+
+      * 这一趟已经把刷新点跨过去了 → 体力已经刷新，立刻从头再跑
+      * 还没到刷新点 → 回主界面，等到刷新点再跑
+      * 要等超过 `CROSS_DAY_MAX_WAIT`（4 小时）→ 放弃
+
+    「要不要等、等多久」是纯时间计算，在 `TimeUtils.cross_day_wait` 里；这里只负责把它
+    接到 map_instance 和时钟上。
+    """
+    if single_map_mode or not cfg.read_json_file(
+        cfg.CONFIG_FILE_NAME, False
+    ).get("allow_run_next_day", False):
+        return
+
+    log.info("开始执行跨日连锄")
+    if time_mgr.has_crossed_refresh(start=start_time, end=end_time):
+        log.info("检测到换日，即将从头开锄")
+        map_instance.process_map(start_map, start_in_mid, dev=dev)
+        return
+
+    map_instance.handle.back_to_main(delay=2.0)
+    # back_to_main 之后再取「现在」—— 它本身要花两秒，顺序反过来等待时长会差两秒
+    wait_time = time_mgr.cross_day_wait(
+        clock.now(),
+        cfg.config_file.get("refresh_hour", 4),
+        cfg.config_file.get("refresh_minute", 0),
+    )
+    if wait_time is None:
+        log.info("等待时间过久，结束跨日连锄，等待时间需要 < 4小时")
+        return
+    log.info(f"等待 {wait_time:.0f} 秒后游戏换日重锄")
+    clock.sleep(wait_time)
+    map_instance.process_map(start_map, start_in_mid, dev=dev)
+
+
+def _summary_value(source, *path):
+    """按属性路径读一个统计值；路径上任何一层缺失都返回 None，不抛。
+
+    Handle 拆分后战斗计数在 `handle.combat`、疾跑/卡顿在 `handle.movement`，
+    不能再直接读 `handle.total_fight_cnt` —— 那样会 AttributeError，被外层
+    的 except 吞掉，结束通知就再也不会发出去。
+    """
+    for attr in path:
+        source = getattr(source, attr, None)
+        if source is None:
+            return None
+    return source
+
+
+def run_once(
+    start,
+    start_in_mid,
+    *,
+    dev=False,
+    single_map_mode=False,
+    range_end=None,
+    cfg=cfg,
+    time_mgr=time_mgr,
+    notify=notify,
+    clock=SYSTEM_CLOCK,
+    window_factory=Window,
+    map_ops_factory=MapOperations,
+    check_screens=check_mult_screen,
+    shutdown=shutdown_computer,
+):
+    """跑一趟：装配 → 切窗口 → 跑图 → 跨日连锄 → 关机/注销。
+
+    `range_end` 非空时是**区间运行**：只跑 `start` 到 `range_end` 之间的地图
+    （含两端）；它和 `single_map_mode` 一样属于「跑完就停」，不触发再次运行 /
+    跨日连锄。
+
+    从 `main()` 抽出来是为了可测。`main()` 一跑就会切窗口、启动游戏窗口，单测驱动不
+    了；这里所有会碰外部世界的东西（窗口、地图流程、时钟、分辨率检查、关机）都是参数，
+    测试传替身进来就能断言编排顺序 —— 例如「关机必须排在跨日连锄之后」。
+
+    默认值在**函数定义时**就绑定了模块级对象：测试要替换请显式传参，
+    monkeypatch `fhoe.Window` 之类不会改变这里的默认值。
+    """
+    cfg.config_fix()
+    log.info(f"config.json:{cfg.load_config()}")
+    log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉，银狼LV.999地图1号位为银狼LV.999")
+    check_screens()
+    window_factory().switch_window()
+
+    map_instance = map_ops_factory()
+    clock.sleep(0.5)
+    log.info("开始运行，请勿移动鼠标和键盘.向着星...呃串台了")
+    log.info("黑塔：7128；雅利洛：19440；罗浮：42596；匹诺康尼：30996")
+    log.info("2.0版本单角色锄满100160经验（fhoe当前做不到）")
+    log.info("免费软件，倒卖的曱甴冚家铲，请尊重他人的劳动成果")
+    start_time = clock.now()
+    notify.send_start(start)
+    map_instance.process_map(
+        start, start_in_mid, dev=dev, single_map=single_map_mode, end=range_end
+    )  # 读取配置
+    start_map = "1-1_0"
+    allow_run_again = not single_map_mode and cfg.read_json_file(
+        cfg.CONFIG_FILE_NAME, False
+    ).get("allow_run_again", False)
+    if allow_run_again:
+        map_instance.process_map(start_map, start_in_mid, dev=dev)
+    end_time = clock.now()
+
+    # 结束通知（含统计摘要）
+    try:
+        summary = {
+            "总计用时": _summary_value(map_instance, "map_statu", "total_time"),
+            "战斗次数": _summary_value(
+                map_instance, "handle", "combat", "total_fight_cnt"
+            ),
+            "未战斗次数": _summary_value(
+                map_instance, "handle", "combat", "total_no_fight_cnt"
+            ),
+            "疾跑节约": _summary_value(
+                map_instance, "handle", "movement", "tatol_save_time"
+            ),
+            "系统卡顿": _summary_value(
+                map_instance, "handle", "movement", "time_error_cnt"
+            ),
+        }
+        summary = {k: v for k, v in summary.items() if v is not None}
+        notify.send_end(summary)
+    except Exception as e:
+        log.warning(f"结束通知发送失败: {e}")
+    # cfg / time_mgr / clock 要显式传下去：_cross_day 的默认值是模块级的那几个，
+    # 不传的话 run_once 收到的替身（测试注入的）就到不了跨日这一段
+    _cross_day(
+        map_instance,
+        start_map,
+        start_in_mid,
+        dev,
+        start_time,
+        end_time,
+        single_map_mode=single_map_mode,
+        cfg=cfg,
+        time_mgr=time_mgr,
+        clock=clock,
+    )
+    # 关机/注销必须排在跨日连锄之后：两者同时开启时，先关机等于把跨日等待整段废掉
+    shutdown_type = cfg.read_json_file(cfg.CONFIG_FILE_NAME, False).get(
+        "auto_shutdown", 0
+    )
+    shutdown(shutdown_type)
 
 
 if __name__ == "__main__":

@@ -58,15 +58,5 @@
             "picture\\round.png": 1.5
         }
     ],
-    "map": [
-        {
-            "fighting": 2
-        },
-        {
-            "esc": 1
-        },
-        {
-            "fighting": 2
-        }
-    ]
+    "map": []
 }

@@ -18,7 +18,9 @@ from utils.core.log import log
 from utils.core.thresholds import DEFAULT_MATCH, LOW_MATCH_REPORT_FLOOR
 from utils.drivers.mouse_event import MouseEvent
 from utils.drivers.screen import ScreenSource
+from utils.vision import assets
 from utils.vision import images as image_library
+from utils.vision import samples
 
 
 class Matcher:
@@ -50,16 +52,116 @@ class Matcher:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def shape_features(image):
+        """把图转成梯度幅值图：只保留轮廓，抹掉底色。
+
+        给「图标固定、底色随游戏内模糊背景变化」的模板用（`assets.MATCH_SHAPE`）：
+        高斯模糊的背景几乎没有梯度，图标的边缘则很明显，因此匹配结果与背景颜色无关。
+        用 `TM_CCOEFF_NORMED`（会减均值）比 `TM_CCORR_NORMED` 更能把两个亮色图标区分开。
+
+        固定缩放成 uint8（`/4`，Sobel ksize=3 的理论上限附近截断）而不是按图归一化：
+        浮点图在平坦区域会出数值异常，uint8 下纯色帧得分为 0，不会冒假高分。
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+        grad_x = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+        magnitude = cv2.magnitude(grad_x, grad_y)
+        return np.clip(magnitude / 4.0, 0, 255).astype(np.uint8)
+
+    @staticmethod
+    def _prepare_match(screenshot, prepared):
+        """按模板登记的匹配策略，返回 `(帧, 模板, matchTemplate 方法)`。"""
+        if image_library.strategy_of(prepared) == assets.MATCH_SHAPE:
+            return (
+                Matcher.shape_features(screenshot),
+                Matcher.shape_features(prepared),
+                cv2.TM_CCOEFF_NORMED,
+            )
+        return screenshot, prepared, cv2.TM_CCORR_NORMED
+
+    @staticmethod
     def match_screenshot(screenshot, prepared, left, top):
-        """比对 screenshot 与 prepared，返回匹配值与位置。"""
-        result = cv2.matchTemplate(screenshot, prepared, cv2.TM_CCORR_NORMED)
+        """比对 screenshot 与 prepared，返回匹配值与位置。
+
+        这里是**全部匹配的唯一汇聚点**，所以图片样本收集也挂在这一处（见
+        `vision/samples.py`）—— 挂在各调用点等于抄十几遍。
+
+        匹配策略跟着模板走：`assets.MATCH_SHAPE` 的模板先转成梯度幅值再比。
+        样本收集仍用原始帧/模板，落下来的样本是真实画面。
+        """
+        match_frame, match_template, method = Matcher._prepare_match(
+            screenshot, prepared
+        )
+        result = cv2.matchTemplate(match_frame, match_template, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        Matcher._collect_sample(screenshot, prepared, left, top, max_val, max_loc)
         return {
             "screenshot": screenshot,
             "min_val": min_val,
             "max_val": max_val,
             "min_loc": (min_loc[0] + left, min_loc[1] + top),
             "max_loc": (max_loc[0] + left, max_loc[1] + top),
+        }
+
+    @staticmethod
+    def _collect_sample(screenshot, prepared, left, top, max_val, max_loc):
+        """开发者模式：把这次匹配喂给样本收集器。
+
+        路径靠**对象身份**反查（`images.path_of`）—— 这里只拿得到 ndarray。
+        反色 / 旋转造出来的新数组查不到，那几次就不落样本（不影响「未使用」口径，
+        那条走的是 `images.get_img` 的加载钩子）。
+        """
+        if not samples.enabled():
+            return
+        height, width = prepared.shape[:2]
+        box_left, box_top = max_loc[0] + left, max_loc[1] + top
+        samples.note_match(
+            image_library.path_of(prepared),
+            screenshot,
+            (left, top, left + screenshot.shape[1], top + screenshot.shape[0]),
+            (box_left, box_top, box_left + width, box_top + height),
+            max_val,
+        )
+
+    @staticmethod
+    def match_peaks(screenshot, prepared, left=0, top=0):
+        """一次匹配，同时给出最优峰与**次优峰**。
+
+        次优峰 = 屏蔽掉最优峰周围一个模板大小的邻域（即所有与最优位置有像素重叠的
+        候选位置）后剩下的最高匹配值。它回答的是「这张模板在这一帧里唯一吗」：
+        最优 0.97 而次优也 0.96，说明帧里到处都长得像它，阈值定得再高也会指到错的
+        位置 —— 这是标定阈值时比最优值更该看的一个数（CLAUDE.md §1.2 的负样本余量）。
+
+        注意 `TM_CCORR_NORMED` 对整体亮度缩放不敏感：暗一倍的同一图案一样是 1.0。
+        次优峰只区分「位置不重叠」，不区分「颜色深浅」。
+
+        :return: {"max_val", "max_loc"(已加 left/top), "second_val"}
+                 模板与帧一样大（只有一个候选位置）时 `second_val` 为 0.0
+        """
+        match_frame, match_template, method = Matcher._prepare_match(
+            screenshot, prepared
+        )
+        result = cv2.matchTemplate(match_frame, match_template, method)
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+
+        height, width = prepared.shape[:2]
+        suppressed = result.copy()
+        y0 = max(0, max_loc[1] - height + 1)
+        y1 = min(result.shape[0], max_loc[1] + height)
+        x0 = max(0, max_loc[0] - width + 1)
+        x1 = min(result.shape[1], max_loc[0] + width)
+        suppressed[y0:y1, x0:x1] = -1.0
+
+        if (suppressed == -1.0).all():
+            second_val = 0.0
+        else:
+            second_val = cv2.minMaxLoc(suppressed)[1]
+
+        return {
+            "max_val": max_val,
+            "max_loc": (max_loc[0] + left, max_loc[1] + top),
+            "second_val": second_val,
         }
 
     @staticmethod

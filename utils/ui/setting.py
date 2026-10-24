@@ -64,7 +64,8 @@ class Setting(metaclass=SingletonMeta):
 
             answer = questionary.select("请选择要修改的设置:", choices=choices).ask()
 
-            if answer == "【返回】":
+            # answer 为 None = 用户按了 Ctrl-C / Esc。当成「返回」，否则下面 split 会崩
+            if not answer or answer == "【返回】":
                 return
 
             selected_title = answer.split("------")[0]
@@ -113,7 +114,8 @@ class Setting(metaclass=SingletonMeta):
                 question["dynamic_title"](config), choices=list(current_choices.keys())
             ).ask()
 
-            if answer in ["【返回】", "back"]:
+            # None = 用户取消；不拦住的话下面 current_choices[answer] 会 KeyError
+            if not answer or answer in ["【返回】", "back"]:
                 break
 
             action = current_choices[answer]

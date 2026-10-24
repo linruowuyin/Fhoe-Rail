@@ -36,7 +36,34 @@ def find_server():
     return None
 
 
+def ensure_admin():
+    """双击 exe / 脚本时也自动提权。
+
+    游戏以管理员权限运行，Windows UIPI 会挡住低权限进程的 PrintWindow 和前台切换；
+    Start-WebUI.bat 已经自己提权，但打包后的 Start-WebUI.exe 之前没有，导致从
+    WebUI 启动的锄地进程切不到游戏窗口。这里补齐同一条路径。
+    """
+    if sys.platform != "win32":
+        return
+    import ctypes
+
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        return
+    if getattr(sys, "frozen", False):
+        params = subprocess.list2cmdline(sys.argv[1:])
+    else:
+        params = subprocess.list2cmdline(sys.argv)
+    rc = ctypes.windll.shell32.ShellExecuteW(
+        None, "runas", sys.executable, params, None, 1
+    )
+    if rc <= 32:
+        print("[ERROR] 需要管理员权限：请右键选择「以管理员身份运行」。")
+        input("Press Enter to close...")
+    sys.exit(0)
+
+
 def main():
+    ensure_admin()
     print('=' * 50)
     print('  Fhoe-Rail WebUI - Star Rail Control Panel')
     print('  Browser will open automatically.')

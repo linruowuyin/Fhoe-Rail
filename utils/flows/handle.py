@@ -10,6 +10,7 @@ from utils.flows.movement import Movement
 from utils.flows.orientation import Orientation
 from utils.flows.puzzle_exit import try_exit_puzzle
 from utils.vision.img import Img
+from utils.vision import assets
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.core.log import log
 from utils.core.thresholds import (
@@ -104,14 +105,14 @@ class Handle(metaclass=SingletonMeta):
         :return: tuple, 包含三个元素：(是否使用绝对时间, 绝对时间的值（秒）, 是否允许按下F)
         """
         images = {
-            "target": Img.get_img("./picture/sw.png"),
-            "dream_pop": Img.get_img("./picture/F_DreamPop.png"),
-            "teleport": Img.get_img("./picture/F_Teleport.png"),
-            "space_anchor": Img.get_img("./picture/F_SpaceAnchor.png"),
-            "dream_module": Img.get_img("./picture/F_DreamModule.png"),
-            "listen": Img.get_img("./picture/F_Listen.png"),
-            "dream_scape": Img.get_img("./picture/F_DreamScape.png"),
-            "go_to": Img.get_img("./picture/F_Goto.png"),
+            "target": Img.get_img(assets.path("sw")),
+            "dream_pop": Img.get_img(assets.path("f_dream_pop")),
+            "teleport": Img.get_img(assets.path("f_teleport")),
+            "space_anchor": Img.get_img(assets.path("f_space_anchor")),
+            "dream_module": Img.get_img(assets.path("f_dream_module")),
+            "listen": Img.get_img(assets.path("f_listen")),
+            "dream_scape": Img.get_img(assets.path("f_dream_scape")),
+            "go_to": Img.get_img(assets.path("f_goto")),
         }
 
         start_time = time.time()
@@ -267,13 +268,13 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(2)
 
             # 通过识图，选择设置
-            if not self.img.click_target("picture\\setting_icon.png", SETTING_ICON):
+            if not self.img.click_target(assets.path("setting_icon"), SETTING_ICON):
                 log.warning("未找到设置图标")
                 return False
             time.sleep(1)
 
             # 通过识图，选择其他设置
-            if not self.img.click_target("picture\\setting_other.png", SETTING_OPTION):
+            if not self.img.click_target(assets.path("setting_other"), SETTING_OPTION):
                 log.warning("未找到其他设置选项")
                 return False
             time.sleep(0.5)
@@ -285,14 +286,14 @@ class Handle(metaclass=SingletonMeta):
 
             # 点击自动使用消耗品开关
             if not self.img.click_target(
-                "picture\\auto_use_technique_consumable.png", TECHNIQUE_CONSUMABLE
+                assets.path("auto_use_technique_consumable"), TECHNIQUE_CONSUMABLE
             ):
                 log.warning("未找到自动使用消耗品选项")
                 return False
             time.sleep(1)
 
             # 通过识图，选择"是"确认
-            if not self.img.click_target("picture\\setting_yes.png", SETTING_CONFIRM):
+            if not self.img.click_target(assets.path("setting_yes"), SETTING_CONFIRM):
                 log.warning("未找到确认按钮")
                 return False
             time.sleep(0.5)
@@ -429,9 +430,19 @@ class Handle(metaclass=SingletonMeta):
 
     # --- 移动：委派给 self.movement（见 flows/movement.py）-------------------
 
-    def handle_move(self, value, key, normal_run=False, last_key: str = ""):
+    def handle_move(
+        self,
+        value,
+        key,
+        normal_run=False,
+        last_key: str = "",
+        prev_key: str = "",
+        next_key: str = "",
+    ):
         """移动并处理疾跑。"""
-        return self.movement.handle_move(value, key, normal_run, last_key)
+        return self.movement.handle_move(
+            value, key, normal_run, last_key, prev_key, next_key
+        )
 
     def handle_await(self, value):
         """

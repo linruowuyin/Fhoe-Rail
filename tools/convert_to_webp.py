@@ -15,6 +15,8 @@ PICTURE_DIR = os.path.join(
 def convert():
     png_files = []
     for root, dirs, files in os.walk(PICTURE_DIR):
+        # `new_pic/` 是采样产物（本身就是 webp），不参与转换；顺手跳过隐藏目录
+        dirs[:] = [d for d in dirs if d != "new_pic" and not d.startswith(".")]
         for f in files:
             if f.lower().endswith(".png"):
                 png_files.append(os.path.join(root, f))

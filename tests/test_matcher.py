@@ -4,10 +4,13 @@
 的时候。2026-09 把它们搬到 vision 层（drivers 只该管设备），测试也跟着搬。
 """
 
+import cv2
 import numpy as np
 import pytest
 
 import utils.vision.matcher as matcher_module
+from utils.vision import assets
+from utils.vision import images as image_library
 from utils.vision.matcher import Matcher
 
 
@@ -257,6 +260,45 @@ class TestMatcherIsConstructibleWithoutAGame:
         assert subject.mouse is sentinel  # 只构造一次
 
 
+class TestSampleCollectionHook:
+    """匹配的汇聚点顺带喂给图片样本收集器（开发者模式 collect_picture_samples）。"""
+
+    def test_a_disabled_collector_is_never_touched(self, monkeypatch):
+        from utils.vision import samples
+
+        called = []
+        monkeypatch.setattr(samples, "enabled", lambda: False)
+        monkeypatch.setattr(samples, "note_match", lambda *args: called.append(args))
+
+        Matcher.match_screenshot(
+            np.zeros((60, 80, 3), np.uint8), np.zeros((10, 10, 3), np.uint8), 0, 0
+        )
+
+        assert called == [], "开关关着时不该有任何开销之外的副作用"
+
+    def test_the_box_and_the_score_are_handed_over(self, monkeypatch):
+        from utils.vision import samples
+
+        seen = []
+        monkeypatch.setattr(samples, "enabled", lambda: True)
+        monkeypatch.setattr(
+            samples,
+            "note_match",
+            lambda path, frame, region, box, score: seen.append((path, region, box, score)),
+        )
+        screenshot = np.zeros((60, 80, 3), dtype=np.uint8)
+        prepared = np.full((10, 10, 3), 255, dtype=np.uint8)
+        screenshot[20:30, 30:40] = 255
+
+        Matcher.match_screenshot(screenshot, prepared, left=100, top=200)
+
+        path, region, box, score = seen[0]
+        assert region == (100, 200, 180, 260), "区域是「帧 + 它的屏幕原点」"
+        assert box == (130, 220, 140, 230), "框是屏幕绝对坐标，尺寸 = 模板尺寸"
+        assert score == pytest.approx(1.0)
+        assert path is None, "合成数组没有对应文件，反查本来就该是 None"
+
+
 class TestPurePrimitives:
     def test_match_screenshot_offsets_are_applied(self):
         screenshot = np.zeros((60, 80, 3), dtype=np.uint8)
@@ -277,3 +319,101 @@ class TestPurePrimitives:
         assert np.allclose(
             Matcher.handle_rotate_val(50, 50, 0), [[1, 0, 0], [0, 1, 0]]
         )
+
+
+class TestMatchPeaks:
+    """次优峰值：标定阈值时比最优值更该看的数（CLAUDE.md §1.2 的负样本余量）。"""
+
+    def test_second_peak_skips_every_position_overlapping_the_best(self):
+        rng = np.random.default_rng(0)
+        screenshot = rng.integers(0, 60, (60, 80, 3), dtype=np.uint8)
+        prepared = np.zeros((8, 8, 3), dtype=np.uint8)
+        prepared[2:6, 2:6] = 255
+        screenshot[10:18, 10:18] = prepared  # 唯一一处精确吻合
+
+        result = Matcher.match_peaks(screenshot, prepared, left=5, top=7)
+
+        assert result["max_loc"] == (15, 17), "left/top 要加到位置上去"
+        assert result["max_val"] > result["second_val"], (
+            "次优峰屏蔽了最优峰周围一个模板大小的邻域，剩下的只是噪声"
+        )
+
+    def test_second_peak_is_zero_when_only_one_candidate_exists(self):
+        """模板与帧一样大时只有一个候选位置，没有「次优」。"""
+        prepared = np.zeros((8, 8, 3), dtype=np.uint8)
+        prepared[2:6, 2:6] = 255
+
+        result = Matcher.match_peaks(prepared.copy(), prepared)
+
+        assert result["max_loc"] == (0, 0)
+        assert result["second_val"] == 0.0
+
+
+def _icon_mask(template):
+    """模板里「亮色图标」的像素（setting_other 是深底亮图形）。"""
+    return (cv2.cvtColor(template, cv2.COLOR_BGR2GRAY) > 80).astype(np.uint8)
+
+
+def _paste_icon(frame, icon, mask, x, y):
+    """只把图标像素贴上去，底色保持目标背景 —— 模拟游戏里的透明图标。"""
+    roi = frame[y:y + icon.shape[0], x:x + icon.shape[1]]
+    roi[mask > 0] = icon[mask > 0]
+    return frame
+
+
+class TestShapeMatching:
+    """`assets.MATCH_SHAPE`：只看轮廓，不看底色（设置菜单的「其他设置」页签）。"""
+
+    @pytest.fixture
+    def template(self, repo_root):
+        template = image_library.get_img(assets.path("setting_other"))
+        assert template is not None
+        return template
+
+    def test_setting_other_is_registered_for_shape_matching(self, template):
+        assert image_library.strategy_of(template) == assets.MATCH_SHAPE
+
+    def test_other_assets_stay_on_color_matching(self, repo_root):
+        icon = image_library.get_img(assets.path("setting_icon"))
+        assert image_library.strategy_of(icon) == assets.MATCH_COLOR
+
+    def test_shape_features_are_uint8_gradient_magnitude(self, template):
+        features = Matcher.shape_features(template)
+
+        assert features.shape == template.shape[:2]
+        assert features.dtype == np.uint8
+        assert features.max() > 0
+
+    @pytest.mark.parametrize("background", ["black", "white", "gradient", "blur"])
+    def test_scores_stay_high_when_the_background_changes(self, template, background):
+        rng = np.random.default_rng(0)
+        if background == "black":
+            frame = np.zeros((300, 400, 3), np.uint8)
+        elif background == "white":
+            frame = np.full((300, 400, 3), 255, np.uint8)
+        elif background == "gradient":
+            frame = np.tile(
+                np.linspace(0, 255, 400, dtype=np.uint8)[None, :, None], (300, 1, 3)
+            )
+        else:
+            frame = cv2.GaussianBlur(
+                rng.integers(0, 255, (300, 400, 3), dtype=np.uint8), (0, 0), 20
+            )
+        _paste_icon(frame, template, _icon_mask(template), 200, 100)
+
+        result = Matcher.match_screenshot(frame, template, 0, 0)
+
+        assert result["max_loc"] == (200, 100)
+        assert result["max_val"] >= 0.90
+
+    def test_flat_frame_does_not_match(self, template):
+        frame = np.zeros((300, 400, 3), np.uint8)
+
+        assert Matcher.match_screenshot(frame, template, 0, 0)["max_val"] < 0.5
+
+    def test_another_icon_does_not_match(self, template, repo_root):
+        other = image_library.get_img(assets.path("setting_icon"))
+        frame = np.full((300, 400, 3), 255, np.uint8)
+        _paste_icon(frame, other, _icon_mask(other), 200, 100)
+
+        assert Matcher.match_screenshot(frame, template, 0, 0)["max_val"] < 0.5

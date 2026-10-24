@@ -6,6 +6,7 @@ from utils.vision.blackscreen import BlackScreen
 from utils.config.config import ConfigurationManager
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
+from utils.vision import assets
 from utils.vision import colors as color
 from utils.vision.img import Img
 from utils.core.log import log
@@ -17,6 +18,7 @@ from utils.core.thresholds import (
 )
 from utils.vision.mini_asu import ASU
 from utils.flows.monthly_pass import MonthlyPass
+from utils.flows.roles.first_role import check_first_role
 from utils.drivers.mouse_event import MouseEvent
 from utils.drivers.window import Window
 
@@ -40,20 +42,14 @@ class Calculated:
             计算地图加载时间
         """
         start_time = time.time()
-        target = Img.get_img("./picture/map_load.png")
+        target = Img.get_img(assets.path("map_load"))
         time.sleep(1)  # 短暂延迟后开始判定是否为地图加载or黑屏跳转
         while error_count < max_error_count:
             result = self.img.scan_screenshot(target)
             if result and result["max_val"] > MAP_LOADING:
                 log.info(f"检测到地图加载map_load，匹配度{result['max_val']}")
                 if self.img.on_main_interface(
-                    check_list=[
-                        self.img.main_ui,
-                        self.img.finish2_ui,
-                        self.img.finish2_1_ui,
-                        self.img.finish2_2_ui,
-                        self.img.finish3_ui,
-                    ],
+                    check_list=self._main_ui_candidates(),
                     timeout=10,
                     threshold=threshold,
                 ):
@@ -62,24 +58,12 @@ class Calculated:
                 self.blackscreen.run_blackscreen_cal_time()
                 break
             elif self.img.on_main_interface(
-                check_list=[
-                    self.img.main_ui,
-                    self.img.finish2_ui,
-                    self.img.finish2_1_ui,
-                    self.img.finish2_2_ui,
-                    self.img.finish3_ui,
-                ],
+                check_list=self._main_ui_candidates(),
                 threshold=threshold,
             ):
                 time.sleep(1)
                 if self.img.on_main_interface(
-                    check_list=[
-                        self.img.main_ui,
-                        self.img.finish2_ui,
-                        self.img.finish2_1_ui,
-                        self.img.finish2_2_ui,
-                        self.img.finish3_ui,
-                    ],
+                    check_list=self._main_ui_candidates(),
                     threshold=threshold,
                 ):
                     log.info("连续检测到主界面，地图加载标记为结束")
@@ -117,7 +101,7 @@ class Calculated:
             筑梦模块移动模块加载时间
         """
         start_time = time.time()
-        target = Img.get_img("./picture/finish_fighting.png")
+        target = Img.get_img(assets.path("finish_fighting"))
         time.sleep(3)  # 短暂延迟后开始判定
         while error_count < max_error_count:
             result = self.img.scan_screenshot(target)
@@ -143,11 +127,21 @@ class Calculated:
         else:
             log.info("锄地结束！")
 
+    def _main_ui_candidates(self):
+        """判定「回到主界面」要看的那几张图。原先这段在 run_mapload_check 里抄了 5 遍。"""
+        return [
+            self.img.main_ui,
+            self.img.finish2_ui,
+            self.img.finish2_1_ui,
+            self.img.finish2_2_ui,
+            self.img.finish3_ui,
+        ]
+
     def allow_buy_item(self):
         """
         购买物品检测
         """
-        round_disable = Img.get_img("./picture/round_disable.png")
+        round_disable = Img.get_img(assets.path("round_disable"))
         if self.img.on_interface(
             check_list=[round_disable],
             timeout=5,
@@ -158,12 +152,17 @@ class Calculated:
         else:
             return True
 
-    def first_role_check(self):
+    def first_role_check(self, map_version):
         """
-        按下'1'，确认队伍中的1号位属于跑图角色
+        按下'1'，确认队伍中的1号位属于跑图角色。
+
+        黄泉 / 银狼 LV.999 地图还要求 1 号位是对应角色（见
+        `flows/roles/first_role.py` 的 `REQUIRED_FIRST_ROLE`），不符时抛
+        `CustomException` 终止本轮 —— 对应原 TODO「黄泉情况下必须为黄泉角色」。
         """
         log.info("开始判断1号位")
         image, *_ = self.img.take_screenshot(offset=(1670, 339, -160, -739))
         if color.any_pixel_in_ranges(image, color.FIRST_ROLE_RANGES):
             KeyboardEvent.keyboard_press("1")
             log.info("设置1号位为跑图角色")
+        check_first_role(map_version, self.img)

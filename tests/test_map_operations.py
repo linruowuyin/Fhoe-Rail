@@ -10,10 +10,12 @@ import pytest
 
 import utils.flows.map_operations as operations_module
 from utils.config.config import ConfigurationManager
+from utils.core.exceptions import CustomException
 from utils.vision.img import Img
 from utils.flows.map_operations import MapOperations
 from utils.core.map_statu import MapStatu
 from utils.core.time_utils import TimeUtils
+from utils.flows.roles.silver_wolf_lv999 import SilverWolfLv999
 
 # 分发表会调用的 Handle 方法白名单。故意写成白名单而不是"任何未知属性都返回可调用对象"，
 # 这样 map_operations 里出现拼写错误时会直接 AttributeError，而不是被静默吞掉。
@@ -36,7 +38,6 @@ HANDLE_METHODS = {
     "handle_view_reset",
     "handle_view_rotate",
     "handle_await",
-    "auto_use_technique_consumable",
     "handle_move",
     "handle_b",
     "handle_click_floor",
@@ -73,12 +74,33 @@ class RecordingHandle:
         return [call for call in self.calls if call[0] == name]
 
 
+class Lv999Recorder:
+    """SilverWolfLv999 的替身，记录 lv999_e 分派。"""
+
+    def __init__(self):
+        self.calls = []
+        self.settings_ok = True
+
+    def ensure_settings(self, handle):
+        self.calls.append("ensure_settings")
+        return self.settings_ok
+
+    def ensure_lv999_e(self, value, handle):
+        self.calls.append(("lv999_e", value))
+
+    def handle_lv999_fighting(self, value, handle):
+        self.calls.append(("lv999_fighting", value))
+
+    def handle_lv999_await(self, value, handle):
+        self.calls.append(("lv999_await", value))
+
+
 class MapStub:
     """Map 的替身，记录地图侧动作。"""
 
-    def __init__(self, planet_png_lst=()):
+    def __init__(self, planet_ids=()):
         self.calls = []
-        self.planet_png_lst = list(planet_png_lst)
+        self.planet_ids = list(planet_ids)
         self.allow_drap_map_switch = False
         self.allow_scene_drag_switch = False
         self.allow_retry_in_map_switch = True
@@ -155,7 +177,7 @@ def operations(make_instance, isolated_cwd, monkeypatch):
         map=SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
             open_map=lambda: None,
             align_angle=lambda: None,
             reset_round_count=lambda: None,
@@ -171,6 +193,7 @@ def operations(make_instance, isolated_cwd, monkeypatch):
             multi_click=1,
         ),
         handle=SimpleNamespace(f_key_error=False),
+        lv999=SilverWolfLv999(),
         pause=PauseStub(),
         img=SimpleNamespace(),
         mouse_event=SimpleNamespace(last_search_allow_retry=False),
@@ -289,7 +312,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: True,
-            planet_png_lst=[],
+            planet_ids=[],
         )
 
         operations.process_single_map_start(0, "map_1-1_0.json")
@@ -301,7 +324,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: True,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
         )
 
         operations.process_single_map_start(0, "map_1-1_0.json")
@@ -336,7 +359,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
             allow_map_drag=lambda start: None,
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
@@ -359,7 +382,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
             allow_map_drag=lambda start: None,
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
@@ -505,6 +528,38 @@ class TestProcessMap:
 
         assert any("不存在" in r["message"] for r in log_records)
 
+    def test_silver_wolf_settings_failure_aborts(self, operations):
+        """银狼版本设置失败必须终止，交给 fhoe.py 顶层发通知。"""
+        operations.map_info = SimpleNamespace(
+            map_version="SilverWolfLv999", map_list=[]
+        )
+        operations.cfg = SimpleNamespace(
+            CONFIG_FILE_NAME="config.json",
+            read_json_file=lambda *args, **kwargs: {
+                "auto_use_technique_consumable": True
+            },
+        )
+        operations.lv999 = Lv999Recorder()
+        operations.lv999.settings_ok = False
+
+        with pytest.raises(CustomException):
+            operations.process_map("1-1_0")
+
+    def test_other_version_settings_failure_only_warns(self, operations, log_records):
+        operations.map_info = SimpleNamespace(map_version="default", map_list=[])
+        operations.cfg = SimpleNamespace(
+            CONFIG_FILE_NAME="config.json",
+            read_json_file=lambda *args, **kwargs: {
+                "auto_use_technique_consumable": True
+            },
+        )
+        operations.lv999 = Lv999Recorder()
+        operations.lv999.settings_ok = False
+
+        operations.process_map("1-1_0")
+
+        assert any("继续执行地图流程" in r["message"] for r in log_records)
+
     def test_single_map_runs_only_the_requested_file(self, operations, log_records):
         processed = []
         operations.map_info = SimpleNamespace(
@@ -541,6 +596,8 @@ class CalculatedRecorder:
     def __init__(self, allow_buy=True):
         self.calls = []
         self.allow_buy = allow_buy
+        #: 1 号位校验收到的 map_version 列表
+        self.first_role_versions = []
 
     def run_mapload_check(self, *args, **kwargs):
         self.calls.append("run_mapload_check")
@@ -549,8 +606,9 @@ class CalculatedRecorder:
         self.calls.append("allow_buy_item")
         return self.allow_buy
 
-    def first_role_check(self, *args, **kwargs):
+    def first_role_check(self, map_version="", *args, **kwargs):
         self.calls.append("first_role_check")
+        self.first_role_versions.append(map_version)
 
 
 class MouseRecorder:
@@ -594,7 +652,7 @@ class TestStartStepDispatch:
         pressed = []
         monkeypatch.setattr(operations_module, "KeyboardEvent", SimpleNamespace(keyboard_press=lambda key, delay=0: pressed.append(key)))
 
-        def _run(entry, planet_png_lst=(), allow_buy=True, click_ok=True):
+        def _run(entry, planet_ids=(), allow_buy=True, click_ok=True):
             pressed.clear()
             # start 是一个「单键字典」的列表：每个元素只取第一个键，
             # 所以多步场景必须传列表，不能把多个键塞进同一个 dict。
@@ -611,7 +669,7 @@ class TestStartStepDispatch:
                 },
             )
             handle = RecordingHandle()
-            game_map = MapStub(planet_png_lst=planet_png_lst)
+            game_map = MapStub(planet_ids=planet_ids)
             calculated = CalculatedRecorder(allow_buy=allow_buy)
             mouse = MouseRecorder(result=click_ok)
             img = ImgRecorder(result=click_ok)
@@ -732,7 +790,7 @@ class TestStartStepDispatch:
 
     def test_planet_picture_routes_to_planet_handler(self, run):
         key = "picture\\orientation_2.png"
-        result = run({key: 1}, planet_png_lst=[key])
+        result = run({key: 1}, planet_ids=["orientation_2"])
         assert result.map.called("handle_planet")[0][1] == (key,)
 
     def test_unknown_point_clicks_without_dragging_by_default(self, run):
@@ -798,14 +856,18 @@ class TestHandleStepDispatch:
                 },
             )
             handle = RecordingHandle()
+            lv999 = Lv999Recorder()
             operations.handle = handle
+            operations.lv999 = lv999
             operations.calculated = CalculatedRecorder()
             operations.monthly_pass = SimpleNamespace(
                 monthly_pass_check=lambda: None
             )
             operations.window = SimpleNamespace(switch_window=lambda: None)
             operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
-            return SimpleNamespace(handle=handle, statu=operations.map_statu)
+            return SimpleNamespace(
+                handle=handle, lv999=lv999, statu=operations.map_statu
+            )
 
         return _run
 
@@ -829,7 +891,7 @@ class TestHandleStepDispatch:
             ({"view_reset": 0.1}, "handle_view_reset", (0.1,)),
             ({"view_rotate": 90}, "handle_view_rotate", (90,)),
             ({"await": 2}, "handle_await", (2,)),
-            ({"w": 1.5}, "handle_move", (1.5, "w", False, "")),
+            ({"w": 1.5}, "handle_move", (1.5, "w", False, "", "", "")),
         ],
     )
     def test_key_routes_to_handle_method(self, run, entry, method, args):
@@ -842,7 +904,46 @@ class TestHandleStepDispatch:
             "some_unknown_key",
             False,
             "",
+            "",
+            "",
         )
+
+    def test_first_role_check_gets_the_map_version(self, run, operations):
+        """1 号位角色校验要知道当前版本 —— 只有黄泉/银狼版本才强制。"""
+        run({"await": 1})
+
+        assert operations.calculated.first_role_versions == ["default"]
+
+    def test_back_to_main_precedes_map_steps(self, run):
+        """map 步骤前固定回主界面：地图 JSON 不需要自己写 {"main": 1}。"""
+        result = run({"await": 1})
+
+        assert result.handle.calls[0][0] == "back_to_main"
+        assert len(result.handle.called("back_to_main")) == 1
+
+    def test_lv999_e_routes_to_role_not_move(self, run):
+        result = run({"lv999_e": 1})
+
+        assert result.lv999.calls == [("lv999_e", 1)]
+        assert not result.handle.called("handle_move"), (
+            "lv999_e 不能被当成未知键掉进移动分支"
+        )
+
+    def test_lv999_fighting_routes_to_role(self, run):
+        result = run({"lv999_fighting": 1})
+
+        assert result.lv999.calls == [("lv999_fighting", 1)]
+        assert not result.handle.called("handle_fighting")
+        assert not result.handle.called("handle_move")
+
+    def test_lv999_await_routes_to_role(self, run):
+        result = run({"lv999_await": 2})
+
+        assert result.lv999.calls == [("lv999_await", 2)]
+        assert not result.handle.called("handle_await"), (
+            "lv999_await 走角色分派，不应直接落到 await"
+        )
+        assert not result.handle.called("handle_move")
 
     def test_check_key_uses_the_recording_date(self, run, operations):
         result = run({"check": [0, 1, 2, 3, 4, 5, 6]})
@@ -874,11 +975,38 @@ class TestHandleStepDispatch:
         operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
 
         assert [call[0] for call in handle.calls] == [
+            "back_to_main",  # 每张图执行 map 步骤前固定回主界面
             "handle_view_set",  # 进图前先校准视角
             "handle_move",
             "handle_await",
             "handle_move",
         ]
+
+    def test_prev_key_is_tracked_for_double_moves(self, operations):
+        write_map(
+            operations.root,
+            "default",
+            "map_1-1_0.json",
+            {
+                "name": "1-1 空间站「黑塔」",
+                "author": "tester",
+                "start": [],
+                "map": [{"a": 2.0}, {"aa": 0.8}, {"a": 1.0}],
+            },
+        )
+        handle = RecordingHandle()
+        operations.handle = handle
+        operations.calculated = CalculatedRecorder()
+        operations.monthly_pass = SimpleNamespace(monthly_pass_check=lambda: None)
+
+        operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
+
+        moves = [call[1] for call in handle.called("handle_move")]
+        assert moves == [
+            (2.0, "a", False, "", "", "aa"),
+            (0.8, "aa", False, "", "a", "a"),
+            (1.0, "a", False, "", "aa", ""),
+        ], "prev_key / next_key 每步都要更新，且银狼/其它版本都可用"
 
     def test_f_key_error_breaks_out_and_is_recorded(self, operations):
         write_map(
