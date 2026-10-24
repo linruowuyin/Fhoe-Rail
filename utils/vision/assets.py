@@ -21,15 +21,32 @@
     `images.resolve_path` 会按 webp > png > jpg 找同名文件，所以登记 `.png`
     而磁盘上是 `.webp` 是正常的。新增资源时优先登记代码里本来就要写的后缀。
 
+资源 ID 与唯一性（R25）
+    地图 JSON 里的 `picture\\xxx.png` 不是物理路径，而是**资源 ID**：
+    `resolve_path` 先按字面路径找，找不到就用 `scan_picture_files()` 的 stem
+    索引递归查（忽略目录）。因此**文件名（去掉后缀）必须全局唯一**
+    （大小写不敏感，`new_pic/` 除外）—— 目录只是分类，名字才是身份。
+    重名由 `tools/validate_pictures.py` 在 CI 拦下。
+
 分类
     `category` 是给将来物理分目录、以及「游戏更新后先跑哪一组冒烟」用的元数据。
     它不影响加载；新增分类记得同步 `CATEGORIES`。
 """
 
+import os
 from typing import NamedTuple
-
 #: 图片资源根目录（相对仓库根）。`black_screen` 之类按目录扫描的代码用它。
 PICTURE_ROOT = "./picture"
+
+#: 指向图片资源的路径前缀（统一成 `/` 之后比较；地图 JSON 用反斜杠写法，
+#: 解析前会先归一化）。用于判断"这是不是 picture/ 下的资源 ID"。
+PICTURE_REF_PREFIXES = ("picture/", "./picture/")
+
+#: 索引扫描时跳过的目录：`new_pic/` 是采样产物（按日期分目录，重名是设计使然）。
+SCAN_SKIP_DIRS = {"new_pic"}
+
+#: 索引只认这三种后缀，优先级与 `images.resolve_path` 一致。
+SCAN_EXT_PRIORITY = {"webp": 0, "png": 1, "jpg": 2}
 
 # --- 分类 ------------------------------------------------------------------
 #: 主界面 / 脱离战斗 / 加载判定
@@ -187,3 +204,46 @@ def path(key):
         raise KeyError(
             f"未登记的图片资源：{key!r}（请先在 utils/vision/assets.py 登记）"
         ) from None
+
+
+def scan_picture_files(root=None):
+    """扫描图片目录，返回 `(索引, 重名表)`。
+
+    :param root: 默认 `PICTURE_ROOT`；测试可传临时目录
+    :return: `({"stem(小写)": 路径}, {"stem": [路径, ...]})`
+
+    索引按 stem（文件名去掉后缀）建，扩展名优先级 webp > png > jpg。
+    **同一张图同时有 .webp 和 .png 不算重名**（那是迁移过程），
+    但同一个 stem 出现在两个不同目录算重名 —— 地图 JSON 的 `picture\\xxx.png`
+    是资源 ID（R25），解析时忽略目录，重名会让"指向哪个"取决于遍历顺序。
+
+    `new_pic/` 跳过：采样产物按日期分目录，重名是设计使然。
+    用 `os.walk` 且不缓存：调用方（`images`）负责缓存与清理（R15）。
+    """
+    root = root or PICTURE_ROOT
+    candidates = {}
+    for dirpath, dirnames, filenames in os.walk(root):
+        # 排掉跳过目录与隐藏目录，并排序保证结果稳定（重名时路径可复现）
+        dirnames[:] = sorted(
+            name
+            for name in dirnames
+            if name not in SCAN_SKIP_DIRS and not name.startswith(".")
+        )
+        for filename in sorted(filenames):
+            stem, ext = os.path.splitext(filename)
+            ext = ext.lower().lstrip(".")
+            if not stem or ext not in SCAN_EXT_PRIORITY:
+                continue
+            candidates.setdefault(stem.lower(), []).append(
+                (SCAN_EXT_PRIORITY[ext], os.path.join(dirpath, filename))
+            )
+
+    index = {}
+    duplicates = {}
+    for stem, found in candidates.items():
+        found.sort()
+        index[stem] = found[0][1]
+        directories = {os.path.dirname(path) for _, path in found}
+        if len(directories) > 1:
+            duplicates[stem] = [path for _, path in found]
+    return index, duplicates

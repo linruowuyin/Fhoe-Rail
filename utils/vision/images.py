@@ -32,6 +32,11 @@ DEFAULT_IMAGE_PATHS = {
 #: 图片加载缓存：{(路径): (文件mtime, ndarray)}，文件更新后自动失效
 _IMG_CACHE = {}
 
+#: stem 索引缓存：{小写 stem: 路径}，由 `assets.scan_picture_files()` 构建。
+#: 懒构建，`clear_cache()` 是唯一清理点（R15）。运行期不会新增资源；
+#: 若将来重新启用 `update_file` 在进程内下载图片，下载完要调一次 `clear_cache()`。
+_STEM_INDEX = None
+
 #: `id(ndarray) → 解析后的路径`，用来从一张**已经加载过的**图反查它来自哪个文件。
 #: 匹配那一层只拿得到 ndarray（`Matcher.match_screenshot` 的签名里没有路径），所以靠对象
 #: 身份认回来。注意键是 `resolve_path` 之后的**原样路径**：`./picture/x.png` 与
@@ -42,12 +47,50 @@ _IMG_CACHE = {}
 _PATH_BY_ID = {}
 
 
-def resolve_path(img_path):
-    """解析图片路径，按优先级查找同名文件：.webp > .png > .jpg。
+def _stem_index():
+    """懒构建 stem 索引（见 `assets.scan_picture_files`）。"""
+    global _STEM_INDEX
+    if _STEM_INDEX is None:
+        _STEM_INDEX, _ = assets.scan_picture_files()
+    return _STEM_INDEX
 
-    若原路径后缀为图片格式（webp/png/jpg），则依次尝试同名文件的其他后缀，
-    返回第一个实际存在的文件路径；所有候选都不存在时返回原路径，
-    由调用方处理文件不存在的情况。
+
+def _is_picture_ref(path):
+    """这个字符串是不是指向 `picture/` 的资源 ID。
+
+    兼容三种写法：`picture\\x.png`（地图 JSON）、`./picture/x.png`（代码旧写法）、
+    以及 `picture/` 的绝对路径（WebUI 传进来的 `os.path.join(BASE_DIR, "picture", ...)`）。
+    不在 `picture/` 下的路径不参与 stem 回退 —— 避免 `./assets/foo/x.png` 找不到时
+    误解析到 `picture/` 里的同名图。
+    """
+    normalized = path.replace("\\", "/")
+    if normalized.startswith(assets.PICTURE_REF_PREFIXES):
+        return True
+    try:
+        root = os.path.abspath(assets.PICTURE_ROOT).replace("\\", "/")
+        return os.path.abspath(path).replace("\\", "/").startswith(root + "/")
+    except (OSError, ValueError):
+        return False
+
+
+def _stem_of(path):
+    """取去掉目录与后缀的文件名（同时兼容 `/` 与 `\\` 分隔符）。"""
+    name = path.replace("\\", "/").rsplit("/", 1)[-1]
+    return os.path.splitext(name)[0]
+
+
+def resolve_path(img_path):
+    """解析图片路径 → 实际文件路径。
+
+    两步：
+
+    1. 按字面路径找，后缀按 `.webp > .png > .jpg` 回退。
+    2. 字面路径不存在、且这是 `picture/` 下的引用时，按 **stem（文件名去掉后缀）
+       查递归索引**。地图 JSON 里的 `picture\\xxx.png` 是资源 ID 而不是物理路径
+       （R25）：文件搬进哪个子目录都不影响解析，前提是 stem 全局唯一
+       （`tools/validate_pictures.py` 在 CI 拦重名）。
+
+    两种情况都找不到时返回原路径，由调用方处理文件不存在。
     """
     base, ext = os.path.splitext(img_path)
     if ext.lower() in (".webp", ".png", ".jpg"):
@@ -55,6 +98,10 @@ def resolve_path(img_path):
             cand = base + cand_ext
             if os.path.isfile(cand):
                 return cand
+        if _is_picture_ref(img_path):
+            found = _stem_index().get(_stem_of(img_path).lower())
+            if found is not None:
+                return found
     return img_path
 
 
@@ -122,6 +169,9 @@ def clear_cache():
     """清空缓存。测试用；生产环境靠 mtime 自动失效。
 
     身份表跟着一起清 —— 它只对缓存里那些活着的数组有意义（R15 的清理点）。
+    stem 索引也在这里清：目录结构变了（如重命名 / 搬迁）之后必须重建。
     """
+    global _STEM_INDEX
     _IMG_CACHE.clear()
     _PATH_BY_ID.clear()
+    _STEM_INDEX = None

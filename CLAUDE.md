@@ -165,6 +165,7 @@ Fhoe-Rail/
 │  ├─ install_requirements.py #   依赖安装（bat / WebUI 按路径调用）
 │  ├─ shutdown.py             #   倒计时关机 GUI（GUI 收在 main() 内，见 §3.5 R16）
 │  ├─ validate_maps.py        #   地图 JSON 校验（CI 门）
+│  ├─ validate_pictures.py    #   图片命名唯一 + 引用可解析（CI 门，R25）
 │  ├─ format_maps.py          #   地图写盘格式：检查 / --write 重排（CI 门，R22）
 │  └─ convert_to_webp.py / map_res_list.py / map_simplify.py / test.py
 │
@@ -459,11 +460,14 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
 - 新图先在 `assets.py` 加一条（`key` → 路径 + 分类），代码写 `assets.path("key")`
 - `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
   裸路径字面量（棘轮，只减不增；数据契约与工具文案在名单里注明原因）
-- 地图 JSON 里的 `picture\xxx.png` 是**地图数据**（633 张图、几千处引用），
-  不属于代码资源，不登记也不改写法；`core/schema.py` 只负责格式契约
-- 物理目录暂时保持平铺：`tools/update_file.py` 按远程清单的相对路径校验哈希、
-  WebUI / 样本收集 / 匹配探针都按 `picture/` 平铺扫描。分类先落在
-  `Asset.category` 上；要真正拆子目录，得先解决这几处的路径映射，单独做
+- 地图 JSON 里的 `picture\xxx.png` 是**资源 ID**，不是物理路径：`images.resolve_path`
+  先按字面找，找不到再按 **stem（文件名去掉后缀）** 查 `picture/` 的递归索引。
+  所以文件搬进子目录不影响 633 张老地图 —— **前提是 stem 全局唯一**
+  （大小写不敏感，`new_pic/` 除外）：目录只是分类，名字才是身份
+- `tools/validate_pictures.py` 在 CI 拦两件事：stem 重名、地图 JSON 的图片引用
+  解析不到（拼错图片名不用等跑图才炸）。新增图片时名字撞了，改名而不是换目录
+- 物理目录暂时保持平铺：WebUI / 样本收集 / 匹配探针都还在按 `picture/` 平铺扫描，
+  迁目录时一起改成递归或走 `resolve_path`。分类先落在 `Asset.category` 上
 
 ---
 

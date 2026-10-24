@@ -39,6 +39,11 @@ jobs:
       - name: Validate map JSON
         run: python tools/validate_maps.py
 
+      # 图片资源（R25）：文件名 stem 全局唯一（目录只是分类），且地图 JSON 里的
+      # 每处 picture 引用都能解析到文件 —— 拼错图片名在 CI 就红，不用跑进游戏。
+      - name: Validate picture assets
+        run: python tools/validate_pictures.py
+
       # 地图写盘格式（R22）：4 空格 + 短数组内联 + 末尾不加换行。
       # **只拦本次改动的地图**：全库 633 张里 471 张是历史格式（大多来自上游），
       # 卡全库等于要求一次性重排 471 个文件 —— PR 会被纯空白改动淹没，之后上游
