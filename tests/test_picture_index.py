@@ -6,6 +6,8 @@
 
 import pytest
 
+from pathlib import Path
+
 from tools import validate_pictures as validator
 from utils.vision import assets
 from utils.vision import images
@@ -129,14 +131,17 @@ class TestResolveByStem:
     def test_cache_reset_picks_up_a_moved_file(self, picture_root):
         old = picture_root / "transfer.webp"
         write_image(old)
-        assert images.resolve_path("picture\\transfer.png") == str(old)
+        # Windows 上 `picture\transfer.webp` 是有效相对路径（cwd 恰好是这个 tmp），
+        # 解析器会先命中字面路径、返回相对形式；Linux 上反斜杠不是分隔符，会走索引。
+        # 这里只断言「解析到的是同一个文件」，不锁返回值的字符串形态。
+        assert Path(images.resolve_path("picture\\transfer.png")).resolve() == old.resolve()
 
         new = picture_root / "map_ui" / "transfer.webp"
         new.parent.mkdir()
         old.rename(new)
         images.clear_cache()
 
-        assert images.resolve_path("picture\\transfer.png") == str(new)
+        assert Path(images.resolve_path("picture\\transfer.png")).resolve() == new.resolve()
 
 
 class TestValidator:
