@@ -6,6 +6,7 @@ import pytest
 
 import utils.flows.map as map_module
 from utils.config.config import ConfigurationManager
+from utils.core.exceptions import CustomException
 from utils.core.map_move import MAP_MOVE_NAV_DATA, STAR_MAP_DIRECTIONS
 from utils.flows.map import Map
 
@@ -49,7 +50,8 @@ class TestGetMapList:
     @pytest.fixture
     def ordered(self, game_map):
         game_map.map_info = SimpleNamespace(
-            map_list=["map_1-1_0.json", "map_2-1_0.json", "map_3-1_0.json"]
+            map_list=["map_1-1_0.json", "map_2-1_0.json", "map_3-1_0.json"],
+            map_version="default",
         )
         return game_map
 
@@ -69,6 +71,23 @@ class TestGetMapList:
     def test_unknown_start_raises(self, ordered):
         with pytest.raises(ValueError):
             ordered.get_map_list("9-9_9")
+
+    def test_range_includes_both_ends(self, ordered):
+        assert ordered.get_map_list_range("1-1_0", "2-1_0") == [
+            "map_1-1_0.json",
+            "map_2-1_0.json",
+        ]
+
+    def test_range_can_be_a_single_map(self, ordered):
+        assert ordered.get_map_list_range("2-1_0", "2-1_0") == ["map_2-1_0.json"]
+
+    def test_reversed_range_raises(self, ordered):
+        with pytest.raises(CustomException):
+            ordered.get_map_list_range("3-1_0", "1-1_0")
+
+    def test_missing_end_raises(self, ordered):
+        with pytest.raises(CustomException):
+            ordered.get_map_list_range("1-1_0", "9-9_9")
 
 
 class TestAllowFlags:

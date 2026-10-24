@@ -89,14 +89,29 @@ def print_end():
 
 
 def parse_map_arg():
-    """解析 --map <地图ID> 参数：非交互指定起始地图（供 WebUI 选图运行/开发者选图使用）
-    例如: fhoe.py --dev --map 3-5_1
+    """解析 --map <地图ID> 参数：非交互单图运行（WebUI 单图运行/开发者单图运行）。
+    例如: fhoe.py --map 3-5_1
     """
     if "--map" in sys.argv:
         idx = sys.argv.index("--map")
         if idx + 1 < len(sys.argv):
             return sys.argv[idx + 1]
     return None
+
+
+def parse_range_arg():
+    """解析 --range <起点地图ID> <终点地图ID>：区间运行（按地图列表顺序，含两端）。
+
+    例如: fhoe.py --range 3-5_1 3-5_2
+    """
+    if "--range" not in sys.argv:
+        return None
+    idx = sys.argv.index("--range")
+    values = [value for value in sys.argv[idx + 1: idx + 3] if not value.startswith("--")]
+    return (
+        values[0] if values else None,
+        values[1] if len(values) > 1 else None,
+    )
 
 
 def parse_map_version_arg():
@@ -112,7 +127,7 @@ def parse_map_version_arg():
 _MODE_DONE = object()
 
 
-def _start_for_mode(mode, map_arg):
+def _start_for_mode(mode, map_arg, range_arg=None):
     """按启动模式决定怎么开局，返回 `(start, dev)`。
 
     `start` 是 `choose_map*` 的产出（也可能是 `(地图, start_in_mid)` 元组）；
@@ -120,7 +135,8 @@ def _start_for_mode(mode, map_arg):
 
     各模式的差别只有三件事 —— **准备配置的方式**、**怎么挑起始地图**、**是不是开发者模式**：
 
-        --map     用 --map 给的那张图开局
+        --map     单图运行：用 --map 给的那张图开局
+        --range   区间运行：用 --range 给的起点开局（终点由 run_once 传给 process_map）
         --debug   三级菜单选图（同时给了 --map 就直接用）
         --dev     同 --debug，另外跑完自动重选地图
         --config  先走一遍配置重写，再三级菜单选图
@@ -145,7 +161,9 @@ def _start_for_mode(mode, map_arg):
         return choose_map_debug(map_info_instance), False
 
     cfg.main_start()  # 其余模式都以「补全默认配置」开场，原先在 7 个分支里各写了一遍
-    if mode == "--map":
+    if mode == "--range":
+        start = (range_arg[0], False)
+    elif mode == "--map":
         start = (map_arg, False)
     elif mode in ("--debug", "--dev"):
         start = (
@@ -163,20 +181,40 @@ def _start_for_mode(mode, map_arg):
 def main():
 
     start_in_mid = False  # 是否为优先地图，优先地图完成后自动从1-1_0开始
-    map_arg = parse_map_arg()  # --map 参数：非交互指定起始地图（WebUI 选图运行）
-    single_map_mode = map_arg is not None
+    map_arg = parse_map_arg()  # --map：单图运行
+    range_arg = parse_range_arg()  # --range 起点 终点：区间运行
 
-    # WebUI 选图运行：若指定了 --map-version，临时切换地图版本（进程退出前恢复）
+    if range_arg is not None:
+        range_start, range_end = range_arg
+        if not range_start or not range_end:
+            log.error(
+                "区间运行（--range）需要两个参数：起点地图ID 和 终点地图ID，"
+                "例如 --range 3-5_1 3-5_2"
+            )
+            return
+        if map_arg:
+            log.error("单图运行（--map）与区间运行（--range）不能同时使用，请只选一种")
+            return
+    range_end = range_arg[1] if range_arg is not None else None
+    single_map_mode = map_arg is not None or range_arg is not None
+
+    # WebUI 单图/区间运行：若指定了 --map-version，临时切换地图版本（进程退出前恢复）
     map_version_arg = parse_map_version_arg()
     old_map_version = cfg.swap_map_version(map_version_arg)
     if old_map_version is not None:
         # 直接同步 MapInfo 单例缓存，避免 property 延迟检测
         map_info_instance._map_version = map_version_arg
         cfg._config = None
-        log.info(f"[单图运行] 临时切换地图版本: {map_version_arg}")
+        log.info(f"[单次运行] 临时切换地图版本: {map_version_arg}")
 
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
-    start, dev = _start_for_mode(mode, map_arg)
+    if range_arg is not None:
+        # --range 可能出现在 argv 的任意位置；区间运行本身就是一次跑图，
+        # 与其它启动模式同时给出时以它为准，并明确提示被忽略的模式。
+        if mode and mode != "--range":
+            log.warning(f"检测到 --range，忽略启动模式 {mode}，按区间运行处理")
+        mode = "--range"
+    start, dev = _start_for_mode(mode, map_arg, range_arg)
     if start is _MODE_DONE:  # 录制 / 测试模式：自己干完了，不再跑图
         return
 
@@ -190,6 +228,7 @@ def main():
                 start_in_mid,
                 dev=dev,
                 single_map_mode=single_map_mode,
+                range_end=range_end,
             )
             if dev:  # 开发者模式自动重选地图
                 main()
@@ -201,7 +240,7 @@ def main():
                     )
                     map_info_instance._map_version = old_map_version
                     cfg._config = None
-                    log.info(f"[单图运行] 恢复地图版本: {old_map_version}")
+                    log.info(f"[单次运行] 恢复地图版本: {old_map_version}")
                 except Exception:
                     pass
     else:
@@ -300,6 +339,7 @@ def run_once(
     *,
     dev=False,
     single_map_mode=False,
+    range_end=None,
     cfg=cfg,
     time_mgr=time_mgr,
     notify=notify,
@@ -310,6 +350,10 @@ def run_once(
     shutdown=shutdown_computer,
 ):
     """跑一趟：装配 → 切窗口 → 跑图 → 跨日连锄 → 关机/注销。
+
+    `range_end` 非空时是**区间运行**：只跑 `start` 到 `range_end` 之间的地图
+    （含两端）；它和 `single_map_mode` 一样属于「跑完就停」，不触发再次运行 /
+    跨日连锄。
 
     从 `main()` 抽出来是为了可测。`main()` 一跑就会切窗口、启动游戏窗口，单测驱动不
     了；这里所有会碰外部世界的东西（窗口、地图流程、时钟、分辨率检查、关机）都是参数，
@@ -333,7 +377,7 @@ def run_once(
     start_time = clock.now()
     notify.send_start(start)
     map_instance.process_map(
-        start, start_in_mid, dev=dev, single_map=single_map_mode
+        start, start_in_mid, dev=dev, single_map=single_map_mode, end=range_end
     )  # 读取配置
     start_map = "1-1_0"
     allow_run_again = not single_map_mode and cfg.read_json_file(

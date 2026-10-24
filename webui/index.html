@@ -1148,8 +1148,9 @@ async function loadRun() {
           <select id="run-mode">
             <option value="normal">默认锄地（免交互）</option>
             <option value="white">白名单锄地（--white）</option>
-            <option value="map">选图运行（--map）</option>
-            <option value="devmap">开发者选图运行（--dev）</option>
+            <option value="map">单图运行（--map）</option>
+            <option value="range">区间运行（A → B）</option>
+            <option value="devmap">开发者单图运行（--dev）</option>
             <option value="record">录制地图（--record）</option>
             <option value="install">安装/检查依赖</option>
           </select></div>
@@ -1158,7 +1159,15 @@ async function loadRun() {
             <select id="pick-version" style="min-width:100px"></select>
             <select id="pick-planet" style="min-width:130px"></select>
             <select id="pick-map" style="min-width:160px"></select>
-          </div></div>
+          </div>
+          <div id="range-end" style="display:none;margin-top:10px">
+            <label style="font-size:13px;color:var(--txt-dim)">终点地图 <span class="hint">按地图列表顺序，含终点</span></label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+              <select id="pick-planet-end" style="min-width:130px"></select>
+              <select id="pick-map-end" style="min-width:160px"></select>
+            </div>
+          </div>
+        </div>
         <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
           <button class="btn primary" id="run-start">🚀 启动</button>
           <button class="btn danger" id="run-stop" disabled>⏹ 停止</button>
@@ -1190,6 +1199,9 @@ async function loadRun() {
   const pickVer = $("#pick-version");
   const pickPlanet = $("#pick-planet");
   const pickMap = $("#pick-map");
+  const pickPlanetEnd = $("#pick-planet-end");
+  const pickMapEnd = $("#pick-map-end");
+  const rangeEnd = $("#range-end");
 
   // 星球名称/emoji 从后端 /api/maps 取，不再前端硬编码（R23）
 
@@ -1197,8 +1209,9 @@ async function loadRun() {
   const MODE_HINTS = {
     normal: "按 config.json 的优先星球开始",
     white: "仅运行 allowlist_map 中的地图",
-    map: "选择一张起始地图，跑完该图后停止（非交互）",
-    devmap: "开发者模式：选图 + 调试窗口（F8暂停/F7继续/F9重传）",
+    map: "单图运行：只跑选中的一张图，跑完该图后停止（非交互）",
+    range: "区间运行：按地图列表顺序从起点跑到终点（含两端），跑完停止",
+    devmap: "开发者单图运行：选一张图 + 调试窗口（F8暂停/F7继续/F9重传）",
     record: "录制地图：F9 保存，生成 output(时间).json",
     install: "pip 安装/检查 requirements.txt 依赖",
   };
@@ -1215,20 +1228,30 @@ async function loadRun() {
   function fillPlanetList(version) {
     const planets = mapData[version] || {};
     const keys = Object.keys(planets).sort((a, b) => a - b);
-    pickPlanet.innerHTML = keys.map(k =>
+    const options = keys.map(k =>
       `<option value="${esc(k)}">${PLANET_EMOJI[k] || "🌍"} ${esc(k)} ${esc(planetNames[k] || "")}</option>`).join("");
+    pickPlanet.innerHTML = options;
+    pickPlanetEnd.innerHTML = options;
     fillMapList(version, keys[0]);
+    fillMapListEnd(version, keys[0]);
   }
   function fillMapList(version, planet) {
     const maps = (mapData[version] || {})[planet] || [];
     pickMap.innerHTML = maps.map(m =>
       `<option value="${esc(m.id)}">${esc(m.label)} ${esc(m.name || "")}</option>`).join("");
   }
+  function fillMapListEnd(version, planet) {
+    const maps = (mapData[version] || {})[planet] || [];
+    pickMapEnd.innerHTML = maps.map(m =>
+      `<option value="${esc(m.id)}">${esc(m.label)} ${esc(m.name || "")}</option>`).join("");
+  }
   pickVer.addEventListener("change", () => fillPlanetList(pickVer.value));
   pickPlanet.addEventListener("change", () => fillMapList(pickVer.value, pickPlanet.value));
+  pickPlanetEnd.addEventListener("change", () => fillMapListEnd(pickVer.value, pickPlanetEnd.value));
   modeSel.addEventListener("change", () => {
     const mode = modeSel.value;
-    picker.style.display = (mode === "map" || mode === "devmap") ? "" : "none";
+    picker.style.display = (mode === "map" || mode === "devmap" || mode === "range") ? "" : "none";
+    rangeEnd.style.display = mode === "range" ? "" : "none";
     $("#run-mode-hint").textContent = MODE_HINTS[mode] || "";
     if (picker.style.display !== "none") fillMapPicker();
   });
@@ -1241,7 +1264,12 @@ async function loadRun() {
       }
       const mode = modeSel.value;
       const body = { mode };
-      if (mode === "map" || mode === "devmap") body.map = pickMap.value;
+      if (mode === "map" || mode === "devmap") {
+        body.map = pickMap.value;
+      } else if (mode === "range") {
+        body.map = pickMap.value;
+        body.map_end = pickMapEnd.value;
+      }
       const res = await api("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) { toast("🚀 进程已启动 (PID " + res.pid + ")"); pollRun(); }
       else toast("启动失败：" + (res.error || "未知错误"), true);

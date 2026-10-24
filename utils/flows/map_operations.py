@@ -121,11 +121,14 @@ class MapOperations:
         start_in_mid: bool = False,
         dev: bool = False,
         single_map: bool = False,
+        end=None,
     ):
         """
         处理地图。
 
         single_map 为 True 时只处理 start 指定的地图，不继续执行后续路线。
+        end 非空时是**区间运行**：按当前版本的地图列表顺序跑 start 到 end
+        （含两端）；优先级高于 single_map。
         """
         # 暂停整轮只构造一次：热键从跑图一开始就注册好，事件对象也不会每张地图被换掉。
         # （曾经 Pause 建在 handle 阶段，于是在 start 阶段按 F8 会被静默丢弃）
@@ -154,11 +157,14 @@ class MapOperations:
             total_start_time = time.time()
             self.map.reset_round_count()  # 重置该锄地轮次相关的计数
             # map_list = self.map_list[self.map_list.index(f'map_{start}.json'):len(self.map_list)]
-            map_list = (
-                [f"map_{start}.json"]
-                if single_map
-                else self.map.get_map_list(start, start_in_mid)
-            )
+            if end:
+                # 区间运行优先于 single_map：按版本内的地图顺序取 start..end（含两端）
+                map_list = self.map.get_map_list_range(start, end)
+                log.info(f"区间运行：{start} → {end}，共 {len(map_list)} 张地图")
+            elif single_map:
+                map_list = [f"map_{start}.json"]
+            else:
+                map_list = self.map.get_map_list(start, start_in_mid)
             self.map_statu.next_map_drag = False  # 初始化下一张图拖动为否
 
             for index, map_json in enumerate(map_list):

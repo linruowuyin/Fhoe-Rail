@@ -8,6 +8,7 @@ from utils.drivers.keyboard_event import KeyboardEvent
 from utils.vision import assets
 from utils.vision.img import Img
 from utils.core.map_info import MapInfo
+from utils.core.exceptions import CustomException
 from utils.flows.monthly_pass import MonthlyPass
 from utils.drivers.mouse_event import MouseEvent
 from utils.core.map_move import MAP_MOVE_NAV_DATA, STAR_MAP_DIRECTIONS
@@ -267,6 +268,30 @@ class Map:
             map_list = self.map_info.map_list[start_index:]
 
         return map_list
+
+    def get_map_list_range(self, start, end) -> list:
+        """区间运行：按 `map_list` 的顺序返回 `start` 到 `end`（**含两端**）。
+
+        :raises CustomException: 起点/终点不存在，或终点排在起点之前
+        """
+        names = self.map_info.map_list
+        start_file, end_file = f"map_{start}.json", f"map_{end}.json"
+        for label, filename, value in (
+            ("起点", start_file, start),
+            ("终点", end_file, end),
+        ):
+            if filename not in names:
+                raise CustomException(
+                    f"区间运行的{label}地图不存在：{value}（版本 "
+                    f"{self.map_info.map_version}）"
+                )
+        start_index = names.index(start_file)
+        end_index = names.index(end_file)
+        if end_index < start_index:
+            raise CustomException(
+                f"区间运行的终点 {end} 排在起点 {start} 之前，请调换顺序"
+            )
+        return names[start_index:end_index + 1]
 
     def reset_round_count(self):
         """

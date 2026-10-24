@@ -107,8 +107,9 @@ class FakeMapOps:
         )
         self.map_statu = SimpleNamespace(total_time=1.0)
 
-    def process_map(self, start, start_in_mid, dev=False, single_map=False):
-        self.order.append(("process_map", start))
+    def process_map(self, start, start_in_mid, dev=False, single_map=False, end=None):
+        event = ("process_map", start) if end is None else ("process_map", start, end)
+        self.order.append(event)
 
 
 @pytest.fixture
@@ -129,13 +130,14 @@ def fhoe_mod(tmp_path, monkeypatch):
 
 
 def _run(fhoe_mod, *, flags=None, crossed=False, next_in_seconds=3600,
-         start="3-5_1", single_map_mode=False):
+         start="3-5_1", single_map_mode=False, range_end=None):
     """跑一趟 run_once，返回按发生顺序记录的事件表。"""
     order = []
     fhoe_mod.run_once(
         start,
         False,
         single_map_mode=single_map_mode,
+        range_end=range_end,
         cfg=FakeCfg(**(flags or {})),
         time_mgr=FakeTimeMgr(crossed, next_in_seconds),
         notify=FakeNotify(order),
@@ -218,6 +220,35 @@ class TestRunOnceBasics:
         order = _run(fhoe_mod, flags={"auto_shutdown": 0})
         assert ("shutdown", 0) in order
 
+    def test_range_end_is_forwarded_to_process_map(self, fhoe_mod):
+        """区间运行：终点传给 process_map，且跑完就停（不再从 1-1_0 跑整轮）。"""
+        order = _run(fhoe_mod, single_map_mode=True, range_end="3-5_2")
+
+        assert ("process_map", "3-5_1", "3-5_2") in order
+        assert ("process_map", "1-1_0") not in order
+
+
+class TestParseRangeArg:
+    def test_reads_two_map_ids(self, fhoe_mod, monkeypatch):
+        monkeypatch.setattr(
+            sys, "argv", ["fhoe.py", "--range", "3-5_1", "3-5_2"]
+        )
+        assert fhoe_mod.parse_range_arg() == ("3-5_1", "3-5_2")
+
+    def test_missing_second_value_is_reported_as_none(self, fhoe_mod, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["fhoe.py", "--range", "3-5_1"])
+        assert fhoe_mod.parse_range_arg() == ("3-5_1", None)
+
+    def test_no_flag_returns_none(self, fhoe_mod, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["fhoe.py", "--dev"])
+        assert fhoe_mod.parse_range_arg() is None
+
+    def test_flag_options_are_not_treated_as_map_ids(self, fhoe_mod, monkeypatch):
+        monkeypatch.setattr(
+            sys, "argv", ["fhoe.py", "--range", "3-5_1", "--dev"]
+        )
+        assert fhoe_mod.parse_range_arg() == ("3-5_1", None)
+
 
 def _cross_day(fhoe_mod, *, flags=None, crossed=False, next_in_seconds=3600,
                single_map_mode=False):
@@ -277,7 +308,7 @@ class TestCrossDay:
         assert order.index("back_to_main") < order.index("now")
 
 
-def _dispatch(fhoe_mod, monkeypatch, mode, map_arg=None):
+def _dispatch(fhoe_mod, monkeypatch, mode, map_arg=None, range_arg=None):
     """跑一次 _start_for_mode，把协作对象全换掉。"""
     fake_cfg = FakeCfg()
     switched = []
@@ -300,7 +331,7 @@ def _dispatch(fhoe_mod, monkeypatch, mode, map_arg=None):
         SimpleNamespace(record_main=lambda: recorded.append("record")),
     )
 
-    start, dev = fhoe_mod._start_for_mode(mode, map_arg)
+    start, dev = fhoe_mod._start_for_mode(mode, map_arg, range_arg)
     return SimpleNamespace(
         start=start, dev=dev, cfg=fake_cfg, switched=switched, recorded=recorded
     )
@@ -346,6 +377,14 @@ class TestStartForMode:
         r = _dispatch(fhoe_mod, monkeypatch, "--map", map_arg="3-5_1")
         assert r.start == ("3-5_1", False)
         assert r.dev is False
+
+    def test_range_mode_starts_from_the_first_map(self, fhoe_mod, monkeypatch):
+        r = _dispatch(
+            fhoe_mod, monkeypatch, "--range", range_arg=("3-5_1", "3-5_2")
+        )
+        assert r.start == ("3-5_1", False)
+        assert r.dev is False
+        assert r.cfg.calls == ["main_start"]
 
     def test_no_mode_uses_the_configured_start(self, fhoe_mod, monkeypatch):
         r = _dispatch(fhoe_mod, monkeypatch, "")

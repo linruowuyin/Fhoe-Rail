@@ -858,11 +858,16 @@ def _is_admin():
         return True
 
 
-def run_start(mode, map_id=None, map_version=None):
+def run_start(mode, map_id=None, map_version=None, map_end=None):
     """启动锄地进程（单例：已有进程时拒绝）
-    mode: normal/white/record/install/map/devmap
-    map_id: 仅 map/devmap 模式需要，如 '3-5_1'
-    map_version: 仅 map/devmap 模式可选，如 'default' / 'HuangQuan'
+
+    mode: normal/white/record/install/map/devmap/range
+        - map    单图运行（--map）
+        - devmap 开发者单图运行（--dev --map）
+        - range  区间运行（--range 起点 终点）
+    map_id: 仅 map/devmap/range 模式需要，如 '3-5_1'
+    map_version: 仅 map/devmap/range 模式可选，如 'default' / 'HuangQuan'
+    map_end: 仅 range 模式需要，如 '3-5_2'
     打包环境（同目录有 Fhoe-Rail.exe）直接用 exe；源码环境用 python + launch.py
     """
     if mode != "install" and not _is_admin():
@@ -883,6 +888,13 @@ def run_start(mode, map_id=None, map_version=None):
                 if mode == "devmap"
                 else ["webui/launch.py", "--map", map_id]
             )
+            if map_version:
+                base_args += ["--map-version", map_version]
+            args = base_args
+        elif mode == "range":
+            if not map_id or not map_end:
+                return {"ok": False, "error": "区间运行需要提供起点和终点地图 ID"}
+            base_args = ["webui/launch.py", "--range", map_id, map_end]
             if map_version:
                 base_args += ["--map-version", map_version]
             args = base_args
@@ -909,6 +921,10 @@ def run_start(mode, map_id=None, map_version=None):
                     exe_args += ["--map-version", map_version]
             elif mode == "devmap":
                 exe_args += ["--dev", "--map", map_id]
+                if map_version:
+                    exe_args += ["--map-version", map_version]
+            elif mode == "range":
+                exe_args += ["--range", map_id, map_end]
                 if map_version:
                     exe_args += ["--map-version", map_version]
             args = exe_args
@@ -939,7 +955,8 @@ def run_start(mode, map_id=None, map_version=None):
         _RUN["proc"] = proc
         _RUN["mode"] = mode
         if map_id:
-            _RUN["mode"] = f"{mode}:{map_id}"
+            detail = f"{map_id}→{map_end}" if mode == "range" else map_id
+            _RUN["mode"] = f"{mode}:{detail}"
         _RUN["started_at"] = time.time()
         _RUN["exited_at"] = None
         _RUN["exit_code"] = None
@@ -1337,7 +1354,13 @@ class Handler(BaseHTTPRequestHandler):
                 data = json.loads(raw.decode("utf-8"))
                 mode = data.get("mode", "normal")
                 self._send(
-                    200, run_start(mode, data.get("map"), data.get("map_version"))
+                    200,
+                    run_start(
+                        mode,
+                        data.get("map"),
+                        data.get("map_version"),
+                        data.get("map_end"),
+                    ),
                 )
             except Exception as e:
                 self._send(400, {"ok": False, "error": str(e)})

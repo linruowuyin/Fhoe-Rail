@@ -30,3 +30,9 @@ def test_periodic_refresh_goes_through_the_selection_guard():
     assert "function updateLogBox(" in HTML
     assert "updateLogBox(outEl, html, autoScroll);" in HTML
     assert "outEl.innerHTML =" not in HTML, "实时输出又绕过了 updateLogBox，会破坏正在进行的选区"
+
+
+def test_run_page_has_single_and_range_modes():
+    assert '<option value="map">单图运行' in HTML
+    assert '<option value="range">区间运行' in HTML
+    assert "body.map_end = pickMapEnd.value" in HTML
