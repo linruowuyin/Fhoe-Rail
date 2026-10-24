@@ -38,6 +38,45 @@ from utils.drivers.window import Window
 from utils.flows.report import Report
 
 
+# --- 图片步骤分派（R25）-----------------------------------------------------
+#
+# 地图 JSON 里的图片步骤键（`picture\\xxx.png`）先经 `assets.asset_id()` 归一化成
+# 资源 ID，再按下面的表分派。**比较的永远是 ID，不是路径串** —— 前缀、分隔符、
+# 后缀、文件放在哪个子目录都不影响逻辑。
+#
+# 每个 handler 返回一种收尾方式：
+#   STEP_CONTINUE —— 本条结束，继续下一条 start（购买成功）
+#   STEP_BREAK    —— 结束本图 start（skip_this_map 已由 handler 置好）
+#   STEP_COUNT    —— 点击完成，走统一的「传送计数 + 重试」收尾
+#   STEP_PLAIN    —— 完成且不收尾（传送成功，自己控制节奏）
+STEP_CONTINUE = "continue"
+STEP_BREAK = "break"
+STEP_COUNT = "count"
+STEP_PLAIN = "plain"
+
+#: 资源 ID → handler 方法名。新增特殊图片语义只加一行，不改控制流。
+PICTURE_STEP_HANDLERS = {
+    "max": "_step_buy_max",
+    "transfer": "_step_transfer",
+    "1floor": "_step_floor",
+    "2floor": "_step_floor",
+    "3floor": "_step_floor",
+    "fanhui_1": "_step_back",
+    "fanhui_2": "_step_back",
+    "map_4-1_point_2": "_step_dream_fix",
+    "orientation_1": "_step_orientation",
+}
+
+#: 按前缀匹配的图片家族（ID 以这些开头时走对应 handler）
+PICTURE_STEP_PREFIX_HANDLERS = (
+    ("check_4-1_point", "_step_dream_machine"),
+    ("map_4-3_point", "_step_dream_point"),
+)
+
+#: 这两步自己控制节奏，不在进入 handler 前等 value 秒
+PICTURE_STEPS_WITHOUT_DELAY = frozenset({"max", "transfer"})
+
+
 class MapOperations:
     """
     地图处理主逻辑
@@ -231,6 +270,9 @@ class MapOperations:
                 key = list(start.keys())[0]
                 log.info(key)
                 value = start[key]
+                # 图片步骤的身份：`picture\\map_4-3_point_5.png` → `map_4-3_point_5`；
+                # 非图片键为空串（落到通用分支，保持旧行为）
+                picture_id = assets.asset_id(key)
 
                 self.show_dev_info(
                     dev, f'"{key}": {value}', 400, 1045, "key_value")
@@ -297,22 +339,6 @@ class MapOperations:
                     KeyboardEvent.keyboard_press(key)
                 elif key == "f":
                     self.handle.handle_f(value)
-                elif key == "picture\\max.png":
-                    if self.calculated.allow_buy_item():
-                        self.map_statu.skip_this_map = False
-                        self.img.click_target(key, BUY_ICON)
-                        continue
-                    else:
-                        self.map_statu.skip_this_map = True
-                        break
-                elif key in ["picture\\transfer.png"]:
-                    time.sleep(0.2)
-                    if not self.img.click_target(key, TRANSFER_ICON):
-                        self.map_statu.skip_this_map = True
-                        break
-                    self.calculated.run_mapload_check()
-                    if self.map_statu.temp_point:
-                        log.info(f'地图加载前的传送点为 {self.map_statu.temp_point}')
                 elif key == "floor":
                     time.sleep(0.8)
                     arr, target = value
@@ -324,63 +350,127 @@ class MapOperations:
                     except Exception as e:
                         log.info(f"floor处理异常: {e}")
                 else:
-                    value = min(value, 0.8)
-                    time.sleep(value)
-                    if key in ["picture\\1floor.png", "picture\\2floor.png", "picture\\3floor.png"]:
-                        self.map.handle_floor(key)
-                    # 有可能未找到该图片，冗余查找
-                    elif key in ["picture\\fanhui_1.png", "picture\\fanhui_2.png"]:
-                        self.map.handle_back(key)
-                    elif key.startswith("picture\\check_4-1_point"):
-                        self.map.find_transfer_point(key, threshold=DREAM_MACHINE, exact=self.map.drag_exact, offset=self.map.drag_offset)
-                        if self.img.click_target(key, DREAM_MACHINE, retry_in_map=False):
-                            log.info("筑梦机关检查通过")
-                        else:
-                            log.info("筑梦机关检查不通过，请将机关调整到正确的位置上")
-                            self.map_statu.error_check_point = True
-                        time.sleep(1)
-                    elif key == "picture\\map_4-1_point_2.png":  # 筑梦边境尝试性修复
-                        self.map.find_transfer_point(key, threshold=DREAM_POINT, exact=self.map.drag_exact, offset=self.map.drag_offset)
-                        self.img.click_target(key, DREAM_POINT_CLICK)
-                        self.map_statu.temp_point = key
-                    elif key == "picture\\orientation_1.png":
-                        self.map.handle_orientation(key, map_data)
-                    elif key.startswith("picture\\map_4-3_point"):
-                        self.map.find_transfer_point(key, threshold=DREAM_POINT, exact=self.map.drag_exact, offset=self.map.drag_offset)
-                        self.img.click_target(key, TELEPORT_POINT)
-                        self.map_statu.temp_point = key
-                        time.sleep(1.7)
-                    elif key in self.map.planet_png_lst:
-                        self.map.handle_planet(key)
-                    else:
-                        if self.map.allow_drap_map_switch or self.map_drag:
-                            self.map.find_transfer_point(
-                                key, threshold=POINT_SEARCH, exact=self.map.drag_exact, offset=self.map.drag_offset)
-                        if self.map.allow_scene_drag_switch:
-                            self.map.find_scene(key, threshold=DREAM_SCENE)
-                        if self.img.on_main_interface(timeout=0.5, allow_log=False):
-                            log.info("执行alt")
-                            self.mouse_event.click_target_with_alt(self.img, 
-                                key, TELEPORT_POINT, clicks=self.map.multi_click)
-                        else:
-                            self.img.click_target(
-                                key, TELEPORT_POINT, clicks=self.map.multi_click, retry_in_map=self.map.allow_retry_in_map_switch)
-                        self.map_statu.temp_point = key
-                    self.map_statu.teleport_click_count += 1
-                    log.info(
-                        f'传送点击（{self.map_statu.teleport_click_count}）')
-                    if self.mouse_event.last_search_allow_retry:
-                        retry = True
-                        retry_cnt += 1
-                        if retry_cnt == self.retry_cnt_max:
-                            self.map_statu.skip_this_map = True
-                            self.map_statu.next_map_drag = True
+                    handler = self._picture_step_handler(picture_id)
+                    if picture_id not in PICTURE_STEPS_WITHOUT_DELAY:
+                        value = min(value, 0.8)
+                        time.sleep(value)
+                    outcome = handler(key, value, map_data)
+                    if outcome == STEP_CONTINUE:
+                        continue
+                    if outcome == STEP_BREAK:
                         break
+                    if outcome == STEP_COUNT:
+                        self.map_statu.teleport_click_count += 1
+                        log.info(
+                            f'传送点击（{self.map_statu.teleport_click_count}）')
+                        if self.mouse_event.last_search_allow_retry:
+                            retry = True
+                            retry_cnt += 1
+                            if retry_cnt == self.retry_cnt_max:
+                                self.map_statu.skip_this_map = True
+                                self.map_statu.next_map_drag = True
+                            break
 
                 if self.handle.f_key_error:
                     log.info("F键错误，跳过当前地图")
                     self.map_statu.map_f_key_error.append(map_data_name)
                     break
+
+    # ------------------------------------------------------------------
+    # 图片步骤 handler（分派表见模块顶部的 PICTURE_STEP_HANDLERS）
+    # ------------------------------------------------------------------
+
+    def _picture_step_handler(self, picture_id):
+        """资源 ID → 处理函数。表没有的走前缀家族 → 星球 → 通用点击。"""
+        method = PICTURE_STEP_HANDLERS.get(picture_id)
+        if method is None:
+            for prefix, candidate in PICTURE_STEP_PREFIX_HANDLERS:
+                if picture_id.startswith(prefix):
+                    method = candidate
+                    break
+        if method is None and picture_id in self.map.planet_ids:
+            method = "_step_planet"
+        return getattr(self, method or "_step_generic")
+
+    def _step_buy_max(self, key, value, map_data):
+        if self.calculated.allow_buy_item():
+            self.map_statu.skip_this_map = False
+            self.img.click_target(key, BUY_ICON)
+            return STEP_CONTINUE
+        self.map_statu.skip_this_map = True
+        return STEP_BREAK
+
+    def _step_transfer(self, key, value, map_data):
+        time.sleep(0.2)
+        if not self.img.click_target(key, TRANSFER_ICON):
+            self.map_statu.skip_this_map = True
+            return STEP_BREAK
+        self.calculated.run_mapload_check()
+        if self.map_statu.temp_point:
+            log.info(f'地图加载前的传送点为 {self.map_statu.temp_point}')
+        return STEP_PLAIN
+
+    def _step_floor(self, key, value, map_data):
+        self.map.handle_floor(key)
+        return STEP_COUNT
+
+    def _step_back(self, key, value, map_data):
+        # 有可能未找到该图片，冗余查找
+        self.map.handle_back(key)
+        return STEP_COUNT
+
+    def _step_dream_machine(self, key, value, map_data):
+        self.map.find_transfer_point(
+            key, threshold=DREAM_MACHINE, exact=self.map.drag_exact, offset=self.map.drag_offset)
+        if self.img.click_target(key, DREAM_MACHINE, retry_in_map=False):
+            log.info("筑梦机关检查通过")
+        else:
+            log.info("筑梦机关检查不通过，请将机关调整到正确的位置上")
+            self.map_statu.error_check_point = True
+        time.sleep(1)
+        return STEP_COUNT
+
+    def _step_dream_fix(self, key, value, map_data):
+        """筑梦边境尝试性修复（`picture\\map_4-1_point_2.png`）。"""
+        self.map.find_transfer_point(
+            key, threshold=DREAM_POINT, exact=self.map.drag_exact, offset=self.map.drag_offset)
+        self.img.click_target(key, DREAM_POINT_CLICK)
+        self.map_statu.temp_point = key
+        return STEP_COUNT
+
+    def _step_orientation(self, key, value, map_data):
+        self.map.handle_orientation(key, map_data)
+        return STEP_COUNT
+
+    def _step_dream_point(self, key, value, map_data):
+        self.map.find_transfer_point(
+            key, threshold=DREAM_POINT, exact=self.map.drag_exact, offset=self.map.drag_offset)
+        self.img.click_target(key, TELEPORT_POINT)
+        self.map_statu.temp_point = key
+        time.sleep(1.7)
+        return STEP_COUNT
+
+    def _step_planet(self, key, value, map_data):
+        self.map.handle_planet(key)
+        return STEP_COUNT
+
+    def _step_generic(self, key, value, map_data):
+        """普通点位：拖图 → 点它。"""
+        if self.map.allow_drap_map_switch or self.map_drag:
+            self.map.find_transfer_point(
+                key, threshold=POINT_SEARCH, exact=self.map.drag_exact, offset=self.map.drag_offset)
+        if self.map.allow_scene_drag_switch:
+            self.map.find_scene(key, threshold=DREAM_SCENE)
+        if self.img.on_main_interface(timeout=0.5, allow_log=False):
+            log.info("执行alt")
+            self.mouse_event.click_target_with_alt(
+                self.img, key, TELEPORT_POINT, clicks=self.map.multi_click)
+        else:
+            self.img.click_target(
+                key, TELEPORT_POINT, clicks=self.map.multi_click,
+                retry_in_map=self.map.allow_retry_in_map_switch)
+        self.map_statu.temp_point = key
+        return STEP_COUNT
 
     def _pause_checkpoint(self, dev: bool, last_point: str = "") -> bool:
         """暂停检查点：暂停时在此停住；返回 True 表示用户要求重跑本图。

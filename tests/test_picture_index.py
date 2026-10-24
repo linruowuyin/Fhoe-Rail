@@ -27,6 +27,21 @@ def picture_root(tmp_path, monkeypatch):
     images.clear_cache()
 
 
+class TestAssetId:
+    """地图 JSON 的步骤键 → 稳定资源 ID（R25）。"""
+
+    def test_strips_prefix_directories_and_extension(self):
+        assert assets.asset_id("picture\\map_4-3_point_5.png") == "map_4-3_point_5"
+        assert assets.asset_id("picture/Transfer.webp") == "transfer"
+        assert assets.asset_id("./picture/ui/setting_icon.png") == "setting_icon"
+
+    def test_non_picture_keys_have_no_id(self):
+        assert assets.asset_id("space") == ""
+        assert assets.asset_id("picture_version") == ""
+        assert assets.is_picture_ref("space") is False
+        assert assets.is_picture_ref("picture\\transfer.png") is True
+
+
 class TestScanPictureFiles:
     def test_index_uses_stem_and_prefers_webp(self, tmp_path):
         write_image(tmp_path / "ui" / "transfer.webp")

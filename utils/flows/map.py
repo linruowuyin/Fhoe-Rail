@@ -28,19 +28,18 @@ from utils.core.thresholds import (
 )
 
 
-#: 星球识别用的**地图 JSON 步骤键**（资源 ID，不是文件路径）。
-#: `start` 里出现这些键时，说明这张图要先切到对应星球；`handle_orientation` 就是拿
-#: 地图数据里的字符串和这张表比对。后缀写 `.png` 是地图数据的历史约定（磁盘上
-#: 早已是 `.webp`），**不能换成 `assets.path()`** —— 那是给加载图片用的物理路径，
-#: 字符串对不上会让 planet_dict 变空（R25 的数据契约例外，tests/test_assets.py 已登记）。
-PLANET_STEP_IDS = [
-    "picture\\orientation_2.png",
-    "picture\\orientation_3.png",
-    "picture\\orientation_4.png",
-    "picture\\orientation_5.png",
-    "picture\\orientation_6.png",
-    "picture\\orientation_7.png",
-]
+#: 星球识别的资源 ID（`assets.asset_id` 归一化后的 stem，不是文件路径）。
+#: `start` 里出现这些 ID 时，说明这张图要先切到对应星球。地图数据里写的是
+#: `picture\\orientation_N.png` —— 前缀、分隔符、后缀都由 `assets.asset_id()`
+#: 剥掉，这里只认身份（R25）。
+PLANET_IDS = (
+    "orientation_2",
+    "orientation_3",
+    "orientation_4",
+    "orientation_5",
+    "orientation_6",
+    "orientation_7",
+)
 
 
 class Map:
@@ -65,8 +64,8 @@ class Map:
 
         self.allowlist_mode = False
         self.map_statu_minimize = False  # 地图最小化
-        self.planet = None  # 当前星球初始化
-        self.planet_png_lst = PLANET_STEP_IDS
+        self.planet = None  # 当前星球初始化（资源 ID）
+        self.planet_ids = PLANET_IDS
 
     def open_map(self):
         """
@@ -374,12 +373,12 @@ class Map:
         已在当前星球，跳过点击星轨航图
         未在当前星球，点击星轨航图后进行黑屏检测，如果因为客户端黑屏，则返回重试点击星轨航图
         """
-        keys_to_find = self.planet_png_lst
+        keys_to_find = set(self.planet_ids)
         planet_dict = {
-            k: v
+            assets.asset_id(k): v
             for item in map_data["start"]
             for k, v in item.items()
-            if k in keys_to_find
+            if assets.asset_id(k) in keys_to_find
         }
         planet = list(planet_dict.keys())[0]
         if self.check_planet(planet):
@@ -432,7 +431,7 @@ class Map:
                     # 这个循环也没有硬上限（只有星轨航图出现或黑屏才退）
                     self.pause_gate()
                     if self.blackscreen.check_blackscreen():
-                        self.planet = key
+                        self.planet = assets.asset_id(key)
                         break
                     delay_time += 0.1
                     delay_time = max(delay_time, 1)
@@ -444,7 +443,7 @@ class Map:
                     )
                     time.sleep(5)
                 else:
-                    self.planet = key
+                    self.planet = assets.asset_id(key)
             time.sleep(1.7)
 
     def handle_floor(self, key):

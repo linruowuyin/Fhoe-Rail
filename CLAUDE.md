@@ -465,6 +465,11 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
   先按字面找，找不到再按 **stem（文件名去掉后缀）** 查 `picture/` 的递归索引。
   所以文件搬进子目录不影响 633 张老地图 —— **前提是 stem 全局唯一**
   （大小写不敏感，`new_pic/` 除外）：目录只是分类，名字才是身份
+- **业务分派只认归一化后的 ID**：`assets.asset_id("picture\\map_4-3_point_5.png")`
+  → `map_4-3_point_5`。前缀、分隔符、目录、后缀全部在这一步剥掉；`map_operations`
+  的图片步骤是一张 `PICTURE_STEP_HANDLERS` 表（前缀家族 / 星球 / 通用点击另有规则），
+  新增特殊语义加一行数据，不要恢复成拿路径串做 `==` / `startswith` 的长分支。
+  `Map.planet_ids` 同样是 ID，`handle_orientation` 两边都过 `asset_id()` 再比
 - `tools/validate_pictures.py` 在 CI 拦两件事：stem 重名、地图 JSON 的图片引用
   解析不到（拼错图片名不用等跑图才炸）。新增图片时名字撞了，改名而不是换目录
 - `picture/` 已按用途分类：`ui/`（界面/战斗/购买/设置/月卡/解谜）、`f_icon/`、

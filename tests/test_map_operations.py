@@ -98,9 +98,9 @@ class Lv999Recorder:
 class MapStub:
     """Map 的替身，记录地图侧动作。"""
 
-    def __init__(self, planet_png_lst=()):
+    def __init__(self, planet_ids=()):
         self.calls = []
-        self.planet_png_lst = list(planet_png_lst)
+        self.planet_ids = list(planet_ids)
         self.allow_drap_map_switch = False
         self.allow_scene_drag_switch = False
         self.allow_retry_in_map_switch = True
@@ -177,7 +177,7 @@ def operations(make_instance, isolated_cwd, monkeypatch):
         map=SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
             open_map=lambda: None,
             align_angle=lambda: None,
             reset_round_count=lambda: None,
@@ -312,7 +312,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: True,
-            planet_png_lst=[],
+            planet_ids=[],
         )
 
         operations.process_single_map_start(0, "map_1-1_0.json")
@@ -324,7 +324,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: True,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
         )
 
         operations.process_single_map_start(0, "map_1-1_0.json")
@@ -359,7 +359,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
             allow_map_drag=lambda start: None,
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
@@ -382,7 +382,7 @@ class TestProcessSingleMapStart:
         operations.map = SimpleNamespace(
             check_allowlist_maps=lambda name: False,
             check_forbidden_maps=lambda name: False,
-            planet_png_lst=[],
+            planet_ids=[],
             allow_map_drag=lambda start: None,
             allow_scene_drag=lambda start: None,
             allow_multi_click=lambda start: None,
@@ -652,7 +652,7 @@ class TestStartStepDispatch:
         pressed = []
         monkeypatch.setattr(operations_module, "KeyboardEvent", SimpleNamespace(keyboard_press=lambda key, delay=0: pressed.append(key)))
 
-        def _run(entry, planet_png_lst=(), allow_buy=True, click_ok=True):
+        def _run(entry, planet_ids=(), allow_buy=True, click_ok=True):
             pressed.clear()
             # start 是一个「单键字典」的列表：每个元素只取第一个键，
             # 所以多步场景必须传列表，不能把多个键塞进同一个 dict。
@@ -669,7 +669,7 @@ class TestStartStepDispatch:
                 },
             )
             handle = RecordingHandle()
-            game_map = MapStub(planet_png_lst=planet_png_lst)
+            game_map = MapStub(planet_ids=planet_ids)
             calculated = CalculatedRecorder(allow_buy=allow_buy)
             mouse = MouseRecorder(result=click_ok)
             img = ImgRecorder(result=click_ok)
@@ -790,7 +790,7 @@ class TestStartStepDispatch:
 
     def test_planet_picture_routes_to_planet_handler(self, run):
         key = "picture\\orientation_2.png"
-        result = run({key: 1}, planet_png_lst=[key])
+        result = run({key: 1}, planet_ids=["orientation_2"])
         assert result.map.called("handle_planet")[0][1] == (key,)
 
     def test_unknown_point_clicks_without_dragging_by_default(self, run):

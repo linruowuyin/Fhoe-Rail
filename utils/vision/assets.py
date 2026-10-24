@@ -206,6 +206,25 @@ def path(key):
         ) from None
 
 
+def is_picture_ref(value):
+    """这个字符串是不是地图 JSON 里的图片步骤键（`picture\\xxx.png`）。"""
+    return value.replace("\\", "/").startswith(PICTURE_REF_PREFIXES)
+
+
+def asset_id(step):
+    """地图 JSON 的图片步骤键 → 资源 ID（stem，小写）；不是图片引用时返回 ""。
+
+    `"picture\\map_4-3_point_5.png"` → `"map_4-3_point_5"`
+
+    业务逻辑只认这个 ID（R25）：前缀、目录、分隔符、后缀都属于序列化细节，
+    统一在这里剥掉。文件改名 / 搬目录 / `.png`→`.webp` 都不影响分派。
+    """
+    if not is_picture_ref(step):
+        return ""
+    name = step.replace("\\", "/").rsplit("/", 1)[-1]
+    return os.path.splitext(name)[0].lower()
+
+
 def iter_picture_files(root=None):
     """递归列出图片文件路径（跳过 `new_pic/` 与隐藏目录），顺序稳定。
 
