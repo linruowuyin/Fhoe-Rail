@@ -149,6 +149,17 @@ def path_of(image):
     return _PATH_BY_ID.get(id(image)) if image is not None else None
 
 
+def strategy_of(image):
+    """一张模板 → 匹配策略（`assets.MATCH_COLOR` / `MATCH_SHAPE`）。
+
+    未登记、或反色/旋转造出来的临时数组按颜色匹配。
+    """
+    path = path_of(image)
+    if not path:
+        return assets.MATCH_COLOR
+    return assets.strategy_for_path(path)
+
+
 def load_all(image_paths=None) -> dict:
     """按 {属性名: 路径} 批量加载，加载失败的只告警、不进结果。
 

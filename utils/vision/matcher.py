@@ -18,6 +18,7 @@ from utils.core.log import log
 from utils.core.thresholds import DEFAULT_MATCH, LOW_MATCH_REPORT_FLOOR
 from utils.drivers.mouse_event import MouseEvent
 from utils.drivers.screen import ScreenSource
+from utils.vision import assets
 from utils.vision import images as image_library
 from utils.vision import samples
 
@@ -51,13 +52,48 @@ class Matcher:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def shape_features(image):
+        """把图转成梯度幅值图：只保留轮廓，抹掉底色。
+
+        给「图标固定、底色随游戏内模糊背景变化」的模板用（`assets.MATCH_SHAPE`）：
+        高斯模糊的背景几乎没有梯度，图标的边缘则很明显，因此匹配结果与背景颜色无关。
+        用 `TM_CCOEFF_NORMED`（会减均值）比 `TM_CCORR_NORMED` 更能把两个亮色图标区分开。
+
+        固定缩放成 uint8（`/4`，Sobel ksize=3 的理论上限附近截断）而不是按图归一化：
+        浮点图在平坦区域会出数值异常，uint8 下纯色帧得分为 0，不会冒假高分。
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+        grad_x = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+        magnitude = cv2.magnitude(grad_x, grad_y)
+        return np.clip(magnitude / 4.0, 0, 255).astype(np.uint8)
+
+    @staticmethod
+    def _prepare_match(screenshot, prepared):
+        """按模板登记的匹配策略，返回 `(帧, 模板, matchTemplate 方法)`。"""
+        if image_library.strategy_of(prepared) == assets.MATCH_SHAPE:
+            return (
+                Matcher.shape_features(screenshot),
+                Matcher.shape_features(prepared),
+                cv2.TM_CCOEFF_NORMED,
+            )
+        return screenshot, prepared, cv2.TM_CCORR_NORMED
+
+    @staticmethod
     def match_screenshot(screenshot, prepared, left, top):
         """比对 screenshot 与 prepared，返回匹配值与位置。
 
         这里是**全部匹配的唯一汇聚点**，所以图片样本收集也挂在这一处（见
         `vision/samples.py`）—— 挂在各调用点等于抄十几遍。
+
+        匹配策略跟着模板走：`assets.MATCH_SHAPE` 的模板先转成梯度幅值再比。
+        样本收集仍用原始帧/模板，落下来的样本是真实画面。
         """
-        result = cv2.matchTemplate(screenshot, prepared, cv2.TM_CCORR_NORMED)
+        match_frame, match_template, method = Matcher._prepare_match(
+            screenshot, prepared
+        )
+        result = cv2.matchTemplate(match_frame, match_template, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         Matcher._collect_sample(screenshot, prepared, left, top, max_val, max_loc)
         return {
@@ -103,7 +139,10 @@ class Matcher:
         :return: {"max_val", "max_loc"(已加 left/top), "second_val"}
                  模板与帧一样大（只有一个候选位置）时 `second_val` 为 0.0
         """
-        result = cv2.matchTemplate(screenshot, prepared, cv2.TM_CCORR_NORMED)
+        match_frame, match_template, method = Matcher._prepare_match(
+            screenshot, prepared
+        )
+        result = cv2.matchTemplate(match_frame, match_template, method)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
         height, width = prepared.shape[:2]

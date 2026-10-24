@@ -31,6 +31,11 @@
 分类
     `category` 是给将来物理分目录、以及「游戏更新后先跑哪一组冒烟」用的元数据。
     它不影响加载；新增分类记得同步 `CATEGORIES`。
+
+匹配策略
+    默认 `MATCH_COLOR`（整图 CCORR）。底色会随游戏内模糊背景变化的图标标
+    `MATCH_SHAPE`：匹配器先把帧和模板转成梯度幅值再比，只看轮廓不看颜色
+    （见 `vision/matcher.py::Matcher.shape_features`）。新增同类图标时优先用形状匹配。
 """
 
 import os
@@ -84,12 +89,20 @@ CATEGORIES = {
 }
 
 
+#: 匹配策略：颜色（默认，整图 CCORR）/ 形状（梯度幅值 + CCOEFF）。
+#: 底色会随游戏内背景（高斯模糊）变化的图标用 `MATCH_SHAPE` —— 只比轮廓，
+#: 不看颜色。详见 `vision/matcher.py::Matcher.shape_features`。
+MATCH_COLOR = "color"
+MATCH_SHAPE = "shape"
+
+
 class Asset(NamedTuple):
-    """一条图片资源：路径 + 分类 +（可选）备注。"""
+    """一条图片资源：路径 + 分类 +（可选）备注 + 匹配策略。"""
 
     path: str
     category: str
     note: str = ""
+    match: str = MATCH_COLOR
 
 
 #: 登记表。key 用小写蛇形，与文件 stem 对得上即可。
@@ -157,7 +170,12 @@ ASSETS = {
     "loc_arrow": Asset("./picture/orientation/loc_arrow.webp", CATEGORY_ORIENTATION, "小地图箭头"),
     # --- 设置菜单 ----------------------------------------------------------
     "setting_icon": Asset("./picture/ui/setting_icon.webp", CATEGORY_SETTING),
-    "setting_other": Asset("./picture/ui/setting_other.webp", CATEGORY_SETTING),
+    "setting_other": Asset(
+        "./picture/ui/setting_other.webp",
+        CATEGORY_SETTING,
+        "设置菜单-其他设置（底色随模糊背景变化，用形状匹配）",
+        match=MATCH_SHAPE,
+    ),
     "setting_yes": Asset("./picture/ui/setting_yes.webp", CATEGORY_SETTING),
     "auto_use_technique_consumable": Asset(
         "./picture/ui/auto_use_technique_consumable.webp", CATEGORY_SETTING
@@ -204,6 +222,21 @@ def path(key):
         raise KeyError(
             f"未登记的图片资源：{key!r}（请先在 utils/vision/assets.py 登记）"
         ) from None
+
+
+def _path_key(path):
+    """路径归一化：反斜杠/正斜杠、`.`/`..` 都抹平，用作策略表的键。"""
+    return os.path.normpath(path).replace("\\", "/")
+
+
+#: 登记路径 → 匹配策略。图片加载层反查模板身份时用（R13：状态属于读取方）。
+ASSET_BY_PATH = {_path_key(asset.path): asset for asset in ASSETS.values()}
+
+
+def strategy_for_path(path):
+    """图片路径 → 匹配策略；未登记的图片按颜色匹配。"""
+    asset = ASSET_BY_PATH.get(_path_key(path))
+    return asset.match if asset is not None else MATCH_COLOR
 
 
 def is_picture_ref(value):

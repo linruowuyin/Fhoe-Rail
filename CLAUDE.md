@@ -459,6 +459,10 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
 游戏更新后该先怀疑谁。现在登记表是代码侧图片的唯一入口：
 
 - 新图先在 `assets.py` 加一条（`key` → 路径 + 分类），代码写 `assets.path("key")`
+- **底色会变的图标用形状匹配**：登记时标 `match=MATCH_SHAPE`（范例：`setting_other`，
+  底色随设置菜单的模糊背景变化）。匹配器先把帧和模板转成梯度幅值再跑 CCOEFF，
+  只看轮廓、不看颜色；`match_probe` 的报告会显示「匹配方式」。新增同类图标时优先
+  用形状匹配，阈值按 probe 在实机上重新标定
 - `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
   裸路径字面量（棘轮，只减不增；数据契约与工具文案在名单里注明原因）
 - 地图 JSON 里的 `picture\xxx.png` 是**资源 ID**，不是物理路径：`images.resolve_path`

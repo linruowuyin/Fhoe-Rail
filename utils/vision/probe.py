@@ -17,6 +17,7 @@ from utils.core.match_offsets import (
 )
 from utils.core.thresholds import DEFAULT_MATCH
 from utils.drivers.screen import CAPTURE_PRINTWINDOW
+from utils.vision import images as image_library
 from utils.vision.matcher import Matcher
 
 #: 预览图在匹配框外再留多少像素的上下文 —— 够看清框有没有套在正确的特征上
@@ -101,6 +102,7 @@ def measure(
         "center": (box_left + width // 2, box_top + height // 2),
         "score": matched["max_val"],
         "second": matched["second_val"],
+        "strategy": image_library.strategy_of(template),
         "threshold": threshold,
         "margin": matched["max_val"] - threshold,
         # 全项目的判定都是严格大于，不是大于等于（core/thresholds.py 的约定）

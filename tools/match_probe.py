@@ -150,6 +150,7 @@ def format_report(measurement, name, path):
         f"图片      {name}    文件 {path}",
         f"模板      {template_width}×{template_height} px    帧 {frame_width}×{frame_height}    "
         f"搜索区域 ({region_left}, {region_top})-({region_right}, {region_bottom})",
+        f"匹配方式  {_strategy_label(measurement.get('strategy', 'color'))}",
         f"截图来源  {measurement['capture_source']}",
     ]
     if measurement["capture_source"] == CAPTURE_SCREENGRAB:
@@ -173,6 +174,13 @@ def format_report(measurement, name, path):
 
 def _offset_line(label, offset, box):
     return f"{label}  offset={offset}    区域 {box[2] - box[0]}×{box[3] - box[1]}"
+
+
+def _strategy_label(strategy):
+    """匹配策略 → 报告里的一小段中文说明。"""
+    if strategy == "shape":
+        return "形状（梯度幅值 + CCOEFF，不受底色影响）"
+    return "颜色（整图 CCORR）"
 
 
 def _fuzzy_note(measurement):
