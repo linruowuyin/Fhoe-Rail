@@ -505,6 +505,13 @@ class MapOperations:
         self.handle.combat.current_fighting_index = 0
         total_map_count = len(map_data['map'])
 
+        # 每张地图执行 map 步骤前，固定回一次主界面（README「执行地图步骤前的固定行为」）：
+        # 地图数据不再需要自己在开头写 {"main": 1}，第一步的契约统一为「已在主界面、
+        # 且该状态能从主界面按 ESC 到达」。放在 first_role_check / 视角设置之前，
+        # 避免在残留的对话、菜单或战斗结算界面里按 1 或转视角。
+        log.info("返回主界面，准备执行地图步骤")
+        self.handle.back_to_main()
+
         # 1号位相关检测：先切到 1 号位；黄泉 / 银狼 LV.999 版本还强制校验
         # 1 号位是对应角色，不符直接终止（原 TODO：黄泉情况下必须为黄泉角色）
         self.calculated.first_role_check(self.map_info.map_version)

@@ -483,6 +483,22 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
   （休眠）。将来重新启用时，要么按新目录重新生成远程清单，要么让它走
   `resolve_path` 映射
 
+### 3.9 地图执行契约
+
+**R26 — 每张地图执行 `map` 步骤前，代码固定调用 `handle.back_to_main()`；地图数据不要自己写 `{"main": 1}`，更不要在 `map` 开头写 `{"esc": 1}`。**
+
+以前"第一步从哪开始"取决于录制时的状态：有的图 `start` 末尾写了 `main`，
+有的依赖传送后残留的对话或菜单，有的第一行直接是 `fighting` / `esc`。
+现在 `process_single_map_handle` 在进入 `map` 循环前统一回主界面
+（`first_role_check`、视角设置之前），把契约收敛成两条：
+
+- `map` 第一步可以假设：**当前在主界面**，且**该状态能从主界面按 `ESC` 到达**
+- 依赖"传送落地残留状态"的步骤放 `start` 末尾；`map` 开头多余的 `ESC`
+  会在主界面上把 ESC 菜单打开，是错误写法
+
+`tests/test_map_operations.py::test_back_to_main_precedes_map_steps` 钉住顺序。
+对应的用户文档在 README「执行地图步骤前的固定行为（主界面检测）」。
+
 ---
 
 ## §4 测试

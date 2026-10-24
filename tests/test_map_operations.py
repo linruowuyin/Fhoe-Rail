@@ -914,6 +914,13 @@ class TestHandleStepDispatch:
 
         assert operations.calculated.first_role_versions == ["default"]
 
+    def test_back_to_main_precedes_map_steps(self, run):
+        """map 步骤前固定回主界面：地图 JSON 不需要自己写 {"main": 1}。"""
+        result = run({"await": 1})
+
+        assert result.handle.calls[0][0] == "back_to_main"
+        assert len(result.handle.called("back_to_main")) == 1
+
     def test_lv999_e_routes_to_role_not_move(self, run):
         result = run({"lv999_e": 1})
 
@@ -968,6 +975,7 @@ class TestHandleStepDispatch:
         operations.process_single_map_handle("map_1-1_0.json", normal_run=False)
 
         assert [call[0] for call in handle.calls] == [
+            "back_to_main",  # 每张图执行 map 步骤前固定回主界面
             "handle_view_set",  # 进图前先校准视角
             "handle_move",
             "handle_await",
