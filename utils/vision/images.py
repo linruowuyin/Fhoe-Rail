@@ -12,20 +12,21 @@ import os
 import cv2
 
 from utils.core.log import log
+from utils.vision import assets
 
-#: 运行时默认加载的 UI 图。键名即 `Img` 实例上的属性名。
+#: 运行时默认加载的 UI 图。键名即 `Img` 实例上的属性名，路径从登记表取。
 DEFAULT_IMAGE_PATHS = {
-    "main_ui": "./picture/finish_fighting.png",
-    "doubt_ui": "./picture/doubt.png",
-    "warn_ui": "./picture/warn.png",
-    "finish2_ui": "./picture/finish_fighting2.png",
-    "finish2_1_ui": "./picture/finish_fighting2_1.png",
-    "finish2_2_ui": "./picture/finish_fighting2_2.png",
-    "finish3_ui": "./picture/finish_fighting3.png",
-    "finish4_ui": "./picture/finish_fighting4.png",
-    "finish5_ui": "./picture/finish_fighting5.png",
-    "battle_esc_check": "./picture/battle_esc_check.png",
-    "switch_run": "./picture/switch_run.png",
+    "main_ui": assets.path("finish_fighting"),
+    "doubt_ui": assets.path("doubt"),
+    "warn_ui": assets.path("warn"),
+    "finish2_ui": assets.path("finish_fighting2"),
+    "finish2_1_ui": assets.path("finish_fighting2_1"),
+    "finish2_2_ui": assets.path("finish_fighting2_2"),
+    "finish3_ui": assets.path("finish_fighting3"),
+    "finish4_ui": assets.path("finish_fighting4"),
+    "finish5_ui": assets.path("finish_fighting5"),
+    "battle_esc_check": assets.path("battle_esc_check"),
+    "switch_run": assets.path("switch_run"),
 }
 
 #: 图片加载缓存：{(路径): (文件mtime, ndarray)}，文件更新后自动失效

@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 
+from utils.vision import assets
 from utils.vision.img import Img
 
 
@@ -30,7 +31,7 @@ class ASU:
     # 计算小地图中蓝色箭头的角度
     def get_now_direc(self):
         loc_scr = self.screen[101:241, 94:224]
-        arrow = "./picture/loc_arrow.jpg"
+        arrow = assets.path("loc_arrow")
         arrow = Img.get_img(arrow)
         hsv = cv.cvtColor(loc_scr, cv.COLOR_BGR2HSV)  # 转HSV
         lower = np.array([93, 120, 60])

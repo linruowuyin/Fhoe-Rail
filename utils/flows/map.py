@@ -5,6 +5,7 @@ from utils.vision.blackscreen import BlackScreen
 from utils.config.config import ConfigurationManager
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
+from utils.vision import assets
 from utils.vision.img import Img
 from utils.core.map_info import MapInfo
 from utils.flows.monthly_pass import MonthlyPass
@@ -51,20 +52,20 @@ class Map:
         self.map_statu_minimize = False  # 地图最小化
         self.planet = None  # 当前星球初始化
         self.planet_png_lst = [
-            "picture\\orientation_2.png",
-            "picture\\orientation_3.png",
-            "picture\\orientation_4.png",
-            "picture\\orientation_5.png",
-            "picture\\orientation_6.png",
-            "picture\\orientation_7.png",
+            assets.path("orientation_2"),
+            assets.path("orientation_3"),
+            assets.path("orientation_4"),
+            assets.path("orientation_5"),
+            assets.path("orientation_6"),
+            assets.path("orientation_7"),
         ]
 
     def open_map(self):
         """
         尝试打开地图并识别地图标志性的目标图片
         """
-        target = Img.get_img("./picture/contraction.png")
-        target_back = Img.get_img("./picture/map_back.png")
+        target = Img.get_img(assets.path("contraction"))
+        target_back = Img.get_img(assets.path("map_back"))
         start_time = time.time()
         attempts = 0
         speed_open = False
@@ -410,7 +411,7 @@ class Map:
                 key, PLANET_CLICK, delay=0.1, click_offset=self.click_offset
             ):
                 time.sleep(5)
-                img = Img.get_img("./picture/kaituoli_1.png")
+                img = Img.get_img(assets.path("kaituoli_1"))
                 delay_time = 0.5
                 while not self.img.on_interface(
                     check_list=[img],
@@ -447,7 +448,7 @@ class Map:
 
     def handle_back(self, key):
         """点击右上角返回"""
-        img = Img.get_img("./picture/kaituoli_1.png")
+        img = Img.get_img(assets.path("kaituoli_1"))
         if not self.img.on_interface(
             check_list=[img],
             timeout=1,

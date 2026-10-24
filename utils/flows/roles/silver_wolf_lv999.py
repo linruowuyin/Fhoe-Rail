@@ -31,6 +31,7 @@ from utils.core.exceptions import CustomException
 from utils.core.match_offsets import padded_offset_for_box
 from utils.core.thresholds import SILVER_WOLF_LV999_E_ICON
 from utils.drivers.screen import BASE_HEIGHT, BASE_WIDTH
+from utils.vision import assets
 
 #: 按下 E 之后等多久再检测状态（秒）。秘技动画和图标渐显需要时间，
 #: 立刻查会假阴性；2 秒是实机节奏，等不到再判失败。
@@ -45,7 +46,7 @@ SILVER_WOLF_LV999_E_PADDING = 2
 
 #: 模板文件。`.png` / `.webp` 都行：`images.resolve_path` 会按 webp > png > jpg
 #: 找同名文件，所以目录里是 png 也照样加载。
-SILVER_WOLF_LV999_E_IMAGE = "./picture/silver_wolf_lv999_e.png"
+SILVER_WOLF_LV999_E_IMAGE = assets.path("silver_wolf_lv999_e")
 
 
 def e_state_offset(

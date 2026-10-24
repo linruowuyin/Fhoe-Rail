@@ -6,6 +6,7 @@ from utils.vision.blackscreen import BlackScreen
 from utils.config.config import ConfigurationManager
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
+from utils.vision import assets
 from utils.vision import colors as color
 from utils.vision.img import Img
 from utils.core.log import log
@@ -41,7 +42,7 @@ class Calculated:
             计算地图加载时间
         """
         start_time = time.time()
-        target = Img.get_img("./picture/map_load.png")
+        target = Img.get_img(assets.path("map_load"))
         time.sleep(1)  # 短暂延迟后开始判定是否为地图加载or黑屏跳转
         while error_count < max_error_count:
             result = self.img.scan_screenshot(target)
@@ -100,7 +101,7 @@ class Calculated:
             筑梦模块移动模块加载时间
         """
         start_time = time.time()
-        target = Img.get_img("./picture/finish_fighting.png")
+        target = Img.get_img(assets.path("finish_fighting"))
         time.sleep(3)  # 短暂延迟后开始判定
         while error_count < max_error_count:
             result = self.img.scan_screenshot(target)
@@ -140,7 +141,7 @@ class Calculated:
         """
         购买物品检测
         """
-        round_disable = Img.get_img("./picture/round_disable.png")
+        round_disable = Img.get_img(assets.path("round_disable"))
         if self.img.on_interface(
             check_list=[round_disable],
             timeout=5,

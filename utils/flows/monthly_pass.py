@@ -8,6 +8,7 @@ from utils.core.thresholds import (
     MONTHLY_PASS_NO_PASS,
 )
 from utils.config.config import ConfigurationManager
+from utils.vision import assets
 from utils.vision.img import Img
 from utils.drivers.mouse_event import MouseEvent
 
@@ -135,7 +136,7 @@ class MonthlyPass:
     def check_for_monthly_pass(self) -> bool:
         """无月卡检测"""
         log.info("判断是否存在月卡")
-        target = Img.get_img("./picture/finish_fighting.png")
+        target = Img.get_img(assets.path("finish_fighting"))
         result = self.img.scan_screenshot(target)
         if result["max_val"] > MONTHLY_PASS_NO_PASS:
             points = self.img.img_center_point(result, target.shape)
@@ -161,10 +162,9 @@ class MonthlyPass:
         # 有月卡
         log.info("准备点击月卡")
         monthly_pass_pics = [
-            ("./picture/monthly_pass_pic.png", "月卡下方文字部分"),
-            ("./picture/monthly_pass_pic_2.png", "月卡动画中心图片"),
+            (assets.path("monthly_pass_pic"), "月卡下方文字部分"),
+            (assets.path("monthly_pass_pic_2"), "月卡动画中心图片"),
         ]
-        pic_data_check = Img.get_img("./picture/monthly_pass_pic_3.png")
         for pic_path, pic_desc in monthly_pass_pics:
             pic_data = Img.get_img(pic_path)
             result = self.img.scan_screenshot(pic_data)
@@ -189,7 +189,7 @@ class MonthlyPass:
 
     def _confirm_reward_claim(self):
         """确认奖励领取"""
-        pic_data_check = Img.get_img("./picture/monthly_pass_pic_3.png")
+        pic_data_check = Img.get_img(assets.path("monthly_pass_pic_3"))
         for _ in range(5):
             result = self.img.scan_screenshot(pic_data_check)
             if result["max_val"] > MONTHLY_PASS:

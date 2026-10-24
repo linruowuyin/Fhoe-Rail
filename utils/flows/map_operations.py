@@ -13,6 +13,7 @@ from utils.ui.text_window import show_text, start_tkinter_thread, TEXT_WINDOWS
 from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.vision.img import Img
+from utils.vision import assets
 from utils.vision import samples
 from utils.core.log import log
 from utils.core.thresholds import (
@@ -394,7 +395,7 @@ class MapOperations:
         self.window.switch_window()
         time.sleep(1)
         if press_key == "F9":
-            self.img.click_target("picture\\transfer.png", TRANSFER_ICON)
+            self.img.click_target(assets.path("transfer"), TRANSFER_ICON)
             self.calculated.run_mapload_check()
         return True
 

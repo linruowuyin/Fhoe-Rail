@@ -14,6 +14,7 @@ import numpy as np
 
 from utils.core.log import log
 from utils.vision import arrow
+from utils.vision import assets
 from utils.vision.img import Img
 
 # 校准最多转几次就放弃
@@ -68,7 +69,7 @@ class Orientation:
 
         self.arrow_begin = None  # 初始箭头
         self.multi_config = 1.0
-        self.arrow_0 = Img.get_img("./picture/screenshot_arrow.png")
+        self.arrow_0 = Img.get_img(assets.path("screenshot_arrow"))
 
     def handle_view_set(self, value):
         """设置初始视角"""

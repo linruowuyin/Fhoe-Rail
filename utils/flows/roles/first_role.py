@@ -19,6 +19,7 @@ from utils.core.log import log
 from utils.core.match_offsets import padded_offset_for_box
 from utils.core.thresholds import FIRST_ROLE_ICON
 from utils.drivers.screen import BASE_HEIGHT, BASE_WIDTH
+from utils.vision import assets
 
 #: 角色头像识别框的左上角，坐标是 1920×1080 的截图基准（与
 #: `take_screenshot` 的 offset 同一坐标系）。
@@ -45,9 +46,9 @@ class RoleIcon(NamedTuple):
 #: 角色 key → 模板。`.png` / `.webp` 都行：`images.resolve_path` 会按
 #: webp > png > jpg 找同名文件，所以目录里是 png 也照样加载。
 ROLE_ICONS = {
-    ROLE_ACHERON: RoleIcon("./picture/roles_pic/role_acheron.png", "黄泉"),
+    ROLE_ACHERON: RoleIcon(assets.path("role_acheron"), "黄泉"),
     ROLE_SILVER_WOLF_LV999: RoleIcon(
-        "./picture/roles_pic/role_silver_wolf_lv999.png", "银狼 LV.999"
+        assets.path("role_silver_wolf_lv999"), "银狼 LV.999"
     ),
 }
 

@@ -1,14 +1,15 @@
 """Exit an accidentally opened puzzle during main-interface recovery."""
 
 from utils.core.log import log
+from utils.vision import assets
 from utils.vision.images import get_img
 from utils.vision.puzzle_exit import find_puzzle_exit_confirmation
 
 
 def try_exit_puzzle(img, mouse):
     """Click only a recognized puzzle-abandon confirmation, using one frame."""
-    prompt = get_img("picture/puzzle_exit_prompt.png")
-    confirm = get_img("picture/puzzle_exit_confirm.png")
+    prompt = get_img(assets.path("puzzle_exit_prompt"))
+    confirm = get_img(assets.path("puzzle_exit_confirm"))
     if prompt is None or confirm is None:
         return False
     frame, left, top, _, _ = img.take_screenshot()

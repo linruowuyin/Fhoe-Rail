@@ -138,6 +138,7 @@ Fhoe-Rail/
 │  │  ├─ arrow.py             #   小地图箭头（HSV 取色 + 360 度匹配）
 │  │  ├─ colors.py            #   色域判定（按 HSV 区间找颜色）
 │  │  ├─ viewer.py            #   调试图片窗口（cv2 显示接口）
+│  │  ├─ assets.py            #   图片资源登记表（R25）
 │  │  ├─ blackscreen.py       #   黑屏判定
 │  │  ├─ get_angle.py         #   箭头朝向
 │  │  └─ mini_asu.py          #   小地图方向
@@ -446,6 +447,23 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
   「未设置」、手删后 `ensure_config_complete()` 补不回来），必须补进默认表。
 - **不能触发 → 是预置**：写注释说明依赖什么、别删；也别为了让"它看起来不是死代码"
   而伪造调用方。
+
+### 3.8 图片资源
+
+**R25 — 代码引用图片一律走 `vision/assets.py` 登记表，不许再写字面量路径。**
+
+曾经有 69 处 `picture\...` / `./picture/...` 字面量散在 22 个文件里，
+和阈值散落是同一类问题：看不出哪些图还在用、哪张属于哪个检测器、
+游戏更新后该先怀疑谁。现在登记表是代码侧图片的唯一入口：
+
+- 新图先在 `assets.py` 加一条（`key` → 路径 + 分类），代码写 `assets.path("key")`
+- `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
+  裸路径字面量（棘轮，只减不增；数据契约与工具文案在名单里注明原因）
+- 地图 JSON 里的 `picture\xxx.png` 是**地图数据**（633 张图、几千处引用），
+  不属于代码资源，不登记也不改写法；`core/schema.py` 只负责格式契约
+- 物理目录暂时保持平铺：`tools/update_file.py` 按远程清单的相对路径校验哈希、
+  WebUI / 样本收集 / 匹配探针都按 `picture/` 平铺扫描。分类先落在
+  `Asset.category` 上；要真正拆子目录，得先解决这几处的路径映射，单独做
 
 ---
 

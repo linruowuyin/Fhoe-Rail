@@ -3,6 +3,7 @@ import time
 
 import cv2
 
+from utils.vision import assets
 from utils.vision.img import Img
 from utils.core.log import log
 from utils.core.thresholds import (
@@ -13,7 +14,7 @@ from utils.core.thresholds import (
 class BlackScreen:
     def __init__(self):
         self.img = Img()
-        self.image_folder = "./picture/"
+        self.image_folder = assets.PICTURE_ROOT
 
     @staticmethod
     def convert_to_grayscale(screenshot):
