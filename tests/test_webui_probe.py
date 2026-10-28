@@ -525,6 +525,13 @@ class TestRunImageProbeSearchOffset:
         assert seen["search_offset"] == (10, 20, -30, -40)
 
 class TestProbeTwoStrategies:
+    # 不 stub read_config 的话，这一类的成败取决于本机 config.json 里
+    # webui_dev_mode 是不是恰好开着（CI 上没这个文件 → 403）。
+    @pytest.fixture(autouse=True)
+    def dev_on(self, monkeypatch):
+        monkeypatch.setattr(server, "read_config", lambda: {"webui_dev_mode": True})
+        monkeypatch.setattr(server, "run_status", lambda: {"running": False})
+
     def test_returns_both_comparisons_and_one_preview_each(self, webui, monkeypatch):
         from utils.vision import probe as probe_module
 
