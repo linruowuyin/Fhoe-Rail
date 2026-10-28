@@ -434,8 +434,17 @@ class MapOperations:
         return STEP_COUNT
 
     def _step_dream_machine(self, key, value, map_data):
+        # 三张 check_4-1_point 是轮廓识别（assets.MATCH_SHAPE），阈值 0.85。
+        # `min_threshold` 必须跟着传：find_transfer_point 每轮把阈值降 0.01，
+        # 但下限默认是 TRANSFER_POINT_MIN（0.93）—— 不传的话第二圈起会被抬回
+        # 0.93，比起始的 0.85 还高。
         self.map.find_transfer_point(
-            key, threshold=DREAM_MACHINE, exact=self.map.drag_exact, offset=self.map.drag_offset)
+            key,
+            threshold=DREAM_MACHINE,
+            min_threshold=DREAM_MACHINE,
+            exact=self.map.drag_exact,
+            offset=self.map.drag_offset,
+        )
         if self.img.click_target(key, DREAM_MACHINE, retry_in_map=False):
             log.info("筑梦机关检查通过")
         else:

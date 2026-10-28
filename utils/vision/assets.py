@@ -8,6 +8,8 @@
     这里只登记**代码直接引用**的图。地图 JSON 里的 `picture\\xxx.png` 是地图
     作者/录制器写进数据的「地图点位」资产（633 张地图里几千处引用），不属于
     代码资源，不在这里逐条登记 —— 它们由 `core/schema.py` 与地图目录管理。
+    例外：点位图需要**按路径查匹配策略**时（如筑梦机关检查的轮廓识别），
+    策略表只认这里，必须补一条（`strategy_for_path` 反查不到就不会生效）。
 
 用法
     from utils.vision import assets
@@ -223,6 +225,27 @@ ASSETS = {
         CATEGORY_MAP_UI,
         "星轨航图",
         search_offset=(1580, 0, 0, -910),
+    ),
+    # 筑梦边境机关检查：地图 JSON 引用的点位图，**为了匹配策略而登记**。
+    # 策略表只认登记表（`strategy_for_path` 按物理路径反查），不登记这三条
+    # `MATCH_SHAPE` 就不会生效。阈值见 `core/thresholds.py::DREAM_MACHINE`。
+    "check_4-1_point_1": Asset(
+        "./picture/map_points/4/check_4-1_point_1.webp",
+        CATEGORY_MAP_UI,
+        "筑梦边境机关检查 1（地图点位，轮廓识别）",
+        match=MATCH_SHAPE,
+    ),
+    "check_4-1_point_2": Asset(
+        "./picture/map_points/4/check_4-1_point_2.webp",
+        CATEGORY_MAP_UI,
+        "筑梦边境机关检查 2（地图点位，轮廓识别）",
+        match=MATCH_SHAPE,
+    ),
+    "check_4-1_point_3": Asset(
+        "./picture/map_points/4/check_4-1_point_3.webp",
+        CATEGORY_MAP_UI,
+        "筑梦边境机关检查 3（地图点位，轮廓识别）",
+        match=MATCH_SHAPE,
     ),
     # --- 视角 / 小地图 -----------------------------------------------------
     "screenshot_arrow": Asset(

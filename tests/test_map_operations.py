@@ -110,7 +110,7 @@ class MapStub:
 
     def _record(self, name):
         def capture(*args, **kwargs):
-            self.calls.append((name, args))
+            self.calls.append((name, args, kwargs))
 
         return capture
 
@@ -846,6 +846,18 @@ class TestStartStepDispatch:
     def test_dream_machine_check_success_is_not_recorded(self, run):
         result = run({"picture\\check_4-1_point.png": 1}, click_ok=True)
         assert result.statu.error_check_point is False
+
+    def test_dream_machine_search_threshold_floor_matches_the_start_value(self, run):
+        """轮廓识别的 0.85 低于 find_transfer_point 默认下限 0.93。
+
+        下限不跟着传的话，阈值衰减那一步会被 `max(min_threshold, …)` 抬回 0.93，
+        比第一圈的 0.85 还高 —— 轮廓识别等于只生效一轮。
+        """
+        result = run({"picture\\check_4-1_point_1.png": 1})
+
+        kwargs = result.map.called("find_transfer_point")[0][2]
+        assert kwargs["threshold"] == pytest.approx(0.85)
+        assert kwargs["min_threshold"] == pytest.approx(0.85)
 
     def test_teleport_click_counter_increments(self, run):
         assert run({"picture\\unknown_point.png": 1}).statu.teleport_click_count == 1

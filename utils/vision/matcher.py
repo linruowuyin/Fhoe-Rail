@@ -380,6 +380,11 @@ class Matcher:
         if original_target is None:
             log.error(f"图片不存在: {target_path}")
             return False
+        # 轮廓识别的模板不跑「阴阳变转」：梯度幅值对颜色取反不变
+        # （Sobel 是线性的，取反后幅值相同），再跑一遍反色图是空转；
+        # 而反色数组查不回路径、会退回颜色匹配 —— 那等于绕开轮廓判定，
+        # 在 0.85 这种低阈值下可能凭颜色点中错误位置。
+        strategy = image_library.strategy_of(original_target)
         inverted_target = cv2.bitwise_not(original_target)
         start_time = time.time()
 
@@ -389,7 +394,7 @@ class Matcher:
             )
             if click_it:
                 return True
-            if time.time() - start_time > 1:
+            if time.time() - start_time > 1 and strategy != assets.MATCH_SHAPE:
                 # 超过 1 秒仍未命中，同时试颜色反转图
                 click_it, _ = self.click_target_above_threshold(
                     inverted_target, threshold, offset, clicks, delay, click_offset
