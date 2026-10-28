@@ -33,17 +33,29 @@ def game_map(make_instance, monkeypatch):
 
 
 class TestDirections:
-    def test_reads_the_16_9_table(self, game_map):
-        assert game_map._directions() == MAP_MOVE_NAV_DATA["16:9"]["directions"]
+    def test_directions_reads_the_sweep_role(self, game_map):
+        assert game_map._directions() == MAP_MOVE_NAV_DATA["16:9"]["sweep"]
 
-    def test_table_has_all_five_directions(self):
-        assert set(MAP_MOVE_NAV_DATA["16:9"]["directions"]) == {
+    def test_sweep_is_exactly_the_four_axis_aligned_directions(self):
+        """遍历集合只含单轴方向。五方向是 #390 留下的回归，不是契约。"""
+        assert set(MAP_MOVE_NAV_DATA["16:9"]["sweep"]) == {
             "down",
             "left",
             "up",
             "right",
-            "up_left",
         }
+
+    def test_corner_is_not_in_sweep(self):
+        """斜向归位只属于精确模式 —— 混进遍历集合就是 #390 的回归。"""
+        nav = MAP_MOVE_NAV_DATA["16:9"]
+        assert nav["corner"] not in nav["sweep"].values()
+
+    def test_scene_is_a_separate_widget(self):
+        """右侧场景是另一个控件，坐标不与地图本体共用条目。"""
+        nav = MAP_MOVE_NAV_DATA["16:9"]
+        assert set(nav["scene"]) == {"down", "up"}
+        assert not set(nav["scene"].values()) & set(nav["sweep"].values())
+        assert nav["corner"] not in nav["scene"].values()
 
 
 class TestGetMapList:
@@ -278,7 +290,7 @@ class TestDragSequences:
 
     def test_offset_drags_in_left_up_right_down_order(self, dragging):
         game_map, drags = dragging
-        directions = MAP_MOVE_NAV_DATA["16:9"]["directions"]
+        directions = MAP_MOVE_NAV_DATA["16:9"]["sweep"]
 
         game_map._move_with_offset((1, 2, 3, 4))
 
@@ -295,15 +307,16 @@ class TestDragSequences:
             directions["down"],
         ]
 
-    def test_exact_drags_in_up_left_right_down_order(self, dragging):
+    def test_exact_drags_corner_right_down_order(self, dragging):
         game_map, drags = dragging
-        directions = MAP_MOVE_NAV_DATA["16:9"]["directions"]
+        directions = MAP_MOVE_NAV_DATA["16:9"]["sweep"]
+        corner = MAP_MOVE_NAV_DATA["16:9"]["corner"]
 
         game_map._move_with_exact((2, 1, 3))
 
         assert drags == [
-            directions["up_left"],
-            directions["up_left"],
+            corner,
+            corner,
             directions["right"],
             directions["down"],
             directions["down"],
@@ -397,13 +410,23 @@ class TestFindTransferPointDirections:
         game_map.find_transfer_point("key.png", timeout=60, **kwargs)
         return drags
 
-    def test_default_still_tries_every_direction(self, game_map, monkeypatch):
-        """不传 directions 时行为一字不变 —— 这是 600+ 张图的既有路径。"""
-        assert len(self._one_round_of_drags(game_map, monkeypatch)) == 15
+    def test_default_round_is_four_axis_aligned_directions(self, game_map, monkeypatch):
+        """回归：默认扫图一轮只该拖四个单轴方向（各 3 次），不能出现斜拖。
+
+        2025-03 #390 给表加了 up_left（本意只给归位用），而 `_move_default`
+        遍历的是同一张 dict，斜拖于是静默混进了 600+ 张图的默认扫图路径：
+        一轮从 12 次拖拽变成 15 次，视图还被斜拖挪到正交步进算不到的偏移上。
+        """
+        directions = MAP_MOVE_NAV_DATA["16:9"]["sweep"]
+        axis_aligned = ("down", "left", "up", "right")
+
+        assert self._one_round_of_drags(game_map, monkeypatch) == [
+            directions[name] for name in axis_aligned for _ in range(3)
+        ]
 
     def test_directions_limits_the_search(self, game_map, monkeypatch):
-        """星轨航图只左右：一轮的拖拽次数 15 → 6，不会把地图上下平移。"""
-        directions = MAP_MOVE_NAV_DATA["16:9"]["directions"]
+        """星轨航图只左右：一轮的拖拽次数 12 → 6，不会把地图上下平移。"""
+        directions = MAP_MOVE_NAV_DATA["16:9"]["sweep"]
 
         drags = self._one_round_of_drags(
             game_map, monkeypatch, directions=STAR_MAP_DIRECTIONS
@@ -482,6 +505,33 @@ class TestPauseGate:
         assert len(gates) == 7, (
             "构成为「外层 while 的补偿闸门 1 次 + 最内层每次拖拽前 1 次」；"
             "若闸门只插在外层 while，这里只会是 1 次"
+        )
+
+
+class TestFindScene:
+    """右侧场景列表的拖拽坐标来自表里的 `scene` 角色，不再有 1700 字面量。"""
+
+    def test_scene_drags_come_from_the_table(self, game_map, monkeypatch):
+        monkeypatch.setattr(map_module.Img, "get_img", staticmethod(lambda path: "IMG"))
+        monkeypatch.setattr(map_module.Img, "invert", staticmethod(lambda image: "INV"))
+        game_map.img = SimpleNamespace(have_screenshot=lambda *a, **k: False)
+        drags = []
+        game_map.mouse_event = SimpleNamespace(
+            mouse_drag=lambda *a, **k: drags.append((a, k))
+        )
+        clock = SimpleNamespace(now=0.0)
+
+        def fake_time():
+            clock.now += 35.0  # 只够跑完一圈外层（2 个方向 × 3 次拖拽）
+            return clock.now
+
+        monkeypatch.setattr(map_module.time, "time", fake_time)
+        game_map.find_scene("key.png", timeout=60)
+
+        scene = MAP_MOVE_NAV_DATA["16:9"]["scene"]
+        assert [args for args, _ in drags] == [scene["down"]] * 3 + [scene["up"]] * 3
+        assert all(kwargs == {"press_time": 1} for _, kwargs in drags), (
+            "右侧场景拖拽要保持 1 秒按压"
         )
 
 

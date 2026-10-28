@@ -141,11 +141,19 @@ class Map:
 
         log.error("传送点查找失败：超时或未达到最低阈值")
 
+    def _nav(self):
+        """
+        当前分辨率档位的拖拽坐标表。目前硬编码 16:9，表里也只有这一档。
+        """
+        return MAP_MOVE_NAV_DATA["16:9"]
+
     def _directions(self):
         """
-        获取地图移动方向的坐标。
+        扫图循环用的四个单轴方向。
+        斜向归位（`corner`）与右侧场景（`scene`）不在其中 —— 按角色分键，
+        遍历代码拿不到它们（#390 的回归就是把归位混进了遍历集合）。
         """
-        return MAP_MOVE_NAV_DATA["16:9"]["directions"]
+        return self._nav()["sweep"]
 
     def _is_target_found(self, target, threshold):
         """
@@ -206,7 +214,7 @@ class Map:
         for _ in range(exact[0]):  # 向左+向上
             self.pause_gate()
             log.info("地图左上移")
-            self.mouse_event.mouse_drag(*self._directions()["up_left"])
+            self.mouse_event.mouse_drag(*self._nav()["corner"])
         for _ in range(exact[1]):  # 向右
             self.pause_gate()
             log.info("地图右移")
@@ -230,7 +238,8 @@ class Map:
         target = Img.get_img(key)
         inverted_target = Img.invert(target)
         target_list = [target, inverted_target]
-        direction_names = ["向下移动", "向上移动"]
+        scene = self._nav()["scene"]  # 右侧场景列表，与地图本体的 sweep 分开登记
+        direction_labels = {"down": "向下移动", "up": "向上移动"}
         while (
             not self.img.have_screenshot(target_list, (0, 0, 0, 0), threshold)
             and time.time() - start_time < timeout
@@ -238,12 +247,9 @@ class Map:
         ):
             # 暂停的时间必须从死线里扣掉，否则一暂停就会误判「超时」而放弃这次查找
             start_time += self.pause_gate()
-            # 设置向下、向上的移动数值
-            directions = [(1700, 900, 1700, 300), (1700, 300, 1700, 900)]
-            for index, direction in enumerate(directions):
-                log.info(
-                    f"开始移动右侧场景，{direction_names[index]}，当前所需匹配值{threshold}"
-                )
+            for direction_name in ("down", "up"):
+                label = direction_labels[direction_name]
+                log.info(f"开始移动右侧场景，{label}，当前所需匹配值{threshold}")
                 for _ in range(3):
                     # 闸门放最内层而不是外层 while：这里一轮「匹配 + 1 秒拖拽」约 2.5 秒，
                     # 放外层要等完两个方向 × 3 次拖拽（约十几秒）才响应按键
@@ -251,7 +257,9 @@ class Map:
                     if not self.img.have_screenshot(
                         target_list, (0, 0, 0, 0), threshold
                     ):
-                        self.mouse_event.mouse_drag(*direction, press_time=1)
+                        self.mouse_event.mouse_drag(
+                            *scene[direction_name], press_time=1
+                        )
                     else:
                         return
             threshold -= 0.02
