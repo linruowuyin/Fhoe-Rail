@@ -1,43 +1,43 @@
 {
-  "name": "影视乐园-8",
-  "author": "喵不可言",
-  "start": [
-    {
-      "map": 1
-    },
-    {
-      "picture\\map_4-5_point_4.png": 1.5,
-      "drag": 1.5
-    },
-    {
-      "picture\\map_4-5_point_8.png": 1.5,
-      "forbid_retry": 1
-    },
-    {
-      "picture\\transfer.png": 1.5
-    }
-  ],
-  "map": [
-    {
-      "w": 1.42
-    },
-    {
-      "d": 9.52
-    },
-    {
-      "w": 1.14
-    },
-    {
-      "d": 2.93
-    },
-    {
-      "s": 5.6
-    },
-    {
-      "d": 1.36
-    },
-    {
-      "fighting": 2
-    }
-  ]
+    "name": "影视乐园-8",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_4-5_point_4.png": 1.5,
+            "drag": 1.5
+        },
+        {
+            "picture\\map_4-5_point_8.png": 1.5,
+            "forbid_retry": 1
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "w": 1.42
+        },
+        {
+            "d": 9.52
+        },
+        {
+            "w": 1.14
+        },
+        {
+            "d": 2.93
+        },
+        {
+            "s": 5.6
+        },
+        {
+            "d": 1.36
+        },
+        {
+            "fighting": 2
+        }
+    ]
 }
