@@ -417,3 +417,20 @@ class TestShapeMatching:
         _paste_icon(frame, other, _icon_mask(other), 200, 100)
 
         assert Matcher.match_screenshot(frame, template, 0, 0)["max_val"] < 0.5
+
+
+class TestExplicitStrategy:
+    def test_match_peaks_can_run_each_strategy_on_demand(self):
+        rng = np.random.default_rng(0)
+        screenshot = rng.integers(0, 60, (80, 100, 3), dtype=np.uint8)
+        prepared = np.zeros((16, 20, 3), dtype=np.uint8)
+        prepared[3:13, 4:16] = 200
+        screenshot[30:46, 40:60] = prepared
+
+        color = Matcher.match_peaks(screenshot, prepared, strategy="color")
+        shape = Matcher.match_peaks(screenshot, prepared, strategy="shape")
+
+        assert color["max_loc"] == (40, 30)
+        assert shape["max_loc"] == (40, 30)
+        assert color["max_val"] >= 0.99
+        assert shape["max_val"] >= 0.95  # 梯度幅值化后有轻微量化损失

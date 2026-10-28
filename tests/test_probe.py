@@ -257,3 +257,45 @@ class TestRenderPreviewPng:
         }
 
         assert probe.render_preview_png(degenerate) is None
+
+
+class TestTwoStrategies:
+    """探针同时给出原始颜色匹配与轮廓（梯度）匹配，共用同一帧。"""
+
+    def test_reports_color_and_shape_side_by_side(self, measured):
+        result, _ = measured
+
+        comparisons = result["comparisons"]
+        assert [item["strategy"] for item in comparisons] == ["color", "shape"]
+        assert [item["label"] for item in comparisons] == [
+            "原始识别（颜色）",
+            "轮廓识别（形状）",
+        ]
+        primary = [item for item in comparisons if item["primary"]]
+        assert len(primary) == 1
+        assert primary[0]["strategy"] == result["strategy"]
+
+    def test_both_comparisons_use_the_same_frame(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        probe.measure(screen, template, threshold=0.9)
+
+        assert len(screen.calls) == 1, "两种策略要复用同一帧，不能各抓一次"
+
+    def test_each_comparison_has_its_own_box_and_offsets(self, measured):
+        result, _ = measured
+
+        for item in result["comparisons"]:
+            for field in (
+                "score",
+                "second",
+                "box",
+                "center",
+                "margin",
+                "passed",
+                "exact_offset",
+                "fuzzy_offset",
+            ):
+                assert field in item
+            assert item["box"][0] == BOX_AT[0]

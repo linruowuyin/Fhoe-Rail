@@ -483,6 +483,21 @@
     width: 84px; background: rgba(255,255,255,.06); border: 1px solid var(--glass-border);
     color: var(--txt); border-radius: 8px; padding: 6px 10px; font-size: 14px; outline: none;
   }
+  .probe-compare {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px; margin-top: 12px;
+  }
+  .probe-card {
+    background: var(--bg-1); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+  }
+  .probe-card .card-title { font-size: 15px; margin-bottom: 4px; }
+  .probe-card .probe-desc {
+    font-size: 12px; color: var(--txt-faint); line-height: 1.6; margin-bottom: 8px;
+  }
+  @media (max-width: 900px) {
+    .probe-compare { grid-template-columns: 1fr; }
+  }
 
   /* ============================================================
      Modal / Toast / 状态
@@ -1027,43 +1042,79 @@ async function runProbe() {
 function renderProbeResult(data) {
   const fmt = v => Array.isArray(v) ? "(" + v.join(", ") + ")" : String(v);
   const num = v => (v >= 0 ? "+" : "") + v.toFixed(4);
-  const hit = data.passed
-    ? '<span class="badge b-green">命中</span>'
-    : '<span class="badge b-amber">未达阈值</span>';
-  const thin = data.margin < 0.03 ? ' <span class="badge b-amber">余量 &lt; 0.03，游戏一更新就可能碎</span>' : "";
   const source = data.capture_source === "printwindow"
     ? '<span class="badge b-green">printwindow</span> 游戏窗口自身的像素'
     : '<span class="badge b-red">screengrab</span> 回退抓屏幕 —— 游戏被别的窗口盖住时，抓到的就是盖住它的窗口';
-  const fuzzyNote = data.pad_applied === data.fuzzy_padding
-    ? `四边各外扩 ${data.fuzzy_padding}px`
-    : `四边各外扩 ${data.fuzzy_padding}px，但贴着画面边缘了，最少的一侧只扩了 ${data.pad_applied}px`;
-  const preview = data.preview_png_b64
-    ? `<img src="data:image/png;base64,${data.preview_png_b64}" alt="匹配预览"
-            style="max-width:100%;border-radius:10px;margin-top:12px;display:block">`
-    : "";
+  const previews = data.previews || {};
+  const comparisons = (data.comparisons && data.comparisons.length)
+    ? data.comparisons
+    : [{
+        strategy: data.strategy || "color",
+        label: "原始识别（颜色）",
+        description: "",
+        primary: true,
+        score: data.score,
+        second: data.second,
+        box: data.box,
+        center: data.center,
+        margin: data.margin,
+        passed: data.passed,
+        exact_offset: data.exact_offset,
+        fuzzy_offset: data.fuzzy_offset,
+        pad_applied: data.pad_applied,
+      }];
+
+  const cards = comparisons.map(c => {
+    const hit = c.passed
+      ? '<span class="badge b-green">命中</span>'
+      : '<span class="badge b-amber">未达阈值</span>';
+    const thin = c.margin < 0.03
+      ? ' <span class="badge b-amber">余量 &lt; 0.03，游戏一更新就可能碎</span>'
+      : "";
+    const fuzzyNote = c.pad_applied === data.fuzzy_padding
+      ? `四边各外扩 ${data.fuzzy_padding}px`
+      : `四边各外扩 ${data.fuzzy_padding}px，但贴着画面边缘了，最少的一侧只扩了 ${c.pad_applied}px`;
+    const previewB64 = previews[c.strategy] || (c.primary ? data.preview_png_b64 : null);
+    const preview = previewB64
+      ? `<img src="data:image/png;base64,${previewB64}" alt="匹配预览"
+              style="max-width:100%;border-radius:10px;margin-top:12px;display:block">`
+      : "";
+    const primaryBadge = c.primary
+      ? ' <span class="badge b-cyan">当前模板使用</span>'
+      : "";
+    return `
+      <div class="probe-card">
+        <div class="card-title">${esc(c.label)}${primaryBadge}</div>
+        ${c.description ? `<div class="probe-desc">${esc(c.description)}</div>` : ""}
+        <div class="probe-row"><span class="k">匹配度</span>
+          <span><code>${c.score.toFixed(4)}</code> ${hit} ${thin}</span>
+          <span style="color:var(--txt-dim)">余量 ${num(c.margin)}</span></div>
+        <div class="probe-row"><span class="k">次优峰值</span>
+          <span><code>${c.second.toFixed(4)}</code></span>
+          <span style="color:var(--txt-dim)">与最优相差 ${num(c.score - c.second)}</span></div>
+        <div class="probe-row"><span class="k">匹配框</span>
+          <span><code>${fmt(c.box)}</code></span>
+          <span style="color:var(--txt-dim)">中心 <code>${fmt(c.center)}</code></span></div>
+        <div class="probe-row"><span class="k">精确 offset</span>
+          <span><code>${fmt(c.exact_offset)}</code></span>
+          <button class="btn ghost probe-copy" data-copy="${esc(fmt(c.exact_offset))}">复制</button></div>
+        <div class="probe-row"><span class="k">模糊 offset</span>
+          <span><code>${fmt(c.fuzzy_offset)}</code></span>
+          <button class="btn ghost probe-copy" data-copy="${esc(fmt(c.fuzzy_offset))}">复制</button>
+          <span style="color:var(--txt-dim);font-size:13px">${esc(fuzzyNote)}</span></div>
+        ${preview}
+      </div>`;
+  }).join("");
 
   $("#probe-result").innerHTML = `
     <div class="glass">
-      <div class="card-title">③ 结果 · ${esc(data.name)}</div>
-      <div class="probe-row"><span class="k">匹配度</span>
-        <span><code>${data.score.toFixed(4)}</code> ${hit} ${thin}</span>
-        <span style="color:var(--txt-dim)">阈值 ${data.threshold.toFixed(4)} · 余量 ${num(data.margin)}</span></div>
-      <div class="probe-row"><span class="k">次优峰值</span>
-        <span><code>${data.second.toFixed(4)}</code></span>
-        <span style="color:var(--txt-dim)">与最优相差 ${num(data.score - data.second)}（相差太小说明这一帧里到处都像它）</span></div>
+      <div class="card-title">③ 结果 · ${esc(data.name || probePicked)}</div>
+      <div class="probe-row"><span class="k">阈值</span>
+        <span><code>${data.threshold.toFixed(4)}</code></span>
+        <span style="color:var(--txt-dim)">两种识别使用同一阈值，分别判定</span></div>
       <div class="probe-row"><span class="k">截图来源</span><span>${source}</span></div>
       <div class="probe-row"><span class="k">搜索区域</span><span><code>${fmt(data.region)}</code></span></div>
-      <div class="probe-row"><span class="k">匹配框</span>
-        <span><code>${fmt(data.box)}</code></span>
-        <span style="color:var(--txt-dim)">屏幕绝对坐标 · 中心 <code>${fmt(data.center)}</code></span></div>
-      <div class="probe-row"><span class="k">精确 offset</span>
-        <span><code>${fmt(data.exact_offset)}</code></span>
-        <button class="btn ghost probe-copy" data-copy="${esc(fmt(data.exact_offset))}">复制</button></div>
-      <div class="probe-row"><span class="k">模糊 offset</span>
-        <span><code>${fmt(data.fuzzy_offset)}</code></span>
-        <button class="btn ghost probe-copy" data-copy="${esc(fmt(data.fuzzy_offset))}">复制</button>
-        <span style="color:var(--txt-dim);font-size:13px">${esc(fuzzyNote)}</span></div>
-      ${preview}
+      <div class="probe-compare">${cards}</div>
     </div>`;
 
   $$("#probe-result .probe-copy").forEach(btn => {

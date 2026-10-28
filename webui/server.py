@@ -1493,12 +1493,28 @@ class Handler(BaseHTTPRequestHandler):
                     str(body.get("name", "")),
                     float(body.get("threshold", DEFAULT_MATCH)),
                 )
-                # frame 是几 MB 的 ndarray，不进 JSON；预览图单独编码
-                payload = {key: value for key, value in measurement.items() if key != "frame"}
-                preview = probe_module.render_preview_png(measurement)
-                payload["preview_png_b64"] = (
-                    base64.b64encode(preview).decode("ascii") if preview else None
-                )
+                # frame 是几 MB 的 ndarray，不进 JSON；预览图单独编码。
+                payload = {
+                    key: value for key, value in measurement.items() if key != "frame"
+                }
+                # 两种策略各画一张预览（框位置可能不同），前端并排显示
+                previews = {}
+                for item in payload.get("comparisons") or []:
+                    merged = dict(measurement)
+                    for field in ("box", "padded_box", "center"):
+                        merged[field] = item[field]
+                    preview = probe_module.render_preview_png(merged)
+                    previews[item["strategy"]] = (
+                        base64.b64encode(preview).decode("ascii") if preview else None
+                    )
+                primary_preview = previews.get(measurement.get("strategy"))
+                if primary_preview is None and not previews:
+                    preview = probe_module.render_preview_png(measurement)
+                    primary_preview = (
+                        base64.b64encode(preview).decode("ascii") if preview else None
+                    )
+                payload["previews"] = previews
+                payload["preview_png_b64"] = primary_preview
                 payload["ok"] = True
                 self._send(200, payload)
             except FileNotFoundError as e:

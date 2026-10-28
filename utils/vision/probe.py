@@ -17,6 +17,7 @@ from utils.core.match_offsets import (
 )
 from utils.core.thresholds import DEFAULT_MATCH
 from utils.drivers.screen import CAPTURE_PRINTWINDOW
+from utils.vision import assets
 from utils.vision import images as image_library
 from utils.vision.matcher import Matcher
 
@@ -35,6 +36,52 @@ BOX_COLOR_PADDED = (0, 191, 255)
 
 class ScreenFallbackRejected(RuntimeError):
     """这一帧是从屏幕上抓的，不是游戏窗口自己的像素，调用方要求必须后一种。"""
+
+
+#: 探针固定并排比较的两种策略：原始颜色匹配 / 轮廓（梯度形状）匹配。
+STRATEGY_INFO = {
+    assets.MATCH_COLOR: {
+        "label": "原始识别（颜色）",
+        "description": (
+            "整图 TM_CCORR_NORMED：模板连同底色一起参与相关。对整体亮度缩放不敏感，"
+            "但底色/背景一变分数就会掉。"
+        ),
+    },
+    assets.MATCH_SHAPE: {
+        "label": "轮廓识别（形状）",
+        "description": (
+            "灰度 → 3×3 模糊 → Sobel 梯度幅值，再跑 TM_CCOEFF_NORMED：只比轮廓，"
+            "不受底色和菜单背景高斯模糊的影响。"
+        ),
+    },
+}
+
+
+def _compare_strategy(frame, template, region, threshold, pad, strategy):
+    """用指定策略量一次，返回可直接进 JSON 的结果。"""
+    matched = Matcher.match_peaks(
+        frame, template, left=region[0], top=region[1], strategy=strategy
+    )
+    height, width = template.shape[:2]
+    box_left, box_top = matched["max_loc"]
+    box = (box_left, box_top, box_left + width, box_top + height)
+    fuzzy_offset, padded_box, pad_applied = padded_offset_for_box(box, region, pad)
+    return {
+        "strategy": strategy,
+        "label": STRATEGY_INFO[strategy]["label"],
+        "description": STRATEGY_INFO[strategy]["description"],
+        "score": matched["max_val"],
+        "second": matched["second_val"],
+        "box": box,
+        "padded_box": padded_box,
+        "center": (box_left + width // 2, box_top + height // 2),
+        "margin": matched["max_val"] - threshold,
+        # 全项目是严格大于，不是大于等于（core/thresholds.py 的约定）
+        "passed": matched["max_val"] > threshold,
+        "exact_offset": offset_for_box(box, region),
+        "fuzzy_offset": fuzzy_offset,
+        "pad_applied": pad_applied,
+    }
 
 
 def measure(
@@ -86,31 +133,37 @@ def measure(
             f"区域 {frame_width}×{frame_height}），匹配不了"
         )
 
-    matched = Matcher.match_peaks(frame, template, left, top)
-    height, width = template.shape[:2]
-    box_left, box_top = matched["max_loc"]
-    box = (box_left, box_top, box_left + width, box_top + height)
-
-    fuzzy_offset, padded_box, pad_applied = padded_offset_for_box(box, region, pad)
+    # 探针固定同时跑两种策略：原始颜色匹配 + 轮廓（梯度形状）匹配。
+    # 两者共用同一帧，结果并排展示，方便直接看出「是底色变了还是形状不对」。
+    primary_strategy = image_library.strategy_of(template)
+    comparisons = []
+    for strategy in (assets.MATCH_COLOR, assets.MATCH_SHAPE):
+        item = _compare_strategy(frame, template, region, threshold, pad, strategy)
+        item["primary"] = strategy == primary_strategy
+        comparisons.append(item)
+    primary = next(
+        (item for item in comparisons if item["primary"]), comparisons[0]
+    )
+    primary["primary"] = True
 
     return {
         "frame": frame,
         "region": region,
         "template_shape": template.shape,
-        "box": box,
-        "padded_box": padded_box,
-        "center": (box_left + width // 2, box_top + height // 2),
-        "score": matched["max_val"],
-        "second": matched["second_val"],
-        "strategy": image_library.strategy_of(template),
+        "box": primary["box"],
+        "padded_box": primary["padded_box"],
+        "center": primary["center"],
+        "score": primary["score"],
+        "second": primary["second"],
+        "strategy": primary["strategy"],
         "threshold": threshold,
-        "margin": matched["max_val"] - threshold,
-        # 全项目的判定都是严格大于，不是大于等于（core/thresholds.py 的约定）
-        "passed": matched["max_val"] > threshold,
-        "exact_offset": offset_for_box(box, region),
-        "fuzzy_offset": fuzzy_offset,
+        "margin": primary["margin"],
+        "passed": primary["passed"],
+        "exact_offset": primary["exact_offset"],
+        "fuzzy_offset": primary["fuzzy_offset"],
         "fuzzy_padding": pad,
-        "pad_applied": pad_applied,
+        "pad_applied": primary["pad_applied"],
+        "comparisons": comparisons,
         "capture_source": screen.last_capture_source,
     }
 

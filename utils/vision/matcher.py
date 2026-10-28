@@ -70,9 +70,14 @@ class Matcher:
         return np.clip(magnitude / 4.0, 0, 255).astype(np.uint8)
 
     @staticmethod
-    def _prepare_match(screenshot, prepared):
-        """按模板登记的匹配策略，返回 `(帧, 模板, matchTemplate 方法)`。"""
-        if image_library.strategy_of(prepared) == assets.MATCH_SHAPE:
+    def _prepare_match(screenshot, prepared, strategy=None):
+        """按匹配策略返回 `(帧, 模板, matchTemplate 方法)`。
+
+        :param strategy: 显式指定策略（探针要同时跑两种）；None 表示按模板登记的策略。
+        """
+        if strategy is None:
+            strategy = image_library.strategy_of(prepared)
+        if strategy == assets.MATCH_SHAPE:
             return (
                 Matcher.shape_features(screenshot),
                 Matcher.shape_features(prepared),
@@ -125,7 +130,7 @@ class Matcher:
         )
 
     @staticmethod
-    def match_peaks(screenshot, prepared, left=0, top=0):
+    def match_peaks(screenshot, prepared, left=0, top=0, strategy=None):
         """一次匹配，同时给出最优峰与**次优峰**。
 
         次优峰 = 屏蔽掉最优峰周围一个模板大小的邻域（即所有与最优位置有像素重叠的
@@ -133,14 +138,13 @@ class Matcher:
         最优 0.97 而次优也 0.96，说明帧里到处都长得像它，阈值定得再高也会指到错的
         位置 —— 这是标定阈值时比最优值更该看的一个数（CLAUDE.md §1.2 的负样本余量）。
 
-        注意 `TM_CCORR_NORMED` 对整体亮度缩放不敏感：暗一倍的同一图案一样是 1.0。
-        次优峰只区分「位置不重叠」，不区分「颜色深浅」。
-
+        :param strategy: 显式指定匹配策略（探针会同时跑 color 与 shape）；
+            None 表示按模板登记的策略（`images.strategy_of`）。
         :return: {"max_val", "max_loc"(已加 left/top), "second_val"}
                  模板与帧一样大（只有一个候选位置）时 `second_val` 为 0.0
         """
         match_frame, match_template, method = Matcher._prepare_match(
-            screenshot, prepared
+            screenshot, prepared, strategy
         )
         result = cv2.matchTemplate(match_frame, match_template, method)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)

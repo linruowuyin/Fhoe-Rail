@@ -360,3 +360,34 @@ class TestRunImageProbe:
         server.run_image_probe("probe_target.webp", 0.9)
 
         assert seen["window"] == "win-7788"
+
+
+class TestProbeTwoStrategies:
+    def test_returns_both_comparisons_and_one_preview_each(self, webui, monkeypatch):
+        from utils.vision import probe as probe_module
+
+        measurement = dict(MEASUREMENT)
+        measurement["frame"] = np.zeros((1080, 1920, 3), np.uint8)
+        measurement["strategy"] = "shape"
+        measurement["comparisons"] = [
+            {**MEASUREMENT, "strategy": "color", "label": "原始识别（颜色）",
+             "description": "", "primary": False},
+            {**MEASUREMENT, "strategy": "shape", "label": "轮廓识别（形状）",
+             "description": "", "primary": True},
+        ]
+        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold: measurement)
+        drawn = []
+
+        def fake_preview(merged):
+            drawn.append(merged["box"])
+            return b"\x89PNG-fake"
+
+        monkeypatch.setattr(probe_module, "render_preview_png", fake_preview)
+
+        status, body = request(f"{webui}/api/probe", "POST", {"name": "setting_other.webp"})
+
+        assert status == 200
+        assert [item["strategy"] for item in body["comparisons"]] == ["color", "shape"]
+        assert set(body["previews"]) == {"color", "shape"}
+        assert base64.b64decode(body["preview_png_b64"]) == b"\x89PNG-fake"
+        assert len(drawn) == 2, "每种策略各画一张预览（框的位置可能不同）"
