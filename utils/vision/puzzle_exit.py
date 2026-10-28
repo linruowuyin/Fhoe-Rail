@@ -1,11 +1,15 @@
-"""Recognize the specific Chinese puzzle-abandon dialog from one 1080p frame.
+"""从一张 1920×1080 帧里识别「是否放弃游玩？」弹窗。
 
-The prompt and the confirm button must both match in their expected regions.
-Matching only the generic confirm label could accept purchases or battle exits.
+判定是**两段式 AND**，两段必须出现在同一帧上：
 
-与项目其它检测器共用 `Matcher.match_screenshot`：样本收集、次优峰/探针口径都一致。
-两个区域是**帧内绝对坐标**，登记在 `assets.ABSOLUTE_REGIONS` —— 它们不是
-`take_screenshot(offset=...)` 的四边增量，别拿来互相换算。
+1. 提示语（“是否放弃游玩？”）出现在上方提示区域；
+2. 右侧的「确认」按钮出现在按钮区域。
+
+只匹配通用的「确认」两个字是不够的 —— 购买、战斗退出等弹窗也有确认键，
+误点会把流程带到别的界面。两个区域登记在 `assets.ABSOLUTE_REGIONS`：它们是
+**帧内绝对坐标**，不是 `take_screenshot(offset=...)` 的四边增量，别互相换算。
+
+这里只做识别，不截图、不点击；副作用都在 `flows/puzzle_exit.py`。
 """
 
 from utils.core.thresholds import PUZZLE_EXIT_CONFIRM, PUZZLE_EXIT_PROMPT
@@ -20,6 +24,11 @@ MATCH_STRATEGY = assets.MATCH_COLOR_CCOEFF
 
 
 def _match_region(frame, template, bounds, threshold):
+    """在帧内绝对区域 `bounds` 里匹配一个模板。
+
+    :return: 命中时返回模板中心 `(x, y)`（帧内坐标）；没命中、模板缺失、
+        或区域比模板还小都返回 None —— 检测器返回「没找到」，不抛异常（R12）。
+    """
     if template is None:
         return None
     left, top, right, bottom = bounds
@@ -32,15 +41,15 @@ def _match_region(frame, template, bounds, threshold):
     )
     if result["max_val"] <= threshold:
         return None
-    match_left, match_top = result["max_loc"]
-    return match_left + width // 2, match_top + height // 2
+    # 中心点换算复用 Matcher 的那一份，别在这里再抄一遍
+    return Matcher.img_center_point(result, template.shape)
 
 
 def find_puzzle_exit_confirmation(frame, prompt, confirm):
-    """Return the confirm-button center, or None; never capture or click here.
+    """返回「确认」按钮中心；没识别到返回 None。只读一帧，不截图、不点击。
 
-    Coordinates refer to the same 1920x1080 client frame supplied by ScreenSource.
-    Unknown resolutions and missing resources fail closed.
+    :param frame: `ScreenSource.take_screenshot()` 返回的 BGR 帧。必须是
+        1920×1080 —— 其它分辨率不做猜测，直接 fail closed（返回 None）。
     """
     if frame is None or frame.shape[:2] != (BASE_HEIGHT, BASE_WIDTH):
         return None
