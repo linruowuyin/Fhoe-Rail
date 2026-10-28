@@ -6,6 +6,7 @@ import time
 from utils.config.config import ConfigurationManager
 from utils.core.exceptions import CustomException
 from utils.flows.combat import Combat
+from utils.flows.monthly_pass import MonthlyPass
 from utils.flows.movement import Movement
 from utils.flows.orientation import Orientation
 from utils.flows.puzzle_exit import try_exit_puzzle
@@ -32,6 +33,10 @@ class Handle(metaclass=SingletonMeta):
         self.img = Img()
         self.cfg = ConfigurationManager()
         self.window = Window()
+
+        #: 月卡领取。back_to_main 遇到「今日补给」界面时兜底领取（issue #450）：
+        #: 那个界面 ESC 关不掉，只按 ESC 会空转到超时。
+        self.monthly_pass = MonthlyPass()
 
         # 战斗计数（total_fight_cnt / error_fight_cnt / snack_used …）已归
         # self.combat 持有，见 flows/combat.py
@@ -219,6 +224,7 @@ class Handle(metaclass=SingletonMeta):
         恢复超时则停止运行，避免在未知界面继续执行路线并反复重试。
         """
         start_time = time.time()
+        monthly_pass_tried = False
         while not self.img.on_main_interface(
             timeout=2
         ):  # 检测是否出现左上角灯泡，即主界面检测
@@ -228,6 +234,14 @@ class Handle(metaclass=SingletonMeta):
             if try_exit_puzzle(self.img, self.mouse_event):
                 time.sleep(delay)
                 continue
+            # 月卡领取界面（「今日补给」）不响应 ESC，只按 ESC 会一直空转到超时
+            # （issue #450）。识别到就点「领取」，整次 back_to_main 只试一次，
+            # 避免误识别时反复点击。
+            if not monthly_pass_tried:
+                monthly_pass_tried = True
+                if self.monthly_pass.try_claim_if_visible():
+                    time.sleep(delay)
+                    continue
             KeyboardEvent.keyboard_press("esc")
             time.sleep(delay)
             if self.img.on_interface(
@@ -268,12 +282,12 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(2)
 
             # 通过识图，选择设置
-            # 只搜右侧窄条（x 1843–1885）：设置入口固定在右边，主界面其它位置
-            # 有长得像的图标，全屏搜索会误点。
+            # 搜索区域登记在 assets.py 的 search_offset 上（探针也读同一份）：
+            # 设置入口固定在右侧窄条，主界面其它位置有长得像的图标，全屏会误点。
             if not self.img.click_target(
                 assets.path("setting_icon"),
                 SETTING_ICON,
-                offset=(1843, 0, -35, 0),
+                offset=assets.search_offset("setting_icon"),
             ):
                 log.warning("未找到设置图标")
                 return False

@@ -135,6 +135,14 @@ class MapOperations:
         self.pause = Pause(dev=dev)
         self.map.pause_gate = self.pause.wait_if_paused  # 供 flows/map.py 的循环闸门调用
 
+        # 月卡领取必须排在所有游戏内设置之前（issue #450）。
+        # 每日刷新后首次登录会停在「今日补给」月卡领取界面，而 `back_to_main`
+        # 只会按 ESC —— 那个界面 ESC 关不掉，于是 120 秒超时把整轮中止。
+        # 银狼版本的流程一进来就做 auto_use_technique_consumable（第一步就是
+        # back_to_main），所以必须先把月卡领掉；黄泉版本没有这段前置设置，
+        # 一直是靠第一张图的月卡检查领掉的，所以没暴露过。
+        self.monthly_pass.monthly_pass_check()
+
         # 银狼专用设置（lv999_e 第一段）：整轮只做一次。
         # SilverWolf 版本做不成直接终止（fhoe.py 顶层负责日志 + notify_on_error）；
         # 其它版本保持原来的「警告后继续」，避免改掉既有行为。

@@ -692,6 +692,7 @@ class TestBackToMain:
             img=img,
             mouse_event=SimpleNamespace(),
             combat=SimpleNamespace(fight_elapsed=lambda: fought.append(1)),
+            monthly_pass=SimpleNamespace(try_claim_if_visible=lambda: False),
         )
         monkeypatch.setattr(handle_module, "try_exit_puzzle", lambda *a: False)
         return instance, fought, keyboard, fake
@@ -770,3 +771,33 @@ class TestBackToMain:
 
         assert keyboard.pressed == []
         assert fake.now <= 123
+
+    def test_claims_the_monthly_pass_instead_of_pressing_escape(self, subject):
+        """「今日补给」月卡界面 ESC 关不掉：识别到就先领，不按 ESC（issue #450）。"""
+        instance, fought, keyboard, fake = subject
+        claimed = []
+        instance.monthly_pass = SimpleNamespace(
+            try_claim_if_visible=lambda: claimed.append(1) or True
+        )
+
+        instance.back_to_main()
+
+        assert claimed == [1]
+        assert keyboard.pressed == []
+        assert fought == []
+        assert fake.slept == [2.0], "领完先歇一下再复判主界面"
+
+    def test_monthly_pass_claim_is_attempted_only_once_per_call(self, subject):
+        """识别错时不能每个循环都去点，否则 120 秒里会反复点同一处。"""
+        instance, fought, keyboard, fake = subject
+        instance.img.on_main_interface = lambda timeout=2: False
+        instance.img.on_interface = lambda **kwargs: False
+        claimed = []
+        instance.monthly_pass = SimpleNamespace(
+            try_claim_if_visible=lambda: claimed.append(1) or False
+        )
+
+        with pytest.raises(CustomException, match="回到主界面超时"):
+            instance.back_to_main()
+
+        assert claimed == [1]

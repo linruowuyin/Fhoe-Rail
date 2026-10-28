@@ -236,6 +236,37 @@ class TestTryClickPass:
         assert monthly.monthly_pass_status == MonthlyPass.Status.NOT_FOUND
 
 
+class TestTryClaimIfVisible:
+    """back_to_main 的兜底路径：只回答「这一帧是不是月卡界面、点了没有」。"""
+
+    def test_returns_false_without_clicking_when_not_the_pass_screen(
+        self, monthly, screen
+    ):
+        monthly.img = ScriptedScreen([{"max_val": 0.1}, {"max_val": 0.2}])
+
+        assert monthly.try_claim_if_visible() is False
+        assert screen.clicks == []
+        assert monthly.have_monthly_pass is False
+        assert monthly.monthly_pass_status is None, "兜底路径不下结论"
+
+    def test_claims_when_the_title_picture_matches(self, monthly, screen):
+        monthly.img = ScriptedScreen([{"max_val": 0.99}, {"max_val": 0.99}])
+
+        assert monthly.try_claim_if_visible() is True
+        assert screen.clicks == [(10, 20)]
+        assert screen.relative == [(50, 75)]
+        assert monthly.have_monthly_pass is True
+        assert monthly.monthly_pass_status == MonthlyPass.Status.CLAIMED
+
+    def test_claims_when_only_the_card_picture_matches(self, monthly, screen):
+        monthly.img = ScriptedScreen(
+            [{"max_val": 0.5}, {"max_val": 0.99}, {"max_val": 0.99}]
+        )
+
+        assert monthly.try_claim_if_visible() is True
+        assert screen.clicks == [(10, 20)]
+
+
 class TestExecuteCheckFlow:
     def test_waits_thirty_seconds_when_just_past_the_refresh_point(self, monthly, screen):
         calls = []

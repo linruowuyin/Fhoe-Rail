@@ -17,6 +17,13 @@ class MonthlyPass:
     WAIT_INTERVAL = timedelta(minutes=5)
     REFRESH_THRESHOLD = timedelta(seconds=30)
 
+    #: 月卡领取界面的识别图：(资源键, 描述)。第一张是「今日补给」标题，第二张是
+    #: 领取界面的中心卡面 —— 动画过程中两张不一定同时可见，命中任一即认。
+    PASS_PICTURES = (
+        ("monthly_pass_pic", "月卡下方文字部分"),
+        ("monthly_pass_pic_2", "月卡动画中心图片"),
+    )
+
     class Status:
         CLAIMED = 1
         NO_PASS = 2
@@ -161,31 +168,35 @@ class MonthlyPass:
 
         # 有月卡
         log.info("准备点击月卡")
-        monthly_pass_pics = [
-            (assets.path("monthly_pass_pic"), "月卡下方文字部分"),
-            (assets.path("monthly_pass_pic_2"), "月卡动画中心图片"),
-        ]
-        for pic_path, pic_desc in monthly_pass_pics:
-            pic_data = Img.get_img(pic_path)
+        if not self.try_claim_if_visible(threshold):
+            self.monthly_pass_status = (
+                self.Status.NOT_FOUND
+            )  # 月卡检查，找不到与月卡图片相符的图
+
+    def try_claim_if_visible(self, threshold=MONTHLY_PASS) -> bool:
+        """画面停在月卡领取界面（「今日补给」）时点掉它并返回 True；否则 False。
+
+        与 `try_click_pass` 的区别：不判「主界面 → 无月卡」，也不写 NOT_FOUND
+        状态 —— 它只回答「这一帧是不是月卡界面、点了没有」。供
+        `Handle.back_to_main` 兜底：月卡领取界面的 ESC 关不掉（issue #450），
+        只能点「领取」。
+        """
+        for pic_name, pic_desc in self.PASS_PICTURES:
+            pic_data = Img.get_img(assets.path(pic_name))
             result = self.img.scan_screenshot(pic_data)
-            log.info(f"开始月卡识图{pic_path}，图片特征描述：{pic_desc}")
             if result["max_val"] > threshold:
                 points = self.img.img_center_point(result, pic_data.shape)
                 log.info(
-                    f"点击月卡，图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
+                    f"识别到月卡领取界面（{pic_desc}），图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
                 )
                 self.mouse_event.click(points)
                 time.sleep(5)  # 等待动画
                 self._confirm_reward_claim()
-                break
-            else:
-                log.info(
-                    f"找不到相符的图，图片匹配度：{result['max_val']:.2f} 需要 > {threshold}"
-                )
-        else:
-            self.monthly_pass_status = (
-                self.Status.NOT_FOUND
-            )  # 月卡检查，找不到与月卡图片相符的图
+                return True
+            log.info(
+                f"未识别到月卡图片（{pic_desc}），图片匹配度：{result['max_val']:.2f} 需要 > {threshold}"
+            )
+        return False
 
     def _confirm_reward_claim(self):
         """确认奖励领取"""
