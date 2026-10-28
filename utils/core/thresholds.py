@@ -53,6 +53,8 @@ BATTLE_ESC_CHECK = 0.97
 # 2026-10-02 雅努斯密径实机 1920x1080 样本，TM_CCOEFF_NORMED。
 # 正样本均为 1.000；同一弹窗去除对应文字/按钮的负样本分别为 0.243 / 0.447；
 # 解谜画面负样本为 0.147 / 0.265。实机样本见 tests/fixtures/puzzle_exit/dialog.png。
+# ⚠ 这两个阈值绑定 `MATCH_COLOR_CCOEFF`（原图 CCOEFF）。换回默认 CCORR 时，
+# 同样本负样本是 0.920 / 0.910，会直接越过 0.90 —— 换算法必须重新量。
 PUZZLE_EXIT_PROMPT = 0.90
 PUZZLE_EXIT_CONFIRM = 0.90
 

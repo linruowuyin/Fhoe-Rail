@@ -38,7 +38,8 @@ class ScreenFallbackRejected(RuntimeError):
     """这一帧是从屏幕上抓的，不是游戏窗口自己的像素，调用方要求必须后一种。"""
 
 
-#: 探针固定并排比较的两种策略：原始颜色匹配 / 轮廓（梯度形状）匹配。
+#: 探针并排比较的策略：默认跑原始颜色 + 轮廓；模板登记了第三种策略
+#: （`MATCH_COLOR_CCOEFF`）时再追加它，保证「当前模板使用」的那一种一定出现。
 STRATEGY_INFO = {
     assets.MATCH_COLOR: {
         "label": "原始识别（颜色）",
@@ -54,7 +55,22 @@ STRATEGY_INFO = {
             "不受底色和菜单背景高斯模糊的影响。"
         ),
     },
+    assets.MATCH_COLOR_CCOEFF: {
+        "label": "原始识别（CCOEFF）",
+        "description": (
+            "原图直接跑 TM_CCOEFF_NORMED（减均值后再相关）：不转梯度，但比 CCORR "
+            "更能压住整块亮度变化。解谜放弃弹窗用它，阈值也必须按这个方法实测。"
+        ),
+    },
 }
+
+
+def strategies_for(primary):
+    """这次探针要跑的策略列表：颜色 + 轮廓，必要时追加模板登记的策略。"""
+    strategies = [assets.MATCH_COLOR, assets.MATCH_SHAPE]
+    if primary not in strategies:
+        strategies.append(primary)
+    return strategies
 
 
 def crop_to_offset(frame, region, offset):
@@ -107,7 +123,7 @@ def _compare_strategy(frame, template, region, threshold, pad, strategy):
 def _measure_area(
     frame, region, template, threshold, pad, primary_strategy, key, label, offset
 ):
-    """在一个搜索区域里跑两种策略，返回可直接进 JSON 的结果（不含帧）。"""
+    """在一个搜索区域里跑各策略，返回可直接进 JSON 的结果（不含帧）。"""
     template_height, template_width = template.shape[:2]
     frame_height, frame_width = frame.shape[:2]
     comparisons = []
@@ -118,7 +134,7 @@ def _measure_area(
             f"{frame_width}×{frame_height} 还大，匹配不了"
         )
     else:
-        for strategy in (assets.MATCH_COLOR, assets.MATCH_SHAPE):
+        for strategy in strategies_for(primary_strategy):
             item = _compare_strategy(frame, template, region, threshold, pad, strategy)
             item["primary"] = strategy == primary_strategy
             comparisons.append(item)
@@ -187,8 +203,8 @@ def measure(
             f"区域 {frame_width}×{frame_height}），匹配不了"
         )
 
-    # 探针固定同时跑两种策略：原始颜色匹配 + 轮廓（梯度形状）匹配。
-    # 两者共用同一帧，结果并排展示，方便直接看出「是底色变了还是形状不对」。
+    # 探针至少同时跑原始颜色 + 轮廓两种策略；模板登记了第三种（CCOEFF）时追加它。
+    # 共用同一帧，结果并排展示，方便直接看出「是底色变了还是形状不对」。
     primary_strategy = image_library.strategy_of(template)
     full_area = _measure_area(
         frame,

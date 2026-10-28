@@ -210,6 +210,8 @@ def _strategy_label(strategy):
     """匹配策略 → 报告里的一小段中文说明。"""
     if strategy == "shape":
         return "形状（梯度幅值 + CCOEFF，不受底色影响）"
+    if strategy == "color_ccoeff":
+        return "原图 CCOEFF（减均值相关，适合文字/对话框）"
     return "颜色（整图 CCORR）"
 
 

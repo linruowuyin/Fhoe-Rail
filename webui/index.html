@@ -1193,7 +1193,7 @@ function renderProbeResult(data) {
       <div class="card-title">③ 结果 · ${esc(data.name || probePicked)}</div>
       <div class="probe-row"><span class="k">阈值</span>
         <span><code>${data.threshold.toFixed(4)}</code></span>
-        <span style="color:var(--txt-dim)">两种识别使用同一阈值，分别判定</span></div>
+        <span style="color:var(--txt-dim)">所有识别策略使用同一阈值，分别判定</span></div>
       <div class="probe-row"><span class="k">截图来源</span><span>${source}</span></div>
       ${areasHtml}
     </div>`;

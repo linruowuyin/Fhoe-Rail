@@ -502,3 +502,25 @@ class TestExplicitStrategy:
         assert shape["max_loc"] == (40, 30)
         assert color["max_val"] >= 0.99
         assert shape["max_val"] >= 0.95  # 梯度幅值化后有轻微量化损失
+
+
+class TestColorCCOEFFStrategy:
+    """`assets.MATCH_COLOR_CCOEFF`：原图不转梯度，直接减均值相关（解谜弹窗）。"""
+
+    def test_keeps_the_raw_images_and_uses_ccoeff(self):
+        frame = np.zeros((8, 8, 3), np.uint8)
+        template = np.zeros((4, 4, 3), np.uint8)
+
+        prepared_frame, prepared_template, method = Matcher._prepare_match(
+            frame, template, assets.MATCH_COLOR_CCOEFF
+        )
+
+        assert prepared_frame is frame
+        assert prepared_template is template
+        assert method == cv2.TM_CCOEFF_NORMED
+
+    def test_puzzle_templates_are_registered_for_it(self, repo_root):
+        template = image_library.get_img(assets.path("puzzle_exit_prompt"))
+
+        assert template is not None
+        assert image_library.strategy_of(template) == assets.MATCH_COLOR_CCOEFF

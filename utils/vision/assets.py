@@ -91,11 +91,17 @@ CATEGORIES = {
 }
 
 
-#: 匹配策略：颜色（默认，整图 CCORR）/ 形状（梯度幅值 + CCOEFF）。
-#: 底色会随游戏内背景（高斯模糊）变化的图标用 `MATCH_SHAPE` —— 只比轮廓，
-#: 不看颜色。详见 `vision/matcher.py::Matcher.shape_features`。
+#: 匹配策略：颜色（默认，整图 CCORR）/ 形状（梯度幅值 + CCOEFF）/
+#: 原图 CCOEFF。底色会随游戏内背景（高斯模糊）变化的图标用 `MATCH_SHAPE` ——
+#: 只比轮廓，不看颜色。详见 `vision/matcher.py::Matcher.shape_features`。
+#:
+#: `MATCH_COLOR_CCOEFF` 是第三种：不转梯度，直接对 BGR 原图做 CCOEFF（减均值）。
+#: 给「文字/对话框」这类整块区域亮度会变、但 CCORR 负样本余量不够的模板用 ——
+#: 解谜放弃弹窗就是：擦掉文字的负样本 CCORR 仍有 0.92/0.91，CCOEFF 只有 0.24/0.45。
+#: ⚠ 阈值必须按**这个方法**实测，不能拿 CCORR 的阈值直接套。
 MATCH_COLOR = "color"
 MATCH_SHAPE = "shape"
+MATCH_COLOR_CCOEFF = "color_ccoeff"
 
 
 class Asset(NamedTuple):
@@ -140,6 +146,29 @@ def region(key):
     except KeyError:
         raise KeyError(
             f"未登记的搜索区域：{key!r}（请先在 utils/vision/assets.py 登记）"
+        ) from None
+
+
+#: 绝对搜索区域：1920×1080 帧内坐标 `(left, top, right, bottom)`。
+#: **不是** `take_screenshot` 的四边增量，不能互相换算着用。
+#:
+#: 只给「同一帧上多个模板必须同时命中」的检测器用（解谜放弃弹窗的提示语 +
+#: 确认按钮）：拆成两次 `take_screenshot(offset=)` 会各抓一帧，两次之间画面一变
+#: 就可能把两个界面的东西拼在一起（R10）。普通单模板检测请用
+#: `Asset.search_offset` / `SEARCH_REGIONS`。
+ABSOLUTE_REGIONS = {
+    "puzzle_exit_prompt": (576, 432, 1344, 616),
+    "puzzle_exit_confirm": (960, 616, 1440, 756),
+}
+
+
+def bounds(key):
+    """命名绝对区域 → 帧内 `(left, top, right, bottom)`。未登记时抛 `KeyError`。"""
+    try:
+        return ABSOLUTE_REGIONS[key]
+    except KeyError:
+        raise KeyError(
+            f"未登记的绝对搜索区域：{key!r}（请先在 utils/vision/assets.py 登记）"
         ) from None
 
 
@@ -298,10 +327,16 @@ ASSETS = {
     ),
     # --- 解谜 --------------------------------------------------------------
     "puzzle_exit_prompt": Asset(
-        "./picture/ui/puzzle_exit_prompt.png", CATEGORY_PUZZLE, "放弃游玩？提示"
+        "./picture/ui/puzzle_exit_prompt.png",
+        CATEGORY_PUZZLE,
+        "放弃游玩？提示",
+        match=MATCH_COLOR_CCOEFF,
     ),
     "puzzle_exit_confirm": Asset(
-        "./picture/ui/puzzle_exit_confirm.png", CATEGORY_PUZZLE, "放弃游玩确认按钮"
+        "./picture/ui/puzzle_exit_confirm.png",
+        CATEGORY_PUZZLE,
+        "放弃游玩确认按钮",
+        match=MATCH_COLOR_CCOEFF,
     ),
 }
 

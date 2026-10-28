@@ -73,7 +73,8 @@ class Matcher:
     def _prepare_match(screenshot, prepared, strategy=None):
         """按匹配策略返回 `(帧, 模板, matchTemplate 方法)`。
 
-        :param strategy: 显式指定策略（探针要同时跑两种）；None 表示按模板登记的策略。
+        :param strategy: 显式指定策略（探针要同时跑多种；解谜弹窗固定用
+            `MATCH_COLOR_CCOEFF`）；None 表示按模板登记的策略。
         """
         if strategy is None:
             strategy = image_library.strategy_of(prepared)
@@ -83,20 +84,25 @@ class Matcher:
                 Matcher.shape_features(prepared),
                 cv2.TM_CCOEFF_NORMED,
             )
+        if strategy == assets.MATCH_COLOR_CCOEFF:
+            # 不转梯度：原图直接减均值相关。对话框的整块亮度会变，CCORR 在
+            # 「擦掉文字」的负样本上仍有 0.92，CCOEFF 只有 0.24。
+            return screenshot, prepared, cv2.TM_CCOEFF_NORMED
         return screenshot, prepared, cv2.TM_CCORR_NORMED
 
     @staticmethod
-    def match_screenshot(screenshot, prepared, left, top):
+    def match_screenshot(screenshot, prepared, left, top, strategy=None):
         """比对 screenshot 与 prepared，返回匹配值与位置。
 
         这里是**全部匹配的唯一汇聚点**，所以图片样本收集也挂在这一处（见
         `vision/samples.py`）—— 挂在各调用点等于抄十几遍。
 
-        匹配策略跟着模板走：`assets.MATCH_SHAPE` 的模板先转成梯度幅值再比。
-        样本收集仍用原始帧/模板，落下来的样本是真实画面。
+        匹配策略跟着模板走：`assets.MATCH_SHAPE` 的模板先转成梯度幅值再比，
+        `assets.MATCH_COLOR_CCOEFF` 用原图 CCOEFF；其余用 CCORR。样本收集仍用
+        原始帧/模板，落下来的样本是真实画面。
         """
         match_frame, match_template, method = Matcher._prepare_match(
-            screenshot, prepared
+            screenshot, prepared, strategy
         )
         result = cv2.matchTemplate(match_frame, match_template, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)

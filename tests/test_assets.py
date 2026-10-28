@@ -230,6 +230,37 @@ class TestSearchRegion:
         assert assets.search_offset("battle_esc_check") == (0, 0, -1800, -970)
 
 
+class TestAbsoluteRegions:
+    """同一帧多处模板联合校验用的绝对区域（解谜弹窗）。"""
+
+    def test_puzzle_regions_are_registered(self):
+        assert assets.bounds("puzzle_exit_prompt") == (576, 432, 1344, 616)
+        assert assets.bounds("puzzle_exit_confirm") == (960, 616, 1440, 756)
+
+    def test_unknown_region_raises(self):
+        with pytest.raises(KeyError):
+            assets.bounds("no_such_region")
+
+    def test_every_region_is_left_top_right_bottom(self):
+        invalid = {
+            key: value
+            for key, value in assets.ABSOLUTE_REGIONS.items()
+            if len(value) != 4
+            or not all(isinstance(v, int) for v in value)
+            or not (value[0] < value[2] and value[1] < value[3])
+        }
+        assert not invalid, f"绝对区域必须是 (left, top, right, bottom)：{invalid}"
+
+    def test_puzzle_templates_use_color_ccoeff(self):
+        assert (
+            assets.strategy_for_path(assets.path("puzzle_exit_prompt"))
+            == assets.MATCH_COLOR_CCOEFF
+        )
+        assert (
+            assets.strategy_for_path(assets.path("puzzle_exit_confirm"))
+            == assets.MATCH_COLOR_CCOEFF
+        )
+
 class TestNoHardcodedOffsets:
     def test_offsets_live_in_the_registry(self):
         counts = _offset_literal_counts()

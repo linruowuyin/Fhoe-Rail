@@ -11,6 +11,8 @@ import pytest
 from utils.core.match_offsets import FUZZY_PADDING
 from utils.core.thresholds import DEFAULT_MATCH
 from utils.drivers.screen import CAPTURE_PRINTWINDOW, CAPTURE_SCREENGRAB
+from utils.vision import assets
+from utils.vision import images as image_library
 from utils.vision import probe
 
 #: 一次截图对应的屏幕区域（1920×1080 的一块，故意不从 0 开始 —— 坐标换算容易在这里错）
@@ -397,3 +399,28 @@ class TestCropToOffset:
         assert applied is False
         assert cropped_region == region
         assert crop is frame
+
+
+class TestRegisteredThirdStrategy:
+    """模板登记了 `MATCH_COLOR_CCOEFF` 时，探针要追加第三种比较并标成主策略。"""
+
+    def test_color_ccoeff_template_gets_a_third_comparison(self, repo_root):
+        template = image_library.get_img(assets.path("puzzle_exit_prompt"))
+        assert template is not None
+        frame = np.zeros((1080, 1920, 3), np.uint8)
+        height, width = template.shape[:2]
+        frame[300 : 300 + height, 500 : 500 + width] = template
+
+        result = probe.measure(StubScreen(frame), template, threshold=0.9)
+
+        assert [item["strategy"] for item in result["comparisons"]] == [
+            "color",
+            "shape",
+            "color_ccoeff",
+        ]
+        assert [item["primary"] for item in result["comparisons"]] == [
+            False,
+            False,
+            True,
+        ]
+        assert result["strategy"] == "color_ccoeff"

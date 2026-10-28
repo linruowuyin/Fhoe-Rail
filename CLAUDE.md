@@ -462,13 +462,19 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
 - **底色会变的图标用形状匹配**：登记时标 `match=MATCH_SHAPE`（范例：`setting_other`，
   底色随设置菜单的模糊背景变化）。匹配器先把帧和模板转成梯度幅值再跑 CCOEFF，
   只看轮廓、不看颜色；`match_probe` 的报告会显示「匹配方式」。新增同类图标时优先
-  用形状匹配，阈值按 probe 在实机上重新标定
+  用形状匹配，阈值按 probe 在实机上重新标定。
+  文字/对话框类如果 CCORR 的负样本余量不够，用 `MATCH_COLOR_CCOEFF`（原图不转
+  梯度、直接减均值相关），阈值按该方法实测 —— 解谜放弃弹窗就是（擦除文字的
+  负样本 CCORR 0.92 / CCOEFF 0.24）
 - **调用点搜索区域也登记在这里**：有模板的进 `Asset.search_offset`（四边增量，与
   `take_screenshot(offset=...)` 同一口径；`None` = 全屏），运行时
   `click_target(..., offset=assets.search_offset(key))` 与探针读的是同一份；
   没有模板的（地图 JSON 的动态 `floor`/`fanhui` 图、色域、HSV 小地图、动态行动条）
-  进 `SEARCH_REGIONS`，用 `assets.region(name)` 引用。`tests/test_assets.py`
-  扫描 `utils/` 的非零 `offset=` 字面量，只允许登记表自身有。
+  进 `SEARCH_REGIONS`，用 `assets.region(name)` 引用。**同一帧上多个模板必须
+  联合校验**的绝对区域（帧内 `left, top, right, bottom`，不是四边增量）进
+  `ABSOLUTE_REGIONS`，用 `assets.bounds(name)` 引用（范例：解谜弹窗的提示语 +
+  确认按钮，拆分截图会各抓一帧）。`tests/test_assets.py` 扫描 `utils/` 的非零
+  `offset=` 字面量，只允许登记表自身有。
   WebUI 探针可以临时改搜索区域，同时量「全屏」与「调用点」两组结果 ——
   全屏分数好看不代表调用点找得到（范例：`setting_icon`）
 - `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
