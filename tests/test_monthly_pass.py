@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from utils.config.config import ConfigurationManager
+from utils.core.thresholds import MONTHLY_PASS
 from utils.flows.monthly_pass import MonthlyPass
 
 
@@ -14,6 +15,8 @@ def monthly(make_instance, isolated_cwd):
     return make_instance(
         MonthlyPass,
         cfg=ConfigurationManager(),
+        pass_pictures=MonthlyPass.PASS_PICTURES,
+        pass_threshold=MONTHLY_PASS,
         refresh_hour=4,
         refresh_minute=0,
         next_check_time=None,
@@ -265,6 +268,49 @@ class TestTryClaimIfVisible:
 
         assert monthly.try_claim_if_visible() is True
         assert screen.clicks == [(10, 20)]
+
+    def test_injected_picture_and_threshold_are_used(self, monthly, screen):
+        """手动流程测试入口用 setting_icon 这类好触发的图替换月卡图。"""
+        monthly.pass_pictures = (("setting_icon", "流程测试图"),)
+        monthly.pass_threshold = 0.80
+        monthly.img = ScriptedScreen([{"max_val": 0.85}, {"max_val": 0.99}])
+
+        assert monthly.try_claim_if_visible() is True, "0.85 在 0.80 阈值下应命中"
+        assert screen.clicks == [(10, 20)]
+
+
+class TestConstructorInjection:
+    """`pass_pictures` / `pass_threshold` 可注入：生产默认值不变，测试入口换图。"""
+
+    @pytest.fixture(autouse=True)
+    def stub_singletons(self, monkeypatch):
+        import utils.flows.monthly_pass as monthly_module
+
+        monkeypatch.setattr(
+            monthly_module,
+            "ConfigurationManager",
+            lambda: SimpleNamespace(config_file={}),
+        )
+        monkeypatch.setattr(monthly_module, "Img", lambda: SimpleNamespace())
+        monkeypatch.setattr(monthly_module, "MouseEvent", lambda: SimpleNamespace())
+
+    def test_constructor_keeps_injected_picture_and_threshold(self):
+        import utils.flows.monthly_pass as monthly_module
+
+        injected = monthly_module.MonthlyPass(
+            pass_pictures=(("setting_icon", "流程测试图"),), pass_threshold=0.80
+        )
+
+        assert injected.pass_pictures == (("setting_icon", "流程测试图"),)
+        assert injected.pass_threshold == 0.80
+
+    def test_constructor_defaults_to_the_real_pass_pictures(self):
+        import utils.flows.monthly_pass as monthly_module
+
+        monthly = monthly_module.MonthlyPass()
+
+        assert monthly.pass_pictures == MonthlyPass.PASS_PICTURES
+        assert monthly.pass_threshold == MONTHLY_PASS
 
 
 class TestExecuteCheckFlow:

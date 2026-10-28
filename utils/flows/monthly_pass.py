@@ -29,10 +29,17 @@ class MonthlyPass:
         NO_PASS = 2
         NOT_FOUND = 3
 
-    def __init__(self):
+    def __init__(self, pass_pictures=None, pass_threshold=MONTHLY_PASS):
         self.cfg = ConfigurationManager()
         self.img = Img()
         self.mouse_event = MouseEvent()
+
+        #: 识别图与阈值可注入：生产代码用默认值；`tools/monthly_pass_flow_test.py`
+        #: 用手动流程测试时换成好触发的图（如 setting_icon）和相应阈值。
+        self.pass_pictures = (
+            tuple(pass_pictures) if pass_pictures is not None else self.PASS_PICTURES
+        )
+        self.pass_threshold = pass_threshold
 
         # 配置相关
         self.refresh_hour = self.cfg.config_file.get("refresh_hour", 4)
@@ -155,11 +162,13 @@ class MonthlyPass:
         else:
             return True
 
-    def try_click_pass(self, threshold=MONTHLY_PASS, delay=0):
+    def try_click_pass(self, threshold=None, delay=0):
         """
         说明：
             尝试点击月卡。
         """
+        if threshold is None:
+            threshold = self.pass_threshold
         time.sleep(abs(delay))
 
         # 无月卡
@@ -173,7 +182,7 @@ class MonthlyPass:
                 self.Status.NOT_FOUND
             )  # 月卡检查，找不到与月卡图片相符的图
 
-    def try_claim_if_visible(self, threshold=MONTHLY_PASS) -> bool:
+    def try_claim_if_visible(self, threshold=None) -> bool:
         """画面停在月卡领取界面（「今日补给」）时点掉它并返回 True；否则 False。
 
         与 `try_click_pass` 的区别：不判「主界面 → 无月卡」，也不写 NOT_FOUND
@@ -181,7 +190,9 @@ class MonthlyPass:
         `Handle.back_to_main` 兜底：月卡领取界面的 ESC 关不掉（issue #450），
         只能点「领取」。
         """
-        for pic_name, pic_desc in self.PASS_PICTURES:
+        if threshold is None:
+            threshold = self.pass_threshold
+        for pic_name, pic_desc in self.pass_pictures:
             pic_data = Img.get_img(assets.path(pic_name))
             result = self.img.scan_screenshot(pic_data)
             if result["max_val"] > threshold:
