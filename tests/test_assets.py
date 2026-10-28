@@ -81,6 +81,41 @@ def _literal_counts():
     return counts
 
 
+def _offset_literal_counts():
+    """`{相对路径: 非零 offset 字面量个数}`（只扫 `offset=` / `search_offset=` 关键字）。
+
+    位置参数形式的 offset（如 `scan_screenshot(img, (a,b,c,d))`）扫不到 —— 那正是
+    这次收拢时改掉的一类写法，新代码一律用 `assets.region()` / `assets.search_offset()`
+    传命名区域，别再把元组塞进位置参数。
+    """
+    counts = {}
+    for path in sorted((REPO_ROOT / "utils").rglob("*.py")):
+        relative = path.relative_to(REPO_ROOT).as_posix()
+        if relative == REGISTRY_FILE:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        count = 0
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            for keyword in node.keywords:
+                if keyword.arg not in ("offset", "search_offset"):
+                    continue
+                value = keyword.value
+                if not isinstance(value, ast.Tuple) or len(value.elts) != 4:
+                    continue
+                items = [
+                    elt.value
+                    for elt in value.elts
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, int)
+                ]
+                if len(items) == 4 and any(items):
+                    count += 1
+        if count:
+            counts[relative] = count
+    return counts
+
+
 class TestRegistry:
     def test_every_registered_file_exists(self, repo_root):
         missing = [
@@ -161,6 +196,51 @@ class TestSearchOffset:
             )
         }
         assert not invalid, f"search_offset 必须是 4 个整数（四边增量）：{invalid}"
+
+class TestSearchRegion:
+    """没有模板的搜索区域：动态地图资源、色域/HSV/动态截图的区域。"""
+
+    def test_named_region_is_returned(self):
+        assert assets.region("mini_map") == (125, 136, -1765, -914)
+
+    def test_unknown_region_raises(self):
+        with pytest.raises(KeyError):
+            assets.region("no_such_region")
+
+    def test_every_region_is_four_integers(self):
+        invalid = {
+            key: value
+            for key, value in assets.SEARCH_REGIONS.items()
+            if len(value) != 4 or not all(isinstance(v, int) for v in value)
+        }
+        assert not invalid, f"搜索区域必须是 4 个整数（四边增量）：{invalid}"
+
+    def test_the_dynamic_map_regions_are_registered(self):
+        """floor / fanhui 是地图 JSON 里的动态资源，没有模板可挂，只能按区域名引用。"""
+        assert assets.region("floor_button") == (30, 740, -1820, -70)
+        assert assets.region("back_button") == (1660, 100, -40, -910)
+
+    def test_the_registered_asset_regions_match_their_call_sites(self):
+        assert assets.search_offset("finish_fighting") == (0, 0, -1630, -800)
+        assert assets.search_offset("contraction") == (530, 960, -1050, -50)
+        assert assets.search_offset("map_back") == (1830, 0, 0, -975)
+        assert assets.search_offset("kaituoli_1") == (1580, 0, 0, -910)
+        assert assets.search_offset("qiqiao") == (900, 300, -400, -300)
+        assert assets.search_offset("switch_run") == (1720, 930, 0, 0)
+        assert assets.search_offset("battle_esc_check") == (0, 0, -1800, -970)
+
+
+class TestNoHardcodedOffsets:
+    def test_offsets_live_in_the_registry(self):
+        counts = _offset_literal_counts()
+
+        assert counts == {}, (
+            "utils/ 里还有硬编码的搜索区域字面量。\n"
+            "模板相关的登记到 `Asset.search_offset`，没有模板的登记到 "
+            "`SEARCH_REGIONS`，代码里用 `assets.search_offset(key)` / "
+            "`assets.region(key)` 引用。\n"
+            f"当前：{counts}"
+        )
 
 class TestNoUnregisteredLiterals:
     def test_bare_picture_literals_only_shrink(self):

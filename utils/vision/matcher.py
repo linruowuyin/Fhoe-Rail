@@ -251,7 +251,8 @@ class Matcher:
         """检测是否在主界面（默认看左上角灯泡）。"""
         if check_list is None:
             check_list = [self.ui_images["main_ui"]]
-            offset = (0, 0, -1630, -800)
+            # 主界面灯泡固定在左上角；区域与探针/其它调用点同一份（R25）
+            offset = assets.search_offset("finish_fighting")
 
         return self.on_interface(
             check_list=check_list,

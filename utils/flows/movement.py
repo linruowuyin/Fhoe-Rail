@@ -19,6 +19,7 @@ from functools import partial
 from utils.core.log import log
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.core.thresholds import SPRINT_ICON
+from utils.vision import assets
 
 # 疾跑比走路快这么多倍
 SPRINT_SPEED_FACTOR = 1.53
@@ -250,7 +251,9 @@ class Movement:
         """
         判断是否在疾跑状态
         """
-        result = self.img.scan_screenshot(self.img.switch_run, (1720, 930, 0, 0))
+        result = self.img.scan_screenshot(
+            self.img.switch_run, assets.search_offset("switch_run")
+        )
         return result["max_val"] > SPRINT_ICON
 
     async def async_check_sprint_status(self, need_run=True, delay=0.12):
@@ -341,7 +344,7 @@ class Movement:
                 if not self.run_fix_time or (current_time - self.run_fix_time) > 0.1:
                     # for _ in range(4):  # 强制断开检查最多4次，避免误判
                     result_run = self.img.scan_screenshot(
-                        self.img.switch_run, (1720, 930, 0, 0)
+                        self.img.switch_run, assets.search_offset("switch_run")
                     )
                     # log.info(f"疾跑匹配度: {result_run['max_val']}")  # Testlog 用于测试图片匹配度
                     # 如果匹配度超过 0.996，强制断开疾跑

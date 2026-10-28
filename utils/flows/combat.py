@@ -150,6 +150,8 @@ class Combat:
                     else:
                         food_lab = Img.get_img(assets.path("qiqiao_lab"))
                         food_icon = Img.get_img(assets.path("qiqiao"))
+                        # 零食图标只出现在购买弹窗中间，区域登记在 assets（探针同源）
+                        snack_offset = assets.search_offset("qiqiao")
                         find = False
                         drag = 0
                         while not find and drag < 4:
@@ -158,7 +160,7 @@ class Combat:
                                 timeout=2,
                                 interface_desc="奇巧零食图片",
                                 threshold=QIQIAO_ICON,
-                                offset=(900, 300, -400, -300),
+                                offset=snack_offset,
                             ):
                                 find = True
                                 for _ in range(2):
@@ -167,7 +169,7 @@ class Combat:
                                         QIQIAO_ICON,
                                         True,
                                         2,
-                                        (900, 300, -400, -300),
+                                        snack_offset,
                                         False,
                                     )
                                     if self.img.on_interface(
@@ -231,7 +233,7 @@ class Combat:
             return False
         while time.time() - start_time < timeout:
             main_result = self.img.scan_screenshot(
-                self.img.main_ui, offset=(0, 0, -1630, -800)
+                self.img.main_ui, offset=assets.search_offset("finish_fighting")
             )
             doubt_result = self.img.scan_temp_screenshot(self.img.doubt_ui)
             # warn_result = self.img.scan_temp_screenshot(self.img.warn_ui)
@@ -297,6 +299,8 @@ class Combat:
         auto_check_cnt = 0
         first_auto_check = False
         screenshot_auto_check = None
+        # 行动条在画面左侧（动态截图，没有模板；区域见 assets.SEARCH_REGIONS）
+        action_offset = assets.region("action_bar")
         while True:
             result = self.img.scan_screenshot(self.img.main_ui)
             elapsed_time = time.time() - start_time
@@ -337,7 +341,7 @@ class Combat:
             if elapsed_time > 10 and auto_check_cnt < 2:
                 if screenshot_auto_check is None:
                     screenshot_auto_check, *_ = self.img.take_screenshot(
-                        offset=(40, 20, -1725, -800)
+                        offset=action_offset
                     )
                 if elapsed_time > 15:
                     if auto_check_cnt == 0:
@@ -345,7 +349,7 @@ class Combat:
                             check_list=[screenshot_auto_check],
                             timeout=1,
                             threshold=ACTION_BAR,
-                            offset=(40, 20, -1725, -800),
+                            offset=action_offset,
                             allow_log=False,
                         )
                         auto_check_cnt += 1
@@ -355,7 +359,7 @@ class Combat:
                             check_list=[screenshot_auto_check],
                             timeout=1,
                             threshold=ACTION_BAR,
-                            offset=(40, 20, -1725, -800),
+                            offset=action_offset,
                             allow_log=False,
                         ):
                             KeyboardEvent.keyboard_press("v")

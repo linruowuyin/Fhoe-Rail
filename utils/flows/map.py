@@ -456,7 +456,7 @@ class Map:
                     timeout=1,
                     interface_desc="星轨航图",
                     threshold=STAR_MAP,
-                    offset=(1580, 0, 0, -910),
+                    offset=assets.search_offset("kaituoli_1"),
                     allow_log=False,
                 ):
                     # 这个循环也没有硬上限（只有星轨航图出现或黑屏才退）
@@ -479,8 +479,9 @@ class Map:
 
     def handle_floor(self, key):
         """点击楼层"""
-        if self.img.img_bitwise_check(target_path=key, offset=(30, 740, -1820, -70)):
-            self.img.click_target(key, FLOOR_BUTTON, offset=(30, 740, -1820, -70))
+        floor_offset = assets.region("floor_button")
+        if self.img.img_bitwise_check(target_path=key, offset=floor_offset):
+            self.img.click_target(key, FLOOR_BUTTON, offset=floor_offset)
         else:
             log.info("已在对应楼层，跳过选择楼层")
 
@@ -492,11 +493,15 @@ class Map:
             timeout=1,
             interface_desc="星轨航图",
             threshold=STAR_MAP,
-            offset=(1580, 0, 0, -910),
+            offset=assets.search_offset("kaituoli_1"),
             allow_log=False,
         ):
             self.img.click_target(
-                key, BACK_BUTTON, timeout=3, offset=(1660, 100, -40, -910), retry_in_map=False
+                key,
+                BACK_BUTTON,
+                timeout=3,
+                offset=assets.region("back_button"),
+                retry_in_map=False,
             )
         else:
             log.info("检测到星轨航图，不进行点击'返回'")
@@ -508,7 +513,7 @@ class Map:
         for _ in range(5):
             self.pause_gate()
             result_back = self.img.scan_screenshot(
-                target_back, offset=(1830, 0, 0, -975)
+                target_back, offset=assets.search_offset("map_back")
             )
             if result_back["max_val"] > MAP_BACK:
                 log.info("找到返回键")
@@ -540,7 +545,9 @@ class Map:
         处理目标图片的识别逻辑
         """
         time.sleep(3)  # 增加识别延迟，避免偶现的识别错误
-        result = self.img.scan_screenshot(target, offset=(530, 960, -1050, -50))
+        result = self.img.scan_screenshot(
+            target, offset=assets.search_offset("contraction")
+        )
         if result["max_val"] > MAP_OPEN:
             points = self.img.img_center_point(result, target.shape)
             log.info(f"识别点位{points}，匹配度{result['max_val']:.3f}")

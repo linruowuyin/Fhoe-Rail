@@ -9,13 +9,15 @@
 import cv2
 import numpy as np
 
+from utils.vision import assets
+
 
 def take_screenshot_arrow(img):
     """
     截取小地图蓝色箭头
     """
-    # 小地图中心 460-320=140,345-194=151
-    screenshot = img.take_screenshot(offset=(125, 136, -1765, -914))[0]
+    # 小地图中心 460-320=140,345-194=151；区域登记在 assets.SEARCH_REGIONS
+    screenshot = img.take_screenshot(offset=assets.region("mini_map"))[0]
 
     return screenshot
 

@@ -463,10 +463,13 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
   底色随设置菜单的模糊背景变化）。匹配器先把帧和模板转成梯度幅值再跑 CCOEFF，
   只看轮廓、不看颜色；`match_probe` 的报告会显示「匹配方式」。新增同类图标时优先
   用形状匹配，阈值按 probe 在实机上重新标定
-- **调用点搜索区域也登记在这里**：`Asset.search_offset`（四边增量，与
-  `take_screenshot(offset=...)` 同一口径；`None` = 全屏）。运行时
-  `click_target(..., offset=assets.search_offset(key))` 与探针读的是同一份。
-  WebUI 探针可以临时改这个区域，同时量「全屏」与「调用点」两组结果 ——
+- **调用点搜索区域也登记在这里**：有模板的进 `Asset.search_offset`（四边增量，与
+  `take_screenshot(offset=...)` 同一口径；`None` = 全屏），运行时
+  `click_target(..., offset=assets.search_offset(key))` 与探针读的是同一份；
+  没有模板的（地图 JSON 的动态 `floor`/`fanhui` 图、色域、HSV 小地图、动态行动条）
+  进 `SEARCH_REGIONS`，用 `assets.region(name)` 引用。`tests/test_assets.py`
+  扫描 `utils/` 的非零 `offset=` 字面量，只允许登记表自身有。
+  WebUI 探针可以临时改搜索区域，同时量「全屏」与「调用点」两组结果 ——
   全屏分数好看不代表调用点找得到（范例：`setting_icon`）
 - `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
   裸路径字面量（棘轮，只减不增；数据契约与工具文案在名单里注明原因）

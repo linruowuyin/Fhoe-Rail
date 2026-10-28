@@ -248,7 +248,7 @@ class Handle(metaclass=SingletonMeta):
                 check_list=[self.img.battle_esc_check],
                 timeout=0.0,
                 threshold=BATTLE_ESC_CHECK,
-                offset=(0, 0, -1800, -970),
+                offset=assets.search_offset("battle_esc_check"),
                 allow_log=True,
             ):
                 KeyboardEvent.keyboard_press("esc")
