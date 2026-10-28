@@ -126,7 +126,8 @@ def main(argv=None):
     if not args.no_switch:
         handle.window.switch_window()
 
-    # 只换掉「识别图 + 阈值」，流程本身仍然是生产代码（back_to_main → try_claim_if_visible）
+    # 只换掉「识别图 + 阈值」，流程本身仍然是生产代码
+    # （back_to_main → pre_esc 的 match_frame / claim_match）
     monthly = MonthlyPass(
         pass_pictures=((args.picture, f"流程测试图 {args.picture}"),),
         pass_threshold=args.threshold,

@@ -10,6 +10,7 @@ from utils.core.thresholds import (
 from utils.config.config import ConfigurationManager
 from utils.vision import assets
 from utils.vision.img import Img
+from utils.vision.matcher import Matcher
 from utils.drivers.mouse_event import MouseEvent
 
 
@@ -182,32 +183,63 @@ class MonthlyPass:
                 self.Status.NOT_FOUND
             )  # 月卡检查，找不到与月卡图片相符的图
 
-    def try_claim_if_visible(self, threshold=None) -> bool:
-        """画面停在月卡领取界面（「今日补给」）时点掉它并返回 True；否则 False。
+    def _match_pass_picture(self, matcher, threshold=None):
+        """按 `pass_pictures` 顺序找一张；返回 `(模板, 匹配结果, 描述)` 或 None。
 
-        与 `try_click_pass` 的区别：不判「主界面 → 无月卡」，也不写 NOT_FOUND
-        状态 —— 它只回答「这一帧是不是月卡界面、点了没有」。供
-        `Handle.back_to_main` 兜底：月卡领取界面的 ESC 关不掉（issue #450），
-        只能点「领取」。
+        `matcher` 决定用哪一帧/哪种取图方式：`scan_screenshot`（自己抓屏）或
+        `match_frame` 里的「同一帧匹配」。识别逻辑只有这一份。
         """
         if threshold is None:
             threshold = self.pass_threshold
         for pic_name, pic_desc in self.pass_pictures:
             pic_data = Img.get_img(assets.path(pic_name))
-            result = self.img.scan_screenshot(pic_data)
+            if pic_data is None:
+                log.warning(f"月卡识别图缺失或损坏：{pic_name}")
+                continue
+            result = matcher(pic_data)
             if result["max_val"] > threshold:
-                points = self.img.img_center_point(result, pic_data.shape)
-                log.info(
-                    f"识别到月卡领取界面（{pic_desc}），图片匹配度: {result['max_val']:.2f} ({points[0]}, {points[1]})"
-                )
-                self.mouse_event.click(points)
-                time.sleep(5)  # 等待动画
-                self._confirm_reward_claim()
-                return True
+                return pic_data, result, pic_desc
             log.info(
                 f"未识别到月卡图片（{pic_desc}），图片匹配度：{result['max_val']:.2f} 需要 > {threshold}"
             )
-        return False
+        return None
+
+    def match_frame(self, frame, threshold=None):
+        """在**已抓的一帧**里找月卡界面；返回 `(模板, 结果, 描述)` 或 None。
+
+        给 `pre_esc` 修复表用：解谜和月卡都从 `back_to_main` 的同一个帧里判，
+        不再各抓一帧（R10）。结果坐标是帧内坐标，点击时由 `claim_match`
+        加上窗口原点。
+        """
+        return self._match_pass_picture(
+            lambda pic: Matcher.match_screenshot(frame, pic, 0, 0), threshold
+        )
+
+    def claim_match(self, pic_data, result, pic_desc, left=0, top=0):
+        """点掉已经识别到的月卡界面：点击 → 等动画 → 确认领取。"""
+        points = self.img.img_center_point(result, pic_data.shape)
+        screen_point = (points[0] + left, points[1] + top)
+        log.info(
+            f"识别到月卡领取界面（{pic_desc}），图片匹配度: "
+            f"{result['max_val']:.2f} {screen_point}"
+        )
+        self.mouse_event.click(screen_point)
+        time.sleep(5)  # 等待动画
+        self._confirm_reward_claim()
+
+    def try_claim_if_visible(self, threshold=None) -> bool:
+        """画面停在月卡领取界面（「今日补给」）时点掉它并返回 True；否则 False。
+
+        与 `try_click_pass` 的区别：不判「主界面 → 无月卡」，也不写 NOT_FOUND
+        状态 —— 它只回答「这一帧是不是月卡界面、点了没有」。供
+        `try_click_pass` 与手动流程测试用；`back_to_main` 走 `pre_esc` 的
+        `match_frame`，识别逻辑与这里共用 `_match_pass_picture`。
+        """
+        match = self._match_pass_picture(self.img.scan_screenshot, threshold)
+        if match is None:
+            return False
+        self.claim_match(*match)
+        return True
 
     def _confirm_reward_claim(self):
         """确认奖励领取"""

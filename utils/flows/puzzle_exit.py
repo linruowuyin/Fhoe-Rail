@@ -1,4 +1,7 @@
-"""在主界面恢复流程里，退出误开的解谜界面。"""
+"""解谜放弃弹窗：`pre_esc` 修复表里的一项。
+
+识别是纯函数（吃一帧），点击是单独一步 —— 修复表负责把它们接到同一帧上。
+"""
 
 from utils.core.log import log
 from utils.vision import assets
@@ -6,21 +9,16 @@ from utils.vision.images import get_img
 from utils.vision.puzzle_exit import find_puzzle_exit_confirmation
 
 
-def try_exit_puzzle(img, mouse):
-    """识别到「放弃游玩？」确认弹窗就点「确认」；返回是否点击了。
-
-    只抓一帧：识别和点击用的是同一帧上的坐标，不重新截图（R10）。
-    资源缺失或没识别到都返回 False，不抛异常。
-    """
+def detect(frame):
+    """在同一帧里识别「是否放弃游玩？」；返回确认按钮的帧内坐标或 None。"""
     prompt = get_img(assets.path("puzzle_exit_prompt"))
     confirm = get_img(assets.path("puzzle_exit_confirm"))
     if prompt is None or confirm is None:
-        return False
-    frame, left, top, _, _ = img.take_screenshot()
-    point = find_puzzle_exit_confirmation(frame, prompt, confirm)
-    if point is None:
-        return False
+        return None
+    return find_puzzle_exit_confirmation(frame, prompt, confirm)
+
+
+def click(point, mouse, left=0, top=0):
+    """点「确认」：帧内坐标 + 窗口原点才是屏幕坐标。"""
     log.info("检测到“是否放弃游玩？”，确认退出解谜并等待主界面")
-    # find_puzzle_exit_confirmation 返回的是帧内坐标，加上窗口原点才是屏幕坐标
     mouse.click((left + point[0], top + point[1]))
-    return True

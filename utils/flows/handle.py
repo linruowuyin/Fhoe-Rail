@@ -9,7 +9,7 @@ from utils.flows.combat import Combat
 from utils.flows.monthly_pass import MonthlyPass
 from utils.flows.movement import Movement
 from utils.flows.orientation import Orientation
-from utils.flows.puzzle_exit import try_exit_puzzle
+from utils.flows.pre_esc import PreEscFixer
 from utils.vision.img import Img
 from utils.vision import assets
 from utils.drivers.keyboard_event import KeyboardEvent
@@ -224,24 +224,19 @@ class Handle(metaclass=SingletonMeta):
         恢复超时则停止运行，避免在未知界面继续执行路线并反复重试。
         """
         start_time = time.time()
-        monthly_pass_tried = False
+        # 「ESC 关不掉的界面」统一交给这张表；它自己维护「本次只试一次」的状态
+        fixes = PreEscFixer(self.img, self.mouse_event, self.monthly_pass)
         while not self.img.on_main_interface(
             timeout=2
         ):  # 检测是否出现左上角灯泡，即主界面检测
             if time.time() - start_time > 120:
                 raise CustomException("回到主界面超时（120秒），请检查游戏界面后重试")
-            # ESC 会取消已经打开的确认框，必须先处理它，再尝试按 ESC。
-            if try_exit_puzzle(self.img, self.mouse_event):
+            # 解谜弹窗、月卡领取等界面 ESC 处理不了，先在同一帧上识别并修掉。
+            # 表里没命中才按 ESC —— 顺序反过来会把确认框直接关掉。
+            frame, left, top, _, _ = self.img.take_screenshot()
+            if fixes.try_fix(frame, left, top):
                 time.sleep(delay)
                 continue
-            # 月卡领取界面（「今日补给」）不响应 ESC，只按 ESC 会一直空转到超时
-            # （issue #450）。识别到就点「领取」，整次 back_to_main 只试一次，
-            # 避免误识别时反复点击。
-            if not monthly_pass_tried:
-                monthly_pass_tried = True
-                if self.monthly_pass.try_claim_if_visible():
-                    time.sleep(delay)
-                    continue
             KeyboardEvent.keyboard_press("esc")
             time.sleep(delay)
             if self.img.on_interface(

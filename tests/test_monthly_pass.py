@@ -279,6 +279,55 @@ class TestTryClaimIfVisible:
         assert screen.clicks == [(10, 20)]
 
 
+class TestFrameMatching:
+    """`pre_esc` 修复表用的一帧式识别：不自己截图、结果按帧内坐标返回。"""
+
+    def test_match_frame_uses_the_same_frame_for_every_picture(
+        self, monthly, screen, monkeypatch
+    ):
+        import utils.flows.monthly_pass as monthly_module
+
+        frames = []
+
+        def fake_match(frame, prepared, left, top, strategy=None):
+            frames.append((frame, prepared.path))
+            return {"max_val": 0.2 if len(frames) == 1 else 0.99}
+
+        monkeypatch.setattr(
+            monthly_module.Matcher, "match_screenshot", staticmethod(fake_match)
+        )
+        frame = object()
+
+        match = monthly.match_frame(frame)
+
+        assert [item[0] is frame for item in frames] == [True, True]
+        assert match is not None
+        assert match[2] == "月卡动画中心图片", "第一张没过阈值，第二张命中"
+
+    def test_match_frame_returns_none_when_nothing_passes(self, monthly, screen, monkeypatch):
+        import utils.flows.monthly_pass as monthly_module
+
+        monkeypatch.setattr(
+            monthly_module.Matcher,
+            "match_screenshot",
+            staticmethod(lambda *a, **k: {"max_val": 0.1}),
+        )
+
+        assert monthly.match_frame(object()) is None
+
+    def test_claim_match_adds_the_frame_origin(self, monthly, screen):
+        confirmed = []
+        monthly._confirm_reward_claim = lambda: confirmed.append(1)
+        monthly.img = ScriptedScreen([])
+        pic_data = SimpleNamespace(shape=(4, 4, 3))
+
+        monthly.claim_match(pic_data, {"max_val": 0.99}, "月卡", 100, 200)
+
+        assert screen.clicks == [(110, 220)]
+        assert screen.slept == [5]
+        assert confirmed == [1]
+
+
 class TestConstructorInjection:
     """`pass_pictures` / `pass_threshold` 可注入：生产默认值不变，测试入口换图。"""
 

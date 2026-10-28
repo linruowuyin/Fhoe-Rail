@@ -4,8 +4,6 @@
 """
 
 from pathlib import Path
-from types import SimpleNamespace
-
 import cv2
 import numpy as np
 import pytest
@@ -76,34 +74,25 @@ def test_unknown_resolution_is_ignored(samples):
     assert find_puzzle_exit_confirmation(frame[::2, ::2], prompt, confirm) is None
 
 
-def test_one_frame_and_screen_origin_used_for_click(samples, monkeypatch):
-    """只抓一帧；点击坐标 = 帧内坐标 + 窗口原点。"""
-    frame, prompt, confirm = samples
-    monkeypatch.setattr(flow, "get_img", lambda p: prompt if "prompt" in p else confirm)
-    captured, clicks = [], []
+def test_click_adds_the_window_origin():
+    """点击坐标 = 帧内坐标 + 窗口原点；识别本身不碰鼠标。"""
+    clicks = []
+    mouse = type("Mouse", (), {"click": lambda self, point: clicks.append(point)})()
 
-    def capture():
-        captured.append(1)
-        return frame, 1272, 591, 3192, 1671
+    flow.click((1167, 672), mouse, 1272, 591)
 
-    assert flow.try_exit_puzzle(
-        SimpleNamespace(take_screenshot=capture), SimpleNamespace(click=clicks.append)
-    )
-    assert captured == [1]
     assert clicks == [(2439, 1263)]
 
 
-def test_missing_asset_does_not_capture_or_click(monkeypatch):
+def test_missing_asset_makes_detect_return_none(monkeypatch):
     monkeypatch.setattr(flow, "get_img", lambda p: None)
-    assert not flow.try_exit_puzzle(SimpleNamespace(), SimpleNamespace())
+
+    assert flow.detect(np.zeros((1080, 1920, 3), dtype=np.uint8)) is None
 
 
-def test_unrelated_dialog_does_not_click(samples, monkeypatch):
+def test_unrelated_dialog_is_not_recognized(samples):
     """别的弹窗（只有确认按钮、没有这句提示）不能被当成放弃游玩。"""
-    frame, prompt, confirm = samples
+    frame, _, _ = samples
     frame[505:546, 860:1050] = frame[490, 850]
-    monkeypatch.setattr(flow, "get_img", lambda p: prompt if "prompt" in p else confirm)
-    assert not flow.try_exit_puzzle(
-        SimpleNamespace(take_screenshot=lambda: (frame, 0, 0, 1920, 1080)),
-        SimpleNamespace(),
-    )
+
+    assert flow.detect(frame) is None

@@ -681,10 +681,12 @@ class TestBackToMain:
         monkeypatch.setattr(handle_module, "KeyboardEvent", keyboard)
         # 第一次不在主界面（走进循环），第二次在（退出循环）
         on_main = iter([False, True])
+        captured = []
         img = SimpleNamespace(
             battle_esc_check="battle_esc_check.png",
             on_main_interface=lambda timeout=2: next(on_main, True),
             on_interface=lambda **kwargs: True,  # 命中「ESC 打开的是战斗界面」
+            take_screenshot=lambda: captured.append(1) or (object(), 0, 0, 1920, 1080),
         )
         fought = []
         instance = make_instance(
@@ -692,13 +694,21 @@ class TestBackToMain:
             img=img,
             mouse_event=SimpleNamespace(),
             combat=SimpleNamespace(fight_elapsed=lambda: fought.append(1)),
-            monthly_pass=SimpleNamespace(try_claim_if_visible=lambda: False),
+            monthly_pass=SimpleNamespace(),
         )
-        monkeypatch.setattr(handle_module, "try_exit_puzzle", lambda *a: False)
-        return instance, fought, keyboard, fake
+        # 修复表换成可编程替身：默认什么都不处理，走 ESC 分支
+        fixer = SimpleNamespace(handled=False, calls=0)
+
+        def try_fix(frame, left, top):
+            fixer.calls += 1
+            return fixer.handled
+
+        fixer.try_fix = try_fix
+        monkeypatch.setattr(handle_module, "PreEscFixer", lambda *a, **k: fixer)
+        return instance, fought, keyboard, fake, fixer, captured
 
     def test_battle_esc_branch_goes_through_combat(self, subject):
-        instance, fought, keyboard, fake = subject
+        instance, fought, keyboard, fake, fixer, captured = subject
 
         instance.back_to_main()
 
@@ -707,8 +717,8 @@ class TestBackToMain:
         assert fake.slept == [2.0, 2]
 
     def test_already_on_main_interface_does_nothing(self, subject):
-        """已经在主界面时不该按任何键 —— 免得把正常的界面踩乱。"""
-        instance, fought, keyboard, fake = subject
+        """已经在主界面时不该按任何键、也不该抓帧修界面。"""
+        instance, fought, keyboard, fake, fixer, captured = subject
         instance.img.on_main_interface = lambda timeout=2: True
 
         instance.back_to_main()
@@ -716,10 +726,11 @@ class TestBackToMain:
         assert keyboard.pressed == []
         assert fought == []
         assert fake.slept == []
+        assert captured == []
 
     def test_unknown_interface_aborts_instead_of_continuing_route(self, subject):
         """恢复失败不能假装成功，否则下一条路线会再次卡住数小时。"""
-        instance, fought, keyboard, fake = subject
+        instance, fought, keyboard, fake, fixer, captured = subject
         instance.img.on_main_interface = lambda timeout=2: False
         instance.img.on_interface = lambda **kwargs: False
 
@@ -727,77 +738,49 @@ class TestBackToMain:
             instance.back_to_main()
 
         assert fought == []
+        assert fixer.calls > 0
         assert fake.now <= 123
 
-    def test_open_puzzle_confirmation_is_clicked_before_escape(self, subject, monkeypatch):
-        instance, fought, keyboard, fake = subject
-        attempts = []
-        monkeypatch.setattr(
-            handle_module, "try_exit_puzzle",
-            lambda *a: attempts.append("confirm") or True,
-        )
+    def test_one_frame_is_captured_per_iteration_and_shared_with_fixes(self, subject):
+        """解谜、月卡都从同一帧判 —— 一轮只抓一次（R10）。"""
+        instance, fought, keyboard, fake, fixer, captured = subject
+
         instance.back_to_main()
 
-        assert attempts == ["confirm"]
+        assert fixer.calls == 1
+        assert captured == [1]
+
+    def test_a_handled_screen_is_not_escaped(self, subject):
+        """修复表处理了当前界面时（解谜/月卡），本轮不按 ESC。"""
+        instance, fought, keyboard, fake, fixer, captured = subject
+        fixer.handled = True
+
+        instance.back_to_main()
+
+        assert fixer.calls == 1
         assert keyboard.pressed == []
         assert fought == []
+        assert fake.slept == [2.0], "修完先歇一下再复判主界面"
 
-    def test_escape_then_puzzle_confirmation_then_main(self, subject, monkeypatch):
-        instance, fought, keyboard, fake = subject
-        main_states = iter([False, False, True])
-        instance.img.on_main_interface = lambda timeout=2: next(main_states)
+    def test_fix_runs_before_escape(self, subject):
+        """顺序不能反：先识别修复，没命中才按 ESC。"""
+        instance, fought, keyboard, fake, fixer, captured = subject
         instance.img.on_interface = lambda **kwargs: False
-        actions = []
-        keyboard.keyboard_press = lambda key: actions.append(key)
-
-        def recover(*args):
-            if actions:
-                actions.append("confirm")
-                return True
-            return False
-        monkeypatch.setattr(handle_module, "try_exit_puzzle", recover)
+        order = []
+        fixer.try_fix = lambda frame, left, top: order.append("fix") or False
+        keyboard.keyboard_press = lambda key, delay=0: order.append(key)
 
         instance.back_to_main()
 
-        assert actions == ["esc", "confirm"]
+        assert order == ["fix", "esc"]
 
-    def test_confirmation_click_does_not_bypass_recovery_timeout(self, subject, monkeypatch):
-        instance, fought, keyboard, fake = subject
+    def test_a_handled_screen_does_not_bypass_recovery_timeout(self, subject):
+        instance, fought, keyboard, fake, fixer, captured = subject
         instance.img.on_main_interface = lambda timeout=2: False
-        monkeypatch.setattr(handle_module, "try_exit_puzzle", lambda *a: True)
+        fixer.handled = True
 
         with pytest.raises(CustomException, match="回到主界面超时"):
             instance.back_to_main()
 
         assert keyboard.pressed == []
         assert fake.now <= 123
-
-    def test_claims_the_monthly_pass_instead_of_pressing_escape(self, subject):
-        """「今日补给」月卡界面 ESC 关不掉：识别到就先领，不按 ESC（issue #450）。"""
-        instance, fought, keyboard, fake = subject
-        claimed = []
-        instance.monthly_pass = SimpleNamespace(
-            try_claim_if_visible=lambda: claimed.append(1) or True
-        )
-
-        instance.back_to_main()
-
-        assert claimed == [1]
-        assert keyboard.pressed == []
-        assert fought == []
-        assert fake.slept == [2.0], "领完先歇一下再复判主界面"
-
-    def test_monthly_pass_claim_is_attempted_only_once_per_call(self, subject):
-        """识别错时不能每个循环都去点，否则 120 秒里会反复点同一处。"""
-        instance, fought, keyboard, fake = subject
-        instance.img.on_main_interface = lambda timeout=2: False
-        instance.img.on_interface = lambda **kwargs: False
-        claimed = []
-        instance.monthly_pass = SimpleNamespace(
-            try_claim_if_visible=lambda: claimed.append(1) or False
-        )
-
-        with pytest.raises(CustomException, match="回到主界面超时"):
-            instance.back_to_main()
-
-        assert claimed == [1]
