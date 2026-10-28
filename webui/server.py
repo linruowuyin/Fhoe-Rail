@@ -482,7 +482,7 @@ def read_config():
 # 服务端**：只在前端把入口藏起来，直接 fetch 一下就绕过去了（同 /api/shutdown 走
 # 令牌而不是只把按钮藏掉的道理）。开关本身是配置项 webui_dev_mode。
 
-#: 未指定 limit 时一次返回多少张候选；367 张图全塞给浏览器没意义
+#: 未指定 limit 时一次返回多少张候选（也是单页上限，翻页用 `offset` 往后取）
 PROBE_IMAGE_LIMIT = 200
 
 #: 同一个名字有多个后缀时的优先级，跟 utils/vision/images.py::resolve_path 对齐
@@ -494,12 +494,12 @@ def dev_mode_enabled():
     return read_config().get("webui_dev_mode") is True
 
 
-def picture_files():
-    """`picture/` 下的图片（递归，跳过 `new_pic/`）：`{不带后缀的名字: 实际文件名}`。
+def picture_entries():
+    """`picture/` 下的图片（递归，跳过 `new_pic/`）：`{不带后缀的名字: (文件名, 相对路径)}`。
 
     同名多后缀时只留优先级最高的那个（webp > png > jpg），与图库自己的查找顺序一致。
-    返回值里的文件名可以直接喂给 `/api/picture?p=` —— 这个 API 只认名字不认目录，
-    与地图 JSON 里的资源 ID 是同一套：目录只是分类（R25）。
+    相对路径统一用 `/` 分隔、相对 `picture/`（如 `map_points/1/x.webp`）——探针目录树
+    和按目录筛选都靠它，不再去碰文件系统拼路径。
     """
     from utils.vision import assets as asset_registry
 
@@ -511,25 +511,89 @@ def picture_files():
             ext = ext.lower().lstrip(".")
             if ext not in _PROBE_EXT_PRIORITY or not base:
                 continue
+            relative = os.path.relpath(path, PICTURE_DIR).replace(os.sep, "/")
             if (
                 base not in best
-                or _PROBE_EXT_PRIORITY[ext] < _PROBE_EXT_PRIORITY[best[base][1]]
+                or _PROBE_EXT_PRIORITY[ext] < _PROBE_EXT_PRIORITY[best[base][2]]
             ):
-                best[base] = (entry, ext)
+                best[base] = (entry, relative, ext)
     except OSError:
         return {}
-    return {base: filename for base, (filename, _) in best.items()}
+    return {base: (filename, relative) for base, (filename, relative, _ext) in best.items()}
 
 
-def list_probe_images(fragment="", limit=None):
+def picture_files():
+    """`picture/` 下的图片（递归，跳过 `new_pic/`）：`{不带后缀的名字: 实际文件名}`。
+
+    返回值里的文件名可以直接喂给 `/api/picture?p=` —— 这个 API 只认名字不认目录，
+    与地图 JSON 里的资源 ID 是同一套：目录只是分类（R25）。
+    """
+    return {base: filename for base, (filename, _relative) in picture_entries().items()}
+
+
+def list_probe_images(fragment="", limit=None, directory=None):
     """按子串过滤图片名（不区分大小写），返回可直接喂给 `/api/picture` 的文件名。
 
     :param limit: None 表示不截断。调用方需要总条数时先不截断、自己再切。
+    :param directory: 只取这个目录（含子目录）里的图，路径相对 `picture/`；
+        空 = 全部。搜索时前端不传它，跨目录搜。
     """
     fragment = (fragment or "").lower()
-    files = picture_files()
-    hits = [files[base] for base in sorted(files) if fragment in base.lower()]
+    entries = picture_entries()
+    if directory:
+        prefix = directory.strip("/") + "/"
+        entries = {
+            base: info for base, info in entries.items()
+            if info[1].startswith(prefix)
+        }
+    hits = [filename for base, (filename, _rel) in sorted(entries.items())
+            if fragment in base.lower()]
     return hits if limit is None else hits[:limit]
+
+
+def probe_tree(entries=None):
+    """`picture/` 的目录树，供图片探针左侧选择用。
+
+    每层是 `{name, path, count, own, children}`：`count` 含子目录（"这个目录下共多少张"），
+    `own` 只算本级。目录结构就是 `picture/` 的真实结构 —— 目录只是分类，名字才是身份（R25）。
+    空目录（一张图都没有）不会出现：列表是从图片路径反推出来的。
+    """
+    entries = entries if entries is not None else picture_entries()
+    counts, own = {}, {}
+    for _base, (_filename, relative) in entries.items():
+        parts = relative.split("/")[:-1]
+        for depth in range(len(parts) + 1):
+            key = "/".join(parts[:depth])
+            counts[key] = counts.get(key, 0) + 1
+        key = "/".join(parts)
+        own[key] = own.get(key, 0) + 1
+
+    nodes = {}
+
+    def ensure(path):
+        if path not in nodes:
+            nodes[path] = {
+                "name": path.rsplit("/", 1)[-1],
+                "path": path,
+                "count": counts.get(path, 0),
+                "own": own.get(path, 0),
+                "children": [],
+            }
+        return nodes[path]
+
+    for path in sorted(item for item in counts if item):
+        node = ensure(path)
+        if "/" in path:
+            ensure(path.rsplit("/", 1)[0])["children"].append(node)
+
+    def sort_nodes(items):
+        items.sort(key=lambda item: item["name"])
+        for item in items:
+            sort_nodes(item["children"])
+        return items
+
+    top = [node for path, node in nodes.items() if "/" not in path]
+    return sort_nodes(top)
 
 
 #: `run_image_probe()` 的 `search_offset` 默认值：表示「用登记表里那张模板的
@@ -1329,16 +1393,36 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     limit = PROBE_IMAGE_LIMIT
                 limit = max(1, min(limit, PROBE_IMAGE_LIMIT))
-                # 先不截断拿总数：前端要能分清「就这么多」和「被上限截断了」
-                matches = list_probe_images(qs.get("q", [""])[0])
+                # 翻页：前端滚到底再取下一段。offset 非法就从头开始，别报 400 ——
+                # 这只是列表浏览，参数坏了回退默认值比打断用户更合适。
+                try:
+                    offset = int(qs.get("offset", ["0"])[0])
+                except ValueError:
+                    offset = 0
+                offset = max(0, offset)
+                # 先不截断拿总数：前端要能分清「就这么多」和「后面还有」
+                matches = list_probe_images(
+                    qs.get("q", [""])[0], directory=qs.get("dir", [""])[0]
+                )
                 self._send(
                     200,
                     {
                         "ok": True,
                         "total": len(matches),
-                        "images": matches[:limit],
+                        "offset": offset,
+                        "images": matches[offset: offset + limit],
                         "limit": limit,
                     },
+                )
+            elif path == "/api/probe/tree":
+                """图片探针左侧的目录树（开发者模式）。缩略图仍走 /api/picture。"""
+                if not dev_mode_enabled():
+                    self._send(403, {"ok": False, "error": "开发者模式未开启"})
+                    return
+                entries = picture_entries()
+                self._send(
+                    200,
+                    {"ok": True, "total": len(entries), "tree": probe_tree(entries)},
                 )
             elif path == "/api/probe/meta":
                 """选中一张模板后，取出它的默认配置（开发者模式）。

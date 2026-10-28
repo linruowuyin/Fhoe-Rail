@@ -208,7 +208,7 @@ class TestImageListRoute:
 
     def test_serves_the_candidates(self, webui, monkeypatch):
         monkeypatch.setattr(
-            server, "list_probe_images", lambda fragment, limit=None: [f"{fragment}.webp"]
+            server, "list_probe_images", lambda fragment, limit=None, directory=None: [f"{fragment}.webp"]
         )
 
         status, body = request(f"{webui}/api/probe/images?q=trans")
@@ -222,7 +222,7 @@ class TestImageListRoute:
         monkeypatch.setattr(
             server,
             "list_probe_images",
-            lambda fragment, limit=None: [f"i{index}.webp" for index in range(500)],
+            lambda fragment, limit=None, directory=None: [f"i{index}.webp" for index in range(500)],
         )
 
         status, body = request(f"{webui}/api/probe/images?limit=10")
@@ -243,6 +243,57 @@ class TestImageListRoute:
 
         assert status == 200
         assert body["limit"] == server.PROBE_IMAGE_LIMIT
+
+    def test_offset_returns_the_next_slice(self, webui, monkeypatch):
+        """滚到底再加载更多：同一份匹配结果按 offset 往后取。"""
+        monkeypatch.setattr(
+            server,
+            "list_probe_images",
+            lambda fragment, limit=None, directory=None: [f"i{index}.webp" for index in range(500)],
+        )
+
+        status, body = request(f"{webui}/api/probe/images?limit=10&offset=20")
+
+        assert status == 200
+        assert body["images"] == [f"i{index}.webp" for index in range(20, 30)]
+        assert body["total"] == 500, "总数始终报全集，前端才知道还有没有下一页"
+        assert body["offset"] == 20
+
+    def test_offset_past_the_end_is_an_empty_page(self, webui, monkeypatch):
+        monkeypatch.setattr(
+            server, "list_probe_images", lambda fragment, limit=None, directory=None: ["a.webp"]
+        )
+
+        status, body = request(f"{webui}/api/probe/images?offset=5")
+
+        assert status == 200
+        assert body["images"] == []
+        assert body["total"] == 1
+
+    def test_a_bad_offset_falls_back_to_zero(self, webui, monkeypatch):
+        """列表浏览而已，参数坏了回退默认值，不打断用户。"""
+        monkeypatch.setattr(
+            server,
+            "list_probe_images",
+            lambda fragment, limit=None, directory=None: ["a.webp", "b.webp"],
+        )
+
+        status, body = request(f"{webui}/api/probe/images?offset=abc")
+
+        assert status == 200
+        assert body["offset"] == 0
+        assert body["images"] == ["a.webp", "b.webp"]
+
+    def test_a_negative_offset_is_clamped_to_zero(self, webui, monkeypatch):
+        monkeypatch.setattr(
+            server, "list_probe_images", lambda fragment, limit=None, directory=None: ["a.webp"]
+        )
+
+        status, body = request(f"{webui}/api/probe/images?offset=-7")
+
+        assert status == 200
+        assert body["offset"] == 0
+        assert body["images"] == ["a.webp"]
 
 
 class TestPictureFiles:
@@ -286,6 +337,67 @@ class TestPictureFiles:
         monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path / "nope"))
 
         assert server.list_probe_images() == []
+
+    def test_directory_filter_keeps_only_that_subtree(self, tmp_path, monkeypatch):
+        """点左侧目录树某个节点时，只列这个目录（含子目录）里的图。"""
+        (tmp_path / "ui").mkdir()
+        (tmp_path / "ui" / "a.webp").write_bytes(b"")
+        (tmp_path / "map_points" / "1").mkdir(parents=True)
+        (tmp_path / "map_points" / "1" / "x.webp").write_bytes(b"")
+        monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path))
+
+        assert server.list_probe_images(directory="ui") == ["a.webp"]
+        assert server.list_probe_images(directory="map_points") == ["x.webp"]
+        assert server.list_probe_images() == ["a.webp", "x.webp"]
+
+
+class TestProbeTree:
+    """picture/ 的目录树：探针左侧选择用，目录即分类（R25）。"""
+
+    def _make_tree(self, tmp_path, monkeypatch):
+        (tmp_path / "ui").mkdir()
+        (tmp_path / "ui" / "a.webp").write_bytes(b"")
+        (tmp_path / "ui" / "b.webp").write_bytes(b"")
+        (tmp_path / "map_points" / "1").mkdir(parents=True)
+        (tmp_path / "map_points" / "1" / "x.webp").write_bytes(b"")
+        (tmp_path / "map_points" / "2").mkdir()
+        (tmp_path / "map_points" / "2" / "y.webp").write_bytes(b"")
+        monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path))
+
+    def test_counts_include_subdirectories(self, tmp_path, monkeypatch):
+        self._make_tree(tmp_path, monkeypatch)
+
+        tree = server.probe_tree()
+
+        assert [node["name"] for node in tree] == ["map_points", "ui"]
+        map_points = tree[0]
+        assert map_points["count"] == 2, "父目录的 count 要含子目录里的图"
+        assert map_points["own"] == 0
+        assert [child["name"] for child in map_points["children"]] == ["1", "2"]
+        assert tree[1]["count"] == 2 and tree[1]["own"] == 2
+
+    def test_empty_directories_do_not_show_up(self, tmp_path, monkeypatch):
+        (tmp_path / "empty").mkdir()
+        monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path))
+
+        assert server.probe_tree() == []
+
+    def test_route_is_403_without_dev_mode(self, webui, monkeypatch):
+        monkeypatch.setattr(server, "read_config", lambda: {})
+
+        status, body = request(f"{webui}/api/probe/tree")
+
+        assert status == 403
+
+    def test_route_returns_the_tree_and_total(self, webui, tmp_path, monkeypatch):
+        monkeypatch.setattr(server, "read_config", lambda: {"webui_dev_mode": True})
+        self._make_tree(tmp_path, monkeypatch)
+
+        status, body = request(f"{webui}/api/probe/tree")
+
+        assert status == 200
+        assert body["total"] == 4
+        assert [node["path"] for node in body["tree"]] == ["map_points", "ui"]
 
 
 class TestRunImageProbe:
