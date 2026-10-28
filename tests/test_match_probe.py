@@ -233,6 +233,38 @@ class TestFormatReport:
         assert "屏幕抓取" not in self._report()
 
 
+    def test_reports_the_call_site_region_when_registered(self):
+        report = self._report(
+            strategy="color",
+            areas=[
+                {"area": "full", "label": "全屏", "offset": (0, 0, 0, 0),
+                 "region": (0, 0, 1920, 1080), "error": None, "comparisons": []},
+                {"area": "search", "label": "调用点", "offset": (1843, 0, -35, 0),
+                 "region": (1843, 0, 1885, 1080), "error": None,
+                 "comparisons": [{"strategy": "color", "score": 0.82,
+                                  "margin": -0.11, "passed": False,
+                                  "box": (1848, 400, 1898, 420)}]},
+            ],
+        )
+
+        assert "调用点" in report
+        assert "offset=(1843, 0, -35, 0)" in report
+        assert "0.8200" in report
+        assert "[未达阈值]" in report
+
+    def test_no_call_site_section_without_a_registered_region(self):
+        assert "调用点" not in self._report()
+
+    def test_warns_when_the_registered_region_is_invalid(self):
+        report = self._report(
+            areas=[{"area": "search", "label": "调用点", "offset": (9, 9, 9, 9),
+                    "region": (0, 0, 1920, 1080), "comparisons": [],
+                    "error": "四边增量把搜索区域裁成了空，运行时同样会退回全屏搜索"}],
+        )
+
+        assert "⚠" in report
+        assert "退回全屏" in report
+
 # ---------------------------------------------------------------------------
 # 抓屏与交互回路：截图源换替身，不需要游戏窗口
 # ---------------------------------------------------------------------------

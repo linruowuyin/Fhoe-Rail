@@ -483,6 +483,19 @@
     width: 84px; background: rgba(255,255,255,.06); border: 1px solid var(--glass-border);
     color: var(--txt); border-radius: 8px; padding: 6px 10px; font-size: 14px; outline: none;
   }
+  .probe-threshold input.probe-offset {
+    width: 240px; font-family: var(--font-mono);
+  }
+  .probe-area { margin-top: 18px; }
+  .probe-area-title {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 13px; color: var(--txt-dim);
+  }
+  .probe-area-title .card-title { font-size: 15px; color: var(--txt); }
+  .probe-area-title code {
+    background: rgba(255,255,255,.07); padding: 2px 7px; border-radius: 5px;
+    font-family: var(--font-mono);
+  }
   .probe-compare {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px; margin-top: 12px;
@@ -725,10 +738,16 @@
       <div class="glass" id="probe-run-box" style="display:none;margin-bottom:16px">
         <div class="card-title">② 跑探针</div>
         <div class="probe-row" id="probe-picked"></div>
-        <div class="probe-row" style="border-bottom:none">
+        <div class="probe-row">
           <label class="probe-threshold">阈值 <input type="number" id="probe-threshold" value="0.90" min="0" max="1" step="0.01"></label>
+          <label class="probe-threshold">搜索区域 offset
+            <input type="text" id="probe-offset" class="probe-offset" placeholder="留空 = 只量全屏，例如 1843, 0, -35, 0">
+          </label>
+          <span class="probe-meta" id="probe-offset-hint" style="margin:0"></span>
+        </div>
+        <div class="probe-row" style="border-bottom:none">
           <button class="btn" id="probe-run">🚀 运行探针</button>
-          <span style="font-size:13px;color:var(--txt-dim)">游戏窗口要开着，且不要正在跑图</span>
+          <span style="font-size:13px;color:var(--txt-dim)">游戏窗口要开着，且不要正在跑图 · 四边增量与运行时 <code>take_screenshot(offset)</code> 同一口径</span>
         </div>
       </div>
       <div id="probe-result"></div>
@@ -963,6 +982,21 @@ async function probeApi(path, opts) {
 
 let probePicked = null;
 
+// 向量统一显示成 (a, b, c, d)
+const fmtVec = v => Array.isArray(v) ? "(" + v.join(", ") + ")" : String(v);
+
+// 搜索区域输入框 → 四元数组；空 = null（只量全屏）。
+// 允许写成 "(1843, 0, -35, 0)" / "[1843, 0, -35, 0]" / "1843 0 -35 0"。
+function parseProbeOffset(text) {
+  const raw = (text || "").trim();
+  if (!raw) return null;
+  const nums = raw.replace(/[()[\]{}]/g, " ").split(/[\s,，]+/).filter(Boolean).map(Number);
+  if (nums.length !== 4 || nums.some(n => !Number.isInteger(n))) {
+    throw new Error("搜索区域要 4 个整数，例如 1843, 0, -35, 0（留空 = 只量全屏）");
+  }
+  return nums;
+}
+
 async function loadProbe() {
   $("#probe-result").innerHTML = "";
   $("#probe-run-box").style.display = "none";
@@ -1006,7 +1040,7 @@ async function loadProbeImages(fragment) {
   }
 }
 
-function pickProbeImage(name) {
+async function pickProbeImage(name) {
   probePicked = name;
   $$("#probe-images .probe-item").forEach(i =>
     i.classList.toggle("selected", i.dataset.name === name));
@@ -1014,12 +1048,33 @@ function pickProbeImage(name) {
   $("#probe-picked").innerHTML =
     `<span class="k">已选</span><code>${esc(name)}</code>` +
     `<img src="/api/picture?p=${encodeURIComponent(name)}" alt="" style="height:30px;border-radius:4px">`;
+  // 搜索区域取登记表里调用点用的那份（Asset.search_offset），这里只是预填；
+  // 用户改了只影响本次探针，不写回 assets.py。
+  const hint = $("#probe-offset-hint");
+  $("#probe-offset").value = "";
+  hint.textContent = "读取登记配置…";
+  try {
+    const meta = await probeApi("/api/probe/meta?name=" + encodeURIComponent(name));
+    $("#probe-offset").value = meta.search_offset ? meta.search_offset.join(", ") : "";
+    hint.textContent = meta.search_offset
+      ? `登记区域 ${fmtVec(meta.search_offset)} · ${meta.strategy_label || meta.strategy}`
+      : `未登记搜索区域 · ${meta.strategy_label || meta.strategy}`;
+  } catch (e) {
+    hint.textContent = "读取登记配置失败：" + e.message;
+  }
 }
 
 async function runProbe() {
   if (!probePicked) return;
   const el = $("#probe-result");
   const btn = $("#probe-run");
+  let offset;
+  try {
+    offset = parseProbeOffset($("#probe-offset").value);
+  } catch (e) {
+    el.innerHTML = `<div class="error-box">${esc(e.message)}</div>`;
+    return;
+  }
   btn.disabled = true;
   el.innerHTML = '<div class="loading">正在抓帧测量…</div>';
   try {
@@ -1029,6 +1084,8 @@ async function runProbe() {
       body: JSON.stringify({
         name: probePicked,
         threshold: parseFloat($("#probe-threshold").value),
+        // 总是带上：null = 只量全屏；数组 = 额外量调用点区域
+        offset,
       }),
     });
     renderProbeResult(data);
@@ -1040,7 +1097,7 @@ async function runProbe() {
 }
 
 function renderProbeResult(data) {
-  const fmt = v => Array.isArray(v) ? "(" + v.join(", ") + ")" : String(v);
+  const fmt = fmtVec;
   const num = v => (v >= 0 ? "+" : "") + v.toFixed(4);
   const source = data.capture_source === "printwindow"
     ? '<span class="badge b-green">printwindow</span> 游戏窗口自身的像素'
@@ -1063,8 +1120,12 @@ function renderProbeResult(data) {
         fuzzy_offset: data.fuzzy_offset,
         pad_applied: data.pad_applied,
       }];
+  // 后端现在总是给 areas（全屏，或全屏 + 调用点）；没有时按全屏单区域兜底
+  const areas = (data.areas && data.areas.length)
+    ? data.areas
+    : [{ area: "full", label: "全屏", offset: [0, 0, 0, 0], region: data.region, comparisons, error: null }];
 
-  const cards = comparisons.map(c => {
+  const cardHtml = (c, areaKey) => {
     const hit = c.passed
       ? '<span class="badge b-green">命中</span>'
       : '<span class="badge b-amber">未达阈值</span>';
@@ -1074,7 +1135,9 @@ function renderProbeResult(data) {
     const fuzzyNote = c.pad_applied === data.fuzzy_padding
       ? `四边各外扩 ${data.fuzzy_padding}px`
       : `四边各外扩 ${data.fuzzy_padding}px，但贴着画面边缘了，最少的一侧只扩了 ${c.pad_applied}px`;
-    const previewB64 = previews[c.strategy] || (c.primary ? data.preview_png_b64 : null);
+    const previewB64 = previews[areaKey + ":" + c.strategy]
+      ?? (areaKey === "full" ? previews[c.strategy] : null)
+      ?? (areaKey === "full" && c.primary ? data.preview_png_b64 : null);
     const preview = previewB64
       ? `<img src="data:image/png;base64,${previewB64}" alt="匹配预览"
               style="max-width:100%;border-radius:10px;margin-top:12px;display:block">`
@@ -1104,6 +1167,25 @@ function renderProbeResult(data) {
           <span style="color:var(--txt-dim);font-size:13px">${esc(fuzzyNote)}</span></div>
         ${preview}
       </div>`;
+  };
+
+  const areasHtml = areas.map(area => {
+    const regionNote = area.area === "search"
+      ? `offset <code>${fmt(area.offset)}</code> · 实际区域 <code>${fmt(area.region)}</code>`
+      : `实际区域 <code>${fmt(area.region)}</code>`;
+    const err = area.error
+      ? `<div class="error-box" style="margin-top:8px">${esc(area.error)}</div>`
+      : "";
+    const cards = (area.comparisons || []).map(c => cardHtml(c, area.area)).join("");
+    return `
+      <div class="probe-area">
+        <div class="probe-area-title">
+          <span class="card-title">${esc(area.label)}</span>
+          <span>${regionNote}</span>
+        </div>
+        ${err}
+        ${cards ? `<div class="probe-compare">${cards}</div>` : ""}
+      </div>`;
   }).join("");
 
   $("#probe-result").innerHTML = `
@@ -1113,8 +1195,7 @@ function renderProbeResult(data) {
         <span><code>${data.threshold.toFixed(4)}</code></span>
         <span style="color:var(--txt-dim)">两种识别使用同一阈值，分别判定</span></div>
       <div class="probe-row"><span class="k">截图来源</span><span>${source}</span></div>
-      <div class="probe-row"><span class="k">搜索区域</span><span><code>${fmt(data.region)}</code></span></div>
-      <div class="probe-compare">${cards}</div>
+      ${areasHtml}
     </div>`;
 
   $$("#probe-result .probe-copy").forEach(btn => {

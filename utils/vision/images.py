@@ -160,6 +160,14 @@ def strategy_of(image):
     return assets.strategy_for_path(path)
 
 
+def search_offset_of(image):
+    """一张模板 → 调用点登记的搜索区域；未登记时 None（调用点全屏搜索）。"""
+    path = path_of(image)
+    if not path:
+        return None
+    return assets.search_offset_for_path(path)
+
+
 def load_all(image_paths=None) -> dict:
     """按 {属性名: 路径} 批量加载，加载失败的只告警、不进结果。
 

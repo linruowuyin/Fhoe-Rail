@@ -169,6 +169,36 @@ def format_report(measurement, name, path):
         _offset_line("模糊 offset", measurement["fuzzy_offset"], measurement["padded_box"])
         + _fuzzy_note(measurement),
     ]
+
+    # 登记了调用点搜索区域的模板（`Asset.search_offset`）：再报一行同一帧上的
+    # 子区域结果。运行时点击用的就是这个区域，全屏分数好看不代表调用点找得到。
+    search_area = next(
+        (area for area in measurement.get("areas") or [] if area["area"] == "search"),
+        None,
+    )
+    if search_area is not None:
+        lines.append("")
+        if search_area["error"]:
+            lines.append(
+                f"调用点    offset={search_area['offset']}   ⚠ {search_area['error']}"
+            )
+        else:
+            item = next(
+                (
+                    c
+                    for c in search_area["comparisons"]
+                    if c["strategy"] == measurement["strategy"]
+                ),
+                search_area["comparisons"][0],
+            )
+            area_verdict = "命中" if item["passed"] else "未达阈值"
+            lines.append(
+                f"调用点    offset={search_area['offset']}    区域 {search_area['region']}"
+            )
+            lines.append(
+                f"          匹配度 {item['score']:.4f}    余量 {item['margin']:+.4f}"
+                f"  [{area_verdict}]    框 {item['box']}"
+            )
     return "\n".join(lines)
 
 
@@ -257,8 +287,13 @@ def recognize(screen, name, threshold, picture_dir=PICTURE_DIR, preview=False, a
         return OUTCOME_MISSING
 
     try:
+        # 与运行时点击同一份搜索区域（R25：登记在 assets.py，不在这里另配一份）
         measurement = probe.measure(
-            screen, template, threshold, allow_screen_fallback=allow_fallback
+            screen,
+            template,
+            threshold,
+            allow_screen_fallback=allow_fallback,
+            search_offset=image_library.search_offset_of(template),
         )
     except probe.ScreenFallbackRejected as error:
         print(error)

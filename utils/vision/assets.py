@@ -97,12 +97,15 @@ MATCH_SHAPE = "shape"
 
 
 class Asset(NamedTuple):
-    """一条图片资源：路径 + 分类 +（可选）备注 + 匹配策略。"""
+    """一条图片资源：路径 + 分类 + 备注 + 匹配策略 + 调用点搜索区域。"""
 
     path: str
     category: str
     note: str = ""
     match: str = MATCH_COLOR
+    #: 调用点实际使用的 `take_screenshot(offset=...)`（四边增量，不是宽高）。
+    #: `None` 表示调用点全屏搜索。登记后探针会用同一份区域再量一次「调用点」结果。
+    search_offset: tuple | None = None
 
 
 #: 登记表。key 用小写蛇形，与文件 stem 对得上即可。
@@ -174,6 +177,7 @@ ASSETS = {
         CATEGORY_SETTING,
         "设置菜单入口（底色随模糊背景变化，用形状匹配）",
         match=MATCH_SHAPE,
+        search_offset=(1843, 0, -35, 0),
     ),
     "setting_other": Asset(
         "./picture/ui/setting_other.webp",
@@ -230,8 +234,18 @@ def path(key):
 
 
 def _path_key(path):
-    """路径归一化：反斜杠/正斜杠、`.`/`..` 都抹平，用作策略表的键。"""
-    return os.path.normpath(path).replace("\\", "/")
+    """路径归一化：反斜杠/正斜杠、`.`/`..` 都抹平，用作策略表的键。
+
+    绝对路径会先剥到 `picture/` 这一段：WebUI 的探针按 `PICTURE_DIR`（绝对路径）
+    扫描并加载模板，`images.path_of` 反查回来也是绝对路径 —— 不归一化的话
+    `strategy_for_path` / `search_offset_for_path` 会查不到，模板被当成未登记。
+    """
+    key = os.path.normpath(path.replace("\\", "/")).replace("\\", "/")
+    marker = "/picture/"
+    index = key.rfind(marker)
+    if index != -1:
+        key = key[index + 1 :]
+    return key
 
 
 #: 登记路径 → 匹配策略。图片加载层反查模板身份时用（R13：状态属于读取方）。
@@ -242,6 +256,22 @@ def strategy_for_path(path):
     """图片路径 → 匹配策略；未登记的图片按颜色匹配。"""
     asset = ASSET_BY_PATH.get(_path_key(path))
     return asset.match if asset is not None else MATCH_COLOR
+
+
+def search_offset(key):
+    """登记 key → 调用点搜索区域（`take_screenshot` 的四边增量）；没登记时 None。"""
+    try:
+        return ASSETS[key].search_offset
+    except KeyError:
+        raise KeyError(
+            f"未登记的图片资源：{key!r}（请先在 utils/vision/assets.py 登记）"
+        ) from None
+
+
+def search_offset_for_path(path):
+    """图片路径 → 调用点搜索区域；未登记或没登记区域时 None。"""
+    asset = ASSET_BY_PATH.get(_path_key(path))
+    return asset.search_offset if asset is not None else None
 
 
 def is_picture_ref(value):

@@ -299,3 +299,101 @@ class TestTwoStrategies:
             ):
                 assert field in item
             assert item["box"][0] == BOX_AT[0]
+
+
+class TestSearchArea:
+    """搜索区域：调用点带 offset 时，探针在同一帧上再量一次那个子区域。"""
+
+    def test_default_has_only_the_full_area(self, measured):
+        result, _ = measured
+
+        assert [area["area"] for area in result["areas"]] == ["full"]
+        assert result["areas"][0]["region"] == REGION
+        assert result["areas"][0]["error"] is None
+        assert result["search_offset"] is None
+
+    def test_top_level_fields_stay_the_full_screen_result(self):
+        """给 search_offset 不能改变旧字段的含义，否则旧调用方读到的就是子区域数字。"""
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        with_offset = probe.measure(
+            screen, template, threshold=0.9, search_offset=(700, 430, 0, 0)
+        )
+        without = probe.measure(screen, template, threshold=0.9)
+
+        assert with_offset["box"] == without["box"]
+        assert with_offset["score"] == pytest.approx(without["score"])
+        assert with_offset["region"] == REGION
+
+    def test_measures_the_cropped_region_in_screen_coordinates(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        result = probe.measure(
+            screen, template, threshold=0.9, search_offset=(700, 430, 0, 0)
+        )
+
+        assert len(screen.calls) == 1, "调用点区域要从同一帧裁，不能重新抓一帧"
+        areas = {area["area"]: area for area in result["areas"]}
+        search = areas["search"]
+        assert search["offset"] == (700, 430, 0, 0)
+        assert search["region"] == (800, 630, 2020, 1280)
+        color = next(c for c in search["comparisons"] if c["strategy"] == "color")
+        assert color["score"] == pytest.approx(1.0)
+        # 帧内坐标 → 屏幕坐标，和全屏那次一致
+        assert color["box"] == (812, 640, 836, 656)
+
+    def test_a_region_that_cuts_the_match_gets_a_lower_score(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        result = probe.measure(
+            screen, template, threshold=0.9, search_offset=(740, 470, 0, 0)
+        )
+
+        areas = {area["area"]: area for area in result["areas"]}
+        color = next(
+            c for c in areas["search"]["comparisons"] if c["strategy"] == "color"
+        )
+        assert color["score"] < result["score"]
+
+    def test_an_invalid_offset_reports_instead_of_crashing(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        result = probe.measure(
+            screen, template, threshold=0.9, search_offset=(5000, 0, -5000, 0)
+        )
+
+        areas = {area["area"]: area for area in result["areas"]}
+        assert areas["search"]["comparisons"] == []
+        assert "退回全屏" in areas["search"]["error"]
+        assert areas["search"]["region"] == REGION
+
+
+class TestCropToOffset:
+    def test_matches_the_take_screenshot_region(self):
+        frame = np.arange(12 * 20 * 3, dtype=np.uint8).reshape(12, 20, 3)
+        region = (100, 200, 120, 212)
+
+        crop, cropped_region, applied = probe.crop_to_offset(
+            frame, region, (2, 3, -4, -5)
+        )
+
+        assert applied is True
+        assert cropped_region == (102, 203, 116, 207)
+        assert crop.shape == (4, 14, 3)
+        assert np.array_equal(crop, frame[3:7, 2:16])
+
+    def test_an_invalid_offset_returns_the_frame_untouched(self):
+        frame = np.zeros((4, 4, 3), np.uint8)
+        region = (0, 0, 4, 4)
+
+        crop, cropped_region, applied = probe.crop_to_offset(
+            frame, region, (10, 0, -10, 0)
+        )
+
+        assert applied is False
+        assert cropped_region == region
+        assert crop is frame

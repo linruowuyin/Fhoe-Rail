@@ -16,7 +16,7 @@ from utils.core.match_offsets import (
     padded_offset_for_box,
 )
 from utils.core.thresholds import DEFAULT_MATCH
-from utils.drivers.screen import CAPTURE_PRINTWINDOW
+from utils.drivers.screen import CAPTURE_PRINTWINDOW, apply_offset
 from utils.vision import assets
 from utils.vision import images as image_library
 from utils.vision.matcher import Matcher
@@ -57,6 +57,26 @@ STRATEGY_INFO = {
 }
 
 
+def crop_to_offset(frame, region, offset):
+    """按调用点 `take_screenshot(offset=...)` 的口径，从**同一帧**裁出搜索区域。
+
+    调用点带 offset 时会重新抓一张只含该区域的图；探针不能为它再抓一帧
+    （两次抓屏之间画面会变，数字和全屏那张对不上），所以在同一帧上裁。
+
+    :return: `(裁剪后的帧, 生效后的 region, 是否生效)`。偏移把区域裁成空时
+        原样返回 —— 运行时 `ScreenSource.take_screenshot` 也是这么退回窗口全图的。
+    """
+    new_region, applied = apply_offset(region, offset)
+    if not applied:
+        return frame, region, False
+    left, top, right, bottom = region
+    new_left, new_top, new_right, new_bottom = new_region
+    crop = frame[
+        new_top - top : new_bottom - top, new_left - left : new_right - left
+    ]
+    return crop, new_region, True
+
+
 def _compare_strategy(frame, template, region, threshold, pad, strategy):
     """用指定策略量一次，返回可直接进 JSON 的结果。"""
     matched = Matcher.match_peaks(
@@ -84,6 +104,34 @@ def _compare_strategy(frame, template, region, threshold, pad, strategy):
     }
 
 
+def _measure_area(
+    frame, region, template, threshold, pad, primary_strategy, key, label, offset
+):
+    """在一个搜索区域里跑两种策略，返回可直接进 JSON 的结果（不含帧）。"""
+    template_height, template_width = template.shape[:2]
+    frame_height, frame_width = frame.shape[:2]
+    comparisons = []
+    error = None
+    if template_height > frame_height or template_width > frame_width:
+        error = (
+            f"模板 {template_width}×{template_height} 比该搜索区域 "
+            f"{frame_width}×{frame_height} 还大，匹配不了"
+        )
+    else:
+        for strategy in (assets.MATCH_COLOR, assets.MATCH_SHAPE):
+            item = _compare_strategy(frame, template, region, threshold, pad, strategy)
+            item["primary"] = strategy == primary_strategy
+            comparisons.append(item)
+    return {
+        "area": key,
+        "label": label,
+        "offset": tuple(offset),
+        "region": region,
+        "comparisons": comparisons,
+        "error": error,
+    }
+
+
 def measure(
     screen,
     template,
@@ -92,6 +140,7 @@ def measure(
     max_retries=PROBE_MAX_RETRIES,
     retry_interval=PROBE_RETRY_INTERVAL,
     allow_screen_fallback=False,
+    search_offset=None,
 ) -> dict:
     """抓一帧，量出这张模板的匹配情况。
 
@@ -106,8 +155,13 @@ def measure(
     :param allow_screen_fallback: 是否接受「回退去抓屏幕」那一帧。默认**不接受** ——
         `PrintWindow` 失败时主程序会退到按屏幕坐标抓，抓到的可能是盖在游戏上的别的
         窗口；那种帧量出来的数字看着正常，其实量错了对象。探针宁可报错也不要这个。
+    :param search_offset: 调用点的 `take_screenshot(offset=...)`（四边增量）。
+        给了就额外在同一帧上裁出该区域再量一次，结果放在 `areas` 里；
+        没给就只有「全屏」一个区域。
     :return: 结果 dict。`frame` 也在这里 —— 预览图必须画**同一帧**，
-        不然两次抓屏之间画面变了，预览和数字就对不上
+        不然两次抓屏之间画面变了，预览和数字就对不上。
+        顶层字段（`score` / `box` / `comparisons` …）永远是**全屏**那次的结果，
+        兼容旧调用方；按区域看请用 `areas`。
     :raises ScreenFallbackRejected: 拿到的是回退帧而 `allow_screen_fallback` 为假
     """
     frame, left, top, right, bottom = screen.take_screenshot(
@@ -123,8 +177,8 @@ def measure(
         )
     region = (left, top, right, bottom)
 
-    frame_height, frame_width = frame.shape[:2]
     template_height, template_width = template.shape[:2]
+    frame_height, frame_width = frame.shape[:2]
     if template_height > frame_height or template_width > frame_width:
         # 不说这一句的话，cv2.matchTemplate 会抛一句没人看得懂的断言；
         # 而调用方（WebUI 路由）需要把它当成「参数不对」来报 400。
@@ -136,11 +190,43 @@ def measure(
     # 探针固定同时跑两种策略：原始颜色匹配 + 轮廓（梯度形状）匹配。
     # 两者共用同一帧，结果并排展示，方便直接看出「是底色变了还是形状不对」。
     primary_strategy = image_library.strategy_of(template)
-    comparisons = []
-    for strategy in (assets.MATCH_COLOR, assets.MATCH_SHAPE):
-        item = _compare_strategy(frame, template, region, threshold, pad, strategy)
-        item["primary"] = strategy == primary_strategy
-        comparisons.append(item)
+    full_area = _measure_area(
+        frame,
+        region,
+        template,
+        threshold,
+        pad,
+        primary_strategy,
+        "full",
+        "全屏",
+        (0, 0, 0, 0),
+    )
+    areas = [full_area]
+
+    if search_offset is not None:
+        search_offset = tuple(search_offset)
+        crop, crop_region, applied = crop_to_offset(frame, region, search_offset)
+        search_area = _measure_area(
+            crop,
+            crop_region,
+            template,
+            threshold,
+            pad,
+            primary_strategy,
+            "search",
+            "调用点",
+            search_offset,
+        )
+        if not applied:
+            # 运行时（`take_screenshot`）遇到非法 offset 也会退回窗口全图；
+            # 但探针的职责是让人看见「这个区域配错了」，别拿全屏数字冒充它。
+            search_area["comparisons"] = []
+            search_area["error"] = (
+                "四边增量把搜索区域裁成了空，运行时同样会退回全屏搜索"
+            )
+        areas.append(search_area)
+
+    comparisons = full_area["comparisons"]
     primary = next(
         (item for item in comparisons if item["primary"]), comparisons[0]
     )
@@ -164,6 +250,8 @@ def measure(
         "fuzzy_padding": pad,
         "pad_applied": primary["pad_applied"],
         "comparisons": comparisons,
+        "areas": areas,
+        "search_offset": search_offset,
         "capture_source": screen.last_capture_source,
     }
 

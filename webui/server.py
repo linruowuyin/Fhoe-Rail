@@ -532,12 +532,54 @@ def list_probe_images(fragment="", limit=None):
     return hits if limit is None else hits[:limit]
 
 
-def run_image_probe(name, threshold):
+#: `run_image_probe()` 的 `search_offset` 默认值：表示「用登记表里那张模板的
+#: 调用点搜索区域」（`Asset.search_offset`）。显式传 `None` 则表示用户清空了
+#: 搜索区域，只量全屏。用哨兵区分这两种情况，而不是用 `None` 兼任两个意思。
+_REGISTERED_SEARCH_OFFSET = object()
+
+
+def _parse_probe_offset(value):
+    """WebUI 传来的搜索区域 → `(左, 上, 右, 下)`；空值表示不量调用点。"""
+    if value in (None, "", []):
+        return None
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        raise ValueError("搜索区域要 4 个整数，例如 [1843, 0, -35, 0]")
+    try:
+        return tuple(int(item) for item in value)
+    except (TypeError, ValueError):
+        raise ValueError("搜索区域要 4 个整数，例如 [1843, 0, -35, 0]") from None
+
+
+def _probe_template(name):
+    """按 stem 解析并加载探针模板（图片可能在任何子目录里，R25）。"""
+    from utils.vision import assets as asset_registry
+    from utils.vision import images as image_library
+
+    if "/" in name or "\\" in name or ".." in name:
+        raise ValueError("图片名非法")
+    if not re.match(r"^[\w\-]+\.(png|jpg|jpeg|webp|gif)$", name, re.I):
+        raise ValueError("图片名非法")
+
+    index, _ = asset_registry.scan_picture_files(PICTURE_DIR)
+    template_path = index.get(name.rsplit(".", 1)[0].lower())
+    if not template_path:
+        raise FileNotFoundError(f"图片不存在：{name}")
+    template = image_library.get_img(template_path)
+    if template is None:
+        raise FileNotFoundError(f"图片读不出来：{name}")
+    return template
+
+
+def run_image_probe(name, threshold, search_offset=_REGISTERED_SEARCH_OFFSET):
     """抓一帧，量一张模板。返回 `vision/probe.py::measure()` 的结果。
 
     这里是 WebUI 唯一构造 `ScreenSource` 的地方。先 `Window.is_game_running()` 看一眼，
     **不构造 `Window()`** —— 构造它会连带 `switch_window()`：把鼠标挪到游戏窗口中心，
     游戏没开时还会启动游戏并连点 30 秒。点一个网页按钮不该有这种副作用。
+
+    :param search_offset: 调用点的搜索区域。默认取登记表里这张模板的
+        `Asset.search_offset`（和运行时点击用的是同一份配置）；显式传 `None`
+        表示只量全屏。
 
     :raises ValueError: 图片名非法、阈值越界、或模板比截图区域还大（都是参数问题）
     :raises FileNotFoundError: 图片不存在或读不出来
@@ -546,25 +588,15 @@ def run_image_probe(name, threshold):
     # 重活 import 一律放函数里 —— 这个文件的启动契约是「只依赖标准库」
     from utils.drivers.screen import ScreenSource
     from utils.drivers.window import Window
-    from utils.vision import assets as asset_registry
     from utils.vision import images as image_library
     from utils.vision import probe as probe_module
 
-    if "/" in name or "\\" in name or ".." in name:
-        raise ValueError("图片名非法")
-    if not re.match(r"^[\w\-]+\.(png|jpg|jpeg|webp|gif)$", name, re.I):
-        raise ValueError("图片名非法")
     if not 0.0 <= threshold <= 1.0:
         raise ValueError("阈值应落在 0~1")
 
-    # 与 /api/picture 一样按 stem 查递归索引（图片可能在任何子目录里，R25）
-    index, _ = asset_registry.scan_picture_files(PICTURE_DIR)
-    template_path = index.get(name.rsplit(".", 1)[0].lower())
-    if not template_path:
-        raise FileNotFoundError(f"图片不存在：{name}")
-    template = image_library.get_img(template_path)
-    if template is None:
-        raise FileNotFoundError(f"图片读不出来：{name}")
+    template = _probe_template(name)
+    if search_offset is _REGISTERED_SEARCH_OFFSET:
+        search_offset = image_library.search_offset_of(template)
 
     hwnd = Window.find_window_hwnd()
     if not hwnd:
@@ -582,6 +614,7 @@ def run_image_probe(name, threshold):
         threshold,
         max_retries=2,
         retry_interval=0.5,
+        search_offset=search_offset,
     )
 
 
@@ -1307,6 +1340,43 @@ class Handler(BaseHTTPRequestHandler):
                         "limit": limit,
                     },
                 )
+            elif path == "/api/probe/meta":
+                """选中一张模板后，取出它的默认配置（开发者模式）。
+
+                搜索区域取 `Asset.search_offset` —— 与运行时点击用的是同一份配置，
+                WebUI 只是把它显示出来给用户改，不存在第二份副本。
+                """
+                if not dev_mode_enabled():
+                    self._send(403, {"ok": False, "error": "开发者模式未开启"})
+                    return
+                from urllib.parse import parse_qs
+
+                from utils.vision import images as image_library
+                from utils.vision import probe as probe_module
+
+                name = parse_qs(parsed.query).get("name", [""])[0]
+                try:
+                    template = _probe_template(name)
+                except FileNotFoundError as e:
+                    self._send(404, {"ok": False, "error": str(e)})
+                    return
+                except ValueError as e:
+                    self._send(400, {"ok": False, "error": str(e)})
+                    return
+                offset = image_library.search_offset_of(template)
+                strategy = image_library.strategy_of(template)
+                self._send(
+                    200,
+                    {
+                        "ok": True,
+                        "name": name,
+                        "search_offset": list(offset) if offset else None,
+                        "strategy": strategy,
+                        "strategy_label": probe_module.STRATEGY_INFO[strategy][
+                            "label"
+                        ],
+                    },
+                )
             elif path == "/api/stats":
                 cfg = read_config()
                 tree = build_map_tree()
@@ -1489,26 +1559,64 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(413, {"ok": False, "error": "请求体过大"})
                     return
                 body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+                if "offset" in body:
+                    # 前端总是带着这一项：填空表示只看全屏，填数字表示量这个区域
+                    search_offset = _parse_probe_offset(body.get("offset"))
+                else:
+                    # 没传这一项（CLI / 老前端）→ 用登记表里的调用点区域
+                    search_offset = _REGISTERED_SEARCH_OFFSET
                 measurement = run_image_probe(
                     str(body.get("name", "")),
                     float(body.get("threshold", DEFAULT_MATCH)),
+                    search_offset,
                 )
                 # frame 是几 MB 的 ndarray，不进 JSON；预览图单独编码。
                 payload = {
                     key: value for key, value in measurement.items() if key != "frame"
                 }
-                # 两种策略各画一张预览（框位置可能不同），前端并排显示
+                # 每个区域（全屏 / 调用点）× 每种策略各画一张预览（框位置可能不同），
+                # 前端按区域分行、按策略分列展示。
                 previews = {}
-                for item in payload.get("comparisons") or []:
-                    merged = dict(measurement)
-                    for field in ("box", "padded_box", "center"):
-                        merged[field] = item[field]
-                    preview = probe_module.render_preview_png(merged)
-                    previews[item["strategy"]] = (
-                        base64.b64encode(preview).decode("ascii") if preview else None
-                    )
-                primary_preview = previews.get(measurement.get("strategy"))
-                if primary_preview is None and not previews:
+                preview_areas = payload.get("areas") or [
+                    {
+                        "area": "full",
+                        "offset": (0, 0, 0, 0),
+                        "region": measurement["region"],
+                        "comparisons": payload.get("comparisons") or [],
+                    }
+                ]
+                for area in preview_areas:
+                    if measurement.get("frame") is None:
+                        break
+                    if area["area"] == "search":
+                        area_frame, area_region, _ = probe_module.crop_to_offset(
+                            measurement["frame"],
+                            measurement["region"],
+                            area["offset"],
+                        )
+                    else:
+                        area_frame = measurement["frame"]
+                        area_region = measurement["region"]
+                    for item in area["comparisons"]:
+                        merged = dict(measurement)
+                        merged["frame"] = area_frame
+                        merged["region"] = area_region
+                        for field in ("box", "padded_box", "center"):
+                            merged[field] = item[field]
+                        preview = probe_module.render_preview_png(merged)
+                        encoded = (
+                            base64.b64encode(preview).decode("ascii")
+                            if preview
+                            else None
+                        )
+                        previews[f"{area['area']}:{item['strategy']}"] = encoded
+                        # 兼容旧字段：不带区域前缀的就是全屏那张
+                        if area["area"] == "full":
+                            previews[item["strategy"]] = encoded
+                primary_preview = previews.get(
+                    f"full:{measurement.get('strategy')}"
+                )
+                if primary_preview is None:
                     preview = probe_module.render_preview_png(measurement)
                     primary_preview = (
                         base64.b64encode(preview).decode("ascii") if preview else None

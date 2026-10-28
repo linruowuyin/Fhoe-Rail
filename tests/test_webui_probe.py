@@ -129,7 +129,7 @@ class TestProbeRoute:
         assert "正在跑图" in body["error"]
 
     def test_503_when_there_is_no_game_window(self, webui, monkeypatch):
-        def no_window(name, threshold):
+        def no_window(name, threshold, search_offset=None):
             raise RuntimeError("没检测到游戏窗口，先把游戏打开再探针")
 
         monkeypatch.setattr(server, "run_image_probe", no_window)
@@ -140,7 +140,7 @@ class TestProbeRoute:
         assert "没检测到游戏窗口" in body["error"]
 
     def test_404_when_the_picture_cannot_be_read(self, webui, monkeypatch):
-        def unreadable(name, threshold):
+        def unreadable(name, threshold, search_offset=None):
             raise FileNotFoundError(f"图片读不出来：{name}")
 
         monkeypatch.setattr(server, "run_image_probe", unreadable)
@@ -151,7 +151,7 @@ class TestProbeRoute:
         assert "读不出来" in body["error"]
 
     def test_400_for_a_bad_threshold_value(self, webui, monkeypatch):
-        def bad(name, threshold):
+        def bad(name, threshold, search_offset=None):
             raise ValueError("阈值应落在 0~1")
 
         monkeypatch.setattr(server, "run_image_probe", bad)
@@ -175,7 +175,7 @@ class TestProbeRoute:
 
         measurement = dict(MEASUREMENT)
         measurement["frame"] = np.zeros((1080, 1920, 3), np.uint8)
-        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold: measurement)
+        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold, search_offset=None: measurement)
         monkeypatch.setattr(probe_module, "render_preview_png", lambda m: b"\x89PNG-fake")
 
         status, body = request(
@@ -192,7 +192,7 @@ class TestProbeRoute:
     def test_200_without_a_preview_when_there_is_nothing_to_crop(self, webui, monkeypatch):
         from utils.vision import probe as probe_module
 
-        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold: dict(MEASUREMENT))
+        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold, search_offset=None: dict(MEASUREMENT))
         monkeypatch.setattr(probe_module, "render_preview_png", lambda m: None)
 
         status, body = request(f"{webui}/api/probe", "POST", {"name": "transfer.webp"})
@@ -362,6 +362,56 @@ class TestRunImageProbe:
         assert seen["window"] == "win-7788"
 
 
+class TestRunImageProbeSearchOffset:
+    """`run_image_probe` 的搜索区域：没传时取登记表，显式 None 表示只看全屏。"""
+
+    def _stub(self, tmp_path, monkeypatch):
+        from utils.drivers.window import Window
+        from utils.vision import images as image_library
+        from utils.vision import probe as probe_module
+
+        (tmp_path / "probe_target.webp").write_bytes(b"")
+        monkeypatch.setattr(server, "PICTURE_DIR", str(tmp_path))
+        monkeypatch.setattr(
+            image_library, "get_img", lambda path: np.zeros((4, 4, 3), np.uint8)
+        )
+        monkeypatch.setattr(
+            image_library, "search_offset_of", lambda template: (1843, 0, -35, 0)
+        )
+        monkeypatch.setattr(Window, "find_window_hwnd", staticmethod(lambda: 7788))
+        monkeypatch.setattr(Window, "attach", classmethod(lambda cls, hwnd: hwnd))
+        monkeypatch.setattr(
+            "utils.drivers.screen.ScreenSource", lambda window=None: object()
+        )
+        seen = {}
+        monkeypatch.setattr(
+            probe_module, "measure", lambda *args, **kwargs: seen.update(kwargs)
+        )
+        return seen
+
+    def test_uses_the_registered_region_by_default(self, tmp_path, monkeypatch):
+        seen = self._stub(tmp_path, monkeypatch)
+
+        server.run_image_probe("probe_target.webp", 0.9)
+
+        assert seen["search_offset"] == (1843, 0, -35, 0)
+
+    def test_explicit_none_means_full_screen_only(self, tmp_path, monkeypatch):
+        seen = self._stub(tmp_path, monkeypatch)
+
+        server.run_image_probe("probe_target.webp", 0.9, None)
+
+        assert seen["search_offset"] is None
+
+    def test_an_explicit_region_overrides_the_registered_one(
+        self, tmp_path, monkeypatch
+    ):
+        seen = self._stub(tmp_path, monkeypatch)
+
+        server.run_image_probe("probe_target.webp", 0.9, (10, 20, -30, -40))
+
+        assert seen["search_offset"] == (10, 20, -30, -40)
+
 class TestProbeTwoStrategies:
     def test_returns_both_comparisons_and_one_preview_each(self, webui, monkeypatch):
         from utils.vision import probe as probe_module
@@ -375,7 +425,7 @@ class TestProbeTwoStrategies:
             {**MEASUREMENT, "strategy": "shape", "label": "轮廓识别（形状）",
              "description": "", "primary": True},
         ]
-        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold: measurement)
+        monkeypatch.setattr(server, "run_image_probe", lambda name, threshold, search_offset=None: measurement)
         drawn = []
 
         def fake_preview(merged):
@@ -388,6 +438,179 @@ class TestProbeTwoStrategies:
 
         assert status == 200
         assert [item["strategy"] for item in body["comparisons"]] == ["color", "shape"]
-        assert set(body["previews"]) == {"color", "shape"}
+        assert set(body["previews"]) == {
+            "color",
+            "shape",
+            "full:color",
+            "full:shape",
+        }
         assert base64.b64decode(body["preview_png_b64"]) == b"\x89PNG-fake"
         assert len(drawn) == 2, "每种策略各画一张预览（框的位置可能不同）"
+
+
+class TestProbeSearchAreaRoute:
+    """搜索区域从 WebUI 进来：显式 offset / 不传 / 传空 / 参数非法。"""
+
+    @pytest.fixture(autouse=True)
+    def dev_on(self, monkeypatch):
+        monkeypatch.setattr(server, "read_config", lambda: {"webui_dev_mode": True})
+        monkeypatch.setattr(server, "run_status", lambda: {"running": False})
+
+    def capture(self, monkeypatch):
+        from utils.vision import probe as probe_module
+
+        seen = {}
+        measurement = dict(MEASUREMENT)
+        measurement["frame"] = np.zeros((1080, 1920, 3), np.uint8)
+        measurement["areas"] = []
+
+        def fake(name, threshold, search_offset=None):
+            seen["search_offset"] = search_offset
+            return measurement
+
+        monkeypatch.setattr(server, "run_image_probe", fake)
+        monkeypatch.setattr(probe_module, "render_preview_png", lambda m: b"png")
+        return seen
+
+    def test_explicit_offset_is_passed_through(self, webui, monkeypatch):
+        seen = self.capture(monkeypatch)
+
+        status, _ = request(
+            f"{webui}/api/probe",
+            "POST",
+            {"name": "setting_icon.webp", "offset": [1843, 0, -35, 0]},
+        )
+
+        assert status == 200
+        assert seen["search_offset"] == (1843, 0, -35, 0)
+
+    def test_absent_offset_falls_back_to_the_registered_region(self, webui, monkeypatch):
+        seen = self.capture(monkeypatch)
+
+        status, _ = request(f"{webui}/api/probe", "POST", {"name": "setting_icon.webp"})
+
+        assert status == 200
+        assert seen["search_offset"] is server._REGISTERED_SEARCH_OFFSET
+
+    def test_an_empty_offset_means_full_screen_only(self, webui, monkeypatch):
+        seen = self.capture(monkeypatch)
+
+        status, _ = request(
+            f"{webui}/api/probe",
+            "POST",
+            {"name": "setting_icon.webp", "offset": None},
+        )
+
+        assert status == 200
+        assert seen["search_offset"] is None
+
+    @pytest.mark.parametrize(
+        "bad",
+        [[1, 2, 3], [1, 2, 3, 4, 5], "1843,0,-35", [1, 2, 3, "x"]],
+        ids=["少一个", "多一个", "字符串", "非数字"],
+    )
+    def test_a_malformed_offset_is_400(self, webui, monkeypatch, bad):
+        capture = self.capture(monkeypatch)
+
+        status, body = request(
+            f"{webui}/api/probe", "POST", {"name": "setting_icon.webp", "offset": bad}
+        )
+
+        assert status == 400
+        assert "4 个整数" in body["error"]
+        assert "search_offset" not in capture, "参数不对就不该去抓帧"
+
+    def test_previews_are_split_by_area_and_strategy(self, webui, monkeypatch):
+        from utils.vision import probe as probe_module
+
+        measurement = dict(MEASUREMENT)
+        measurement["frame"] = np.zeros((1080, 1920, 3), np.uint8)
+        measurement["strategy"] = "shape"
+        full_comparisons = [
+            {**MEASUREMENT, "strategy": strategy, "label": strategy,
+             "description": "", "primary": strategy == "shape"}
+            for strategy in ("color", "shape")
+        ]
+        search_comparisons = [
+            {**MEASUREMENT, "strategy": strategy, "label": strategy,
+             "description": "", "primary": strategy == "shape"}
+            for strategy in ("color", "shape")
+        ]
+        measurement["comparisons"] = full_comparisons
+        measurement["areas"] = [
+            {"area": "full", "label": "全屏", "offset": (0, 0, 0, 0),
+             "region": (0, 0, 1920, 1080), "comparisons": full_comparisons,
+             "error": None},
+            {"area": "search", "label": "调用点", "offset": (1843, 0, -35, 0),
+             "region": (1843, 0, 1885, 1080), "comparisons": search_comparisons,
+             "error": None},
+        ]
+        monkeypatch.setattr(
+            server, "run_image_probe", lambda name, threshold, search_offset=None: measurement
+        )
+        regions = []
+
+        def fake_preview(merged):
+            regions.append(merged["region"])
+            return b"\x89PNG-fake"
+
+        monkeypatch.setattr(probe_module, "render_preview_png", fake_preview)
+
+        status, body = request(
+            f"{webui}/api/probe",
+            "POST",
+            {"name": "setting_icon.webp", "offset": [1843, 0, -35, 0]},
+        )
+
+        assert status == 200
+        assert set(body["previews"]) == {
+            "full:color",
+            "full:shape",
+            "search:color",
+            "search:shape",
+            "color",
+            "shape",
+        }
+        assert body["previews"]["search:color"] == base64.b64encode(
+            b"\x89PNG-fake"
+        ).decode("ascii")
+        assert regions[:2] == [(0, 0, 1920, 1080)] * 2
+        assert regions[2:] == [(1843, 0, 1885, 1080)] * 2
+        assert body["areas"][1]["area"] == "search"
+
+
+class TestProbeMetaRoute:
+    @pytest.fixture(autouse=True)
+    def dev_on(self, monkeypatch):
+        monkeypatch.setattr(server, "read_config", lambda: {"webui_dev_mode": True})
+
+    def test_dev_mode_off_is_403(self, webui, monkeypatch):
+        monkeypatch.setattr(server, "read_config", lambda: {})
+
+        status, _ = request(f"{webui}/api/probe/meta?name=setting_icon.webp")
+
+        assert status == 403
+
+    def test_returns_the_registered_region_and_strategy(self, webui):
+        status, body = request(f"{webui}/api/probe/meta?name=setting_icon.webp")
+
+        assert status == 200
+        assert body["search_offset"] == [1843, 0, -35, 0]
+        assert body["strategy"] == "shape"
+        assert body["strategy_label"]
+
+    def test_an_asset_without_a_region_returns_null(self, webui):
+        status, body = request(f"{webui}/api/probe/meta?name=transfer.webp")
+
+        assert status == 200
+        assert body["search_offset"] is None
+
+    def test_a_missing_picture_is_404(self, webui):
+        status, _ = request(f"{webui}/api/probe/meta?name=ghost.webp")
+
+        assert status == 404
+
+    def test_a_bad_name_is_400(self, webui):
+        status, _ = request(f"{webui}/api/probe/meta?name=../x.webp")
+
+        assert status == 400

@@ -116,6 +116,52 @@ class TestRegistry:
             assets.path("no_such_asset")
 
 
+class TestSearchOffset:
+    """调用点搜索区域登记在 `Asset.search_offset` —— 运行时点击与探针共用这一份。"""
+
+    def test_registered_offset_is_returned(self):
+        assert assets.search_offset("setting_icon") == (1843, 0, -35, 0)
+
+    def test_assets_without_a_region_return_none(self):
+        assert assets.search_offset("transfer") is None
+
+    def test_lookup_by_path_normalizes_separators(self):
+        path = assets.path("setting_icon")
+
+        assert assets.search_offset_for_path(path) == (1843, 0, -35, 0)
+        assert assets.search_offset_for_path(path.replace("/", "\\")) == (
+            1843,
+            0,
+            -35,
+            0,
+        )
+
+    def test_lookup_by_absolute_path_finds_the_asset(self):
+        """WebUI 探针按 `PICTURE_DIR`（绝对路径）加载模板，反查也要认得回来。"""
+        absolute = os.path.abspath(assets.path("setting_icon"))
+
+        assert assets.search_offset_for_path(absolute) == (1843, 0, -35, 0)
+        assert assets.strategy_for_path(absolute) == assets.MATCH_SHAPE
+
+    def test_an_unregistered_path_has_no_region(self):
+        assert assets.search_offset_for_path("./picture/nope.webp") is None
+
+    def test_unknown_key_raises(self):
+        with pytest.raises(KeyError):
+            assets.search_offset("no_such_asset")
+
+    def test_every_registered_region_is_four_integers(self):
+        invalid = {
+            key: asset.search_offset
+            for key, asset in assets.ASSETS.items()
+            if asset.search_offset is not None
+            and (
+                len(asset.search_offset) != 4
+                or not all(isinstance(v, int) for v in asset.search_offset)
+            )
+        }
+        assert not invalid, f"search_offset 必须是 4 个整数（四边增量）：{invalid}"
+
 class TestNoUnregisteredLiterals:
     def test_bare_picture_literals_only_shrink(self):
         counts = _literal_counts()
