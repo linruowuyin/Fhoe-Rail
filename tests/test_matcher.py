@@ -373,8 +373,12 @@ class TestShapeMatching:
     def test_setting_other_is_registered_for_shape_matching(self, template):
         assert image_library.strategy_of(template) == assets.MATCH_SHAPE
 
-    def test_other_assets_stay_on_color_matching(self, repo_root):
+    def test_setting_icon_is_registered_for_shape_matching(self, repo_root):
         icon = image_library.get_img(assets.path("setting_icon"))
+        assert image_library.strategy_of(icon) == assets.MATCH_SHAPE
+
+    def test_other_assets_stay_on_color_matching(self, repo_root):
+        icon = image_library.get_img(assets.path("setting_yes"))
         assert image_library.strategy_of(icon) == assets.MATCH_COLOR
 
     def test_shape_features_are_uint8_gradient_magnitude(self, template):

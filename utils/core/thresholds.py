@@ -149,8 +149,11 @@ DREAM_BUILD = 0.90
 # 设置菜单（自动使用秘技消耗品）
 # ---------------------------------------------------------------------------
 
-#: `setting_icon.png`
-SETTING_ICON = 0.98
+#: `setting_icon.png`：设置菜单入口。**形状匹配**（与 `SETTING_OPTION` 同一套
+#: 梯度幅值 + CCOEFF）：入口图标的底色同样随菜单模糊背景变化。
+#: 0.90 来自用户指定；合成背景实测正样本 0.75–0.95、负样本（另一个图标）≤0.28，
+#: 实机请用 `tools/match_probe.py setting_icon` 复核，若低于阈值再按实测调整。
+SETTING_ICON = 0.90
 
 #: `setting_other.png`：设置菜单里的「其他设置」页签。**形状匹配**（见
 #: `vision/matcher.py::Matcher.shape_features`）：底色随游戏内模糊背景变化，

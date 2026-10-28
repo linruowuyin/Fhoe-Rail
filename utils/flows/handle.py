@@ -268,7 +268,13 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(2)
 
             # 通过识图，选择设置
-            if not self.img.click_target(assets.path("setting_icon"), SETTING_ICON):
+            # 只搜右侧窄条（x 1843–1885）：设置入口固定在右边，主界面其它位置
+            # 有长得像的图标，全屏搜索会误点。
+            if not self.img.click_target(
+                assets.path("setting_icon"),
+                SETTING_ICON,
+                offset=(1843, 0, -35, 0),
+            ):
                 log.warning("未找到设置图标")
                 return False
             time.sleep(1)

@@ -169,7 +169,12 @@ ASSETS = {
     "orientation_7": Asset("./picture/orientation/orientation_7.webp", CATEGORY_ORIENTATION),
     "loc_arrow": Asset("./picture/orientation/loc_arrow.webp", CATEGORY_ORIENTATION, "小地图箭头"),
     # --- 设置菜单 ----------------------------------------------------------
-    "setting_icon": Asset("./picture/ui/setting_icon.webp", CATEGORY_SETTING),
+    "setting_icon": Asset(
+        "./picture/ui/setting_icon.webp",
+        CATEGORY_SETTING,
+        "设置菜单入口（底色随模糊背景变化，用形状匹配）",
+        match=MATCH_SHAPE,
+    ),
     "setting_other": Asset(
         "./picture/ui/setting_other.webp",
         CATEGORY_SETTING,
