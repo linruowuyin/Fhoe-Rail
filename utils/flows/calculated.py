@@ -161,7 +161,10 @@ class Calculated:
         `CustomException` 终止本轮 —— 对应原 TODO「黄泉情况下必须为黄泉角色」。
         """
         log.info("开始判断1号位")
-        image, *_ = self.img.take_screenshot(offset=(1670, 339, -160, -739))
+        # 头像下方的颜色指示条（区域登记在 assets.SEARCH_REGIONS）
+        image, *_ = self.img.take_screenshot(
+            offset=assets.region("first_role_indicator")
+        )
         if color.any_pixel_in_ranges(image, color.FIRST_ROLE_RANGES):
             KeyboardEvent.keyboard_press("1")
             log.info("设置1号位为跑图角色")

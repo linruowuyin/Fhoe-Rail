@@ -1,20 +1,21 @@
-# Puzzle-abandon dialog fixture
+# 解谜放弃弹窗测试样本
 
-`dialog.png` is a 1000x400 crop at (460, 350) of a real Chinese 1920x1080
-Star Rail frame captured on 2026-10-02. It contains the “是否放弃游玩？”
-confirmation from 雅努斯密径. The crop excludes the UID and desktop overlays.
-The runtime templates in `picture/puzzle_exit_*.png` come from this frame.
+`dialog.png` 是从 2026-10-02 一张真实的 1920×1080 中文《崩坏：星穹铁道》截图里
+按 `(460, 350)` 裁出的 1000×400 区域，包含雅努斯密径的「是否放弃游玩？」确认框。
+裁剪时去掉了 UID 和桌面浮层。`picture/puzzle_exit_*.png` 里的运行时模板就来自这张图。
 
-Probe results using `TM_CCOEFF_NORMED` in the production search regions:
+用 `TM_CCOEFF_NORMED` 在生产搜索区域里跑出的探针结果：
 
-| Sample | Prompt | Confirm button |
+| 样本 | 提示语 | 确认按钮 |
 | --- | ---: | ---: |
-| Captured dialog | 1.000 | 1.000 |
-| Same dialog with prompt erased | 0.243 | 1.000 |
-| Same dialog with confirm erased | 1.000 | 0.447 |
-| Puzzle screen before opening the dialog | 0.147 | 0.265 |
+| 原始弹窗 | 1.000 | 1.000 |
+| 同一弹窗擦掉提示语 | 0.243 | 1.000 |
+| 同一弹窗擦掉确认按钮 | 1.000 | 0.447 |
+| 打开弹窗前的解谜画面 | 0.147 | 0.265 |
 
-Both thresholds are 0.90. The two erased negatives and the wrong-side button
-case are generated from the captured dialog in `tests/test_puzzle_exit.py`.
-They are synthetic lookalikes, not additional independent game captures.
-Other languages and resolutions are not covered by this fixture.
+两个阈值都是 0.90。擦除提示语、擦除按钮、把确认挪到取消侧这三种负样本都是
+`tests/test_puzzle_exit.py` 从这张真实弹窗合成的 —— 它们是“看起来像但不是”的
+合成样本，不是另外采集的独立游戏画面。
+
+这份样本**不覆盖**其它语言、其它分辨率或游戏更新后的渲染差异；新增独立截图时
+请补进这张表，并重新确认 0.90 的余量。

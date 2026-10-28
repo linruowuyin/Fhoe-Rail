@@ -6,7 +6,7 @@
             "map": 1
         },
         {
-           "picture\\orientation_1.png": 1.5
+            "picture\\orientation_1.png": 1.5
         },
         {
             "picture\\orientation_5.png": 1.5
@@ -22,20 +22,20 @@
         }
     ],
     "map": [
-    {
-      "w": 1.5445
-    },
-    {
-      "d": 5.15
-    },
-    {
-      "w": 2.455
-    },
-    {
-      "d": 0.608
-    },
-    {
-      "fighting": 1
-    }
-  ]
+        {
+            "w": 1.5445
+        },
+        {
+            "d": 5.15
+        },
+        {
+            "w": 2.455
+        },
+        {
+            "d": 0.608
+        },
+        {
+            "fighting": 1
+        }
+    ]
 }

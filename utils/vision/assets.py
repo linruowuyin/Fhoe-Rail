@@ -8,6 +8,8 @@
     这里只登记**代码直接引用**的图。地图 JSON 里的 `picture\\xxx.png` 是地图
     作者/录制器写进数据的「地图点位」资产（633 张地图里几千处引用），不属于
     代码资源，不在这里逐条登记 —— 它们由 `core/schema.py` 与地图目录管理。
+    例外：点位图需要**按路径查匹配策略**时（如筑梦机关检查的轮廓识别），
+    策略表只认这里，必须补一条（`strategy_for_path` 反查不到就不会生效）。
 
 用法
     from utils.vision import assets
@@ -89,27 +91,95 @@ CATEGORIES = {
 }
 
 
-#: 匹配策略：颜色（默认，整图 CCORR）/ 形状（梯度幅值 + CCOEFF）。
-#: 底色会随游戏内背景（高斯模糊）变化的图标用 `MATCH_SHAPE` —— 只比轮廓，
-#: 不看颜色。详见 `vision/matcher.py::Matcher.shape_features`。
+#: 匹配策略：颜色（默认，整图 CCORR）/ 形状（梯度幅值 + CCOEFF）/
+#: 原图 CCOEFF。底色会随游戏内背景（高斯模糊）变化的图标用 `MATCH_SHAPE` ——
+#: 只比轮廓，不看颜色。详见 `vision/matcher.py::Matcher.shape_features`。
+#:
+#: `MATCH_COLOR_CCOEFF` 是第三种：不转梯度，直接对 BGR 原图做 CCOEFF（减均值）。
+#: 给「文字/对话框」这类整块区域亮度会变、但 CCORR 负样本余量不够的模板用 ——
+#: 解谜放弃弹窗就是：擦掉文字的负样本 CCORR 仍有 0.92/0.91，CCOEFF 只有 0.24/0.45。
+#: ⚠ 阈值必须按**这个方法**实测，不能拿 CCORR 的阈值直接套。
 MATCH_COLOR = "color"
 MATCH_SHAPE = "shape"
+MATCH_COLOR_CCOEFF = "color_ccoeff"
 
 
 class Asset(NamedTuple):
-    """一条图片资源：路径 + 分类 +（可选）备注 + 匹配策略。"""
+    """一条图片资源：路径 + 分类 + 备注 + 匹配策略 + 调用点搜索区域。"""
 
     path: str
     category: str
     note: str = ""
     match: str = MATCH_COLOR
+    #: 调用点实际使用的 `take_screenshot(offset=...)`（四边增量，不是宽高）。
+    #: `None` 表示调用点全屏搜索。登记后探针会用同一份区域再量一次「调用点」结果。
+    search_offset: tuple | None = None
+
+
+#: 没有对应模板的搜索区域：动态资源（地图 JSON 里的 `1floor_*` / `fanhui_*`
+#: 等点位图）与非模板检测（色域判定、HSV 取箭头、动态截图的行动条）。
+#: 值同样是 `take_screenshot(offset=...)` 的四边增量（左上为正、右下为负）。
+#:
+#: 有模板的搜索区域请登记到 `Asset.search_offset` —— 那里探针能直接读到；
+#: 这张表只收「探针没有模板可挂」的区域。
+SEARCH_REGIONS = {
+    #: 1 号位头像下方的颜色指示条（`calculated.first_role_check` 按 1 前判断）
+    "first_role_indicator": (1670, 339, -160, -739),
+    #: 战斗左侧行动条（动态截图，`flows/combat.py` 的自动战斗兜底识别）
+    "action_bar": (40, 20, -1725, -800),
+    #: 楼层按钮列（动态资源：`1floor_*` / `2floor_*` …）
+    "floor_button": (30, 740, -1820, -70),
+    #: 右上角返回（动态资源：`fanhui_*`）
+    "back_button": (1660, 100, -40, -910),
+    #: 小地图（`vision/arrow.py` 按 HSV 取箭头，没有模板）
+    "mini_map": (125, 136, -1765, -914),
+}
+
+
+def region(key):
+    """命名搜索区域 → `take_screenshot(offset=...)` 的四边增量。
+
+    未登记时抛 `KeyError`：拼错 key 要立刻炸，而不是让全屏搜索悄悄跑下去。
+    """
+    try:
+        return SEARCH_REGIONS[key]
+    except KeyError:
+        raise KeyError(
+            f"未登记的搜索区域：{key!r}（请先在 utils/vision/assets.py 登记）"
+        ) from None
+
+
+#: 绝对搜索区域：1920×1080 帧内坐标 `(left, top, right, bottom)`。
+#: **不是** `take_screenshot` 的四边增量，不能互相换算着用。
+#:
+#: 只给「同一帧上多个模板必须同时命中」的检测器用（解谜放弃弹窗的提示语 +
+#: 确认按钮）：拆成两次 `take_screenshot(offset=)` 会各抓一帧，两次之间画面一变
+#: 就可能把两个界面的东西拼在一起（R10）。普通单模板检测请用
+#: `Asset.search_offset` / `SEARCH_REGIONS`。
+ABSOLUTE_REGIONS = {
+    "puzzle_exit_prompt": (576, 432, 1344, 616),
+    "puzzle_exit_confirm": (960, 616, 1440, 756),
+}
+
+
+def bounds(key):
+    """命名绝对区域 → 帧内 `(left, top, right, bottom)`。未登记时抛 `KeyError`。"""
+    try:
+        return ABSOLUTE_REGIONS[key]
+    except KeyError:
+        raise KeyError(
+            f"未登记的绝对搜索区域：{key!r}（请先在 utils/vision/assets.py 登记）"
+        ) from None
 
 
 #: 登记表。key 用小写蛇形，与文件 stem 对得上即可。
 ASSETS = {
     # --- 主界面 / 加载 / 脱离战斗 -----------------------------------------
     "finish_fighting": Asset(
-        "./picture/ui/finish_fighting.webp", CATEGORY_MAIN_UI, "主界面判定（Img.main_ui）"
+        "./picture/ui/finish_fighting.webp",
+        CATEGORY_MAIN_UI,
+        "主界面判定（Img.main_ui）",
+        search_offset=(0, 0, -1630, -800),
     ),
     "finish_fighting2": Asset("./picture/ui/finish_fighting2.webp", CATEGORY_MAIN_UI),
     "finish_fighting2_1": Asset(
@@ -124,9 +194,17 @@ ASSETS = {
     "doubt": Asset("./picture/ui/doubt.webp", CATEGORY_MAIN_UI, "疑问气泡（附近有敌人）"),
     "warn": Asset("./picture/ui/warn.webp", CATEGORY_MAIN_UI),
     "battle_esc_check": Asset(
-        "./picture/ui/battle_esc_check.webp", CATEGORY_MAIN_UI, "战斗中按 ESC 的确认画面"
+        "./picture/ui/battle_esc_check.webp",
+        CATEGORY_MAIN_UI,
+        "战斗中按 ESC 的确认画面",
+        search_offset=(0, 0, -1800, -970),
     ),
-    "switch_run": Asset("./picture/ui/switch_run.webp", CATEGORY_MAIN_UI, "疾跑图标"),
+    "switch_run": Asset(
+        "./picture/ui/switch_run.webp",
+        CATEGORY_MAIN_UI,
+        "疾跑图标",
+        search_offset=(1720, 930, 0, 0),
+    ),
     "map_load": Asset("./picture/map_ui/map_load.webp", CATEGORY_MAIN_UI, "地图加载中"),
     "round": Asset("./picture/ui/round.webp", CATEGORY_MAIN_UI, "必定不在战斗中"),
     # --- 战斗 --------------------------------------------------------------
@@ -138,7 +216,12 @@ ASSETS = {
     "defeat": Asset("./picture/ui/defeat.webp", CATEGORY_COMBAT),
     # --- 购买 / 零食 / 弹窗 ------------------------------------------------
     "eat": Asset("./picture/ui/eat.webp", CATEGORY_PURCHASE, "秘技点不足对话框"),
-    "qiqiao": Asset("./picture/ui/qiqiao.webp", CATEGORY_PURCHASE, "奇巧零食图标"),
+    "qiqiao": Asset(
+        "./picture/ui/qiqiao.webp",
+        CATEGORY_PURCHASE,
+        "奇巧零食图标",
+        search_offset=(900, 300, -400, -300),
+    ),
     "qiqiao_lab": Asset("./picture/ui/qiqiao_lab.webp", CATEGORY_PURCHASE),
     "cancel": Asset("./picture/ui/cancel.webp", CATEGORY_PURCHASE),
     "round_disable": Asset("./picture/ui/round_disable.webp", CATEGORY_PURCHASE, "无法购买"),
@@ -154,9 +237,45 @@ ASSETS = {
     "f_goto": Asset("./picture/f_icon/F_Goto.webp", CATEGORY_F_ICON),
     # --- 地图 / 星轨航图 ---------------------------------------------------
     "transfer": Asset("./picture/map_ui/transfer.webp", CATEGORY_MAP_UI, "传送锚点"),
-    "contraction": Asset("./picture/map_ui/contraction.webp", CATEGORY_MAP_UI, "地图收缩图标"),
-    "map_back": Asset("./picture/map_ui/map_back.webp", CATEGORY_MAP_UI, "地图返回按钮"),
-    "kaituoli_1": Asset("./picture/map_ui/kaituoli_1.webp", CATEGORY_MAP_UI, "星轨航图"),
+    "contraction": Asset(
+        "./picture/map_ui/contraction.webp",
+        CATEGORY_MAP_UI,
+        "地图收缩图标",
+        search_offset=(530, 960, -1050, -50),
+    ),
+    "map_back": Asset(
+        "./picture/map_ui/map_back.webp",
+        CATEGORY_MAP_UI,
+        "地图返回按钮",
+        search_offset=(1830, 0, 0, -975),
+    ),
+    "kaituoli_1": Asset(
+        "./picture/map_ui/kaituoli_1.webp",
+        CATEGORY_MAP_UI,
+        "星轨航图",
+        search_offset=(1580, 0, 0, -910),
+    ),
+    # 筑梦边境机关检查：地图 JSON 引用的点位图，**为了匹配策略而登记**。
+    # 策略表只认登记表（`strategy_for_path` 按物理路径反查），不登记这三条
+    # `MATCH_SHAPE` 就不会生效。阈值见 `core/thresholds.py::DREAM_MACHINE`。
+    "check_4-1_point_1": Asset(
+        "./picture/map_points/4/check_4-1_point_1.webp",
+        CATEGORY_MAP_UI,
+        "筑梦边境机关检查 1（地图点位，轮廓识别）",
+        match=MATCH_SHAPE,
+    ),
+    "check_4-1_point_2": Asset(
+        "./picture/map_points/4/check_4-1_point_2.webp",
+        CATEGORY_MAP_UI,
+        "筑梦边境机关检查 2（地图点位，轮廓识别）",
+        match=MATCH_SHAPE,
+    ),
+    "check_4-1_point_3": Asset(
+        "./picture/map_points/4/check_4-1_point_3.webp",
+        CATEGORY_MAP_UI,
+        "筑梦边境机关检查 3（地图点位，轮廓识别）",
+        match=MATCH_SHAPE,
+    ),
     # --- 视角 / 小地图 -----------------------------------------------------
     "screenshot_arrow": Asset(
         "./picture/orientation/screenshot_arrow.webp", CATEGORY_ORIENTATION, "视角校准箭头"
@@ -169,7 +288,13 @@ ASSETS = {
     "orientation_7": Asset("./picture/orientation/orientation_7.webp", CATEGORY_ORIENTATION),
     "loc_arrow": Asset("./picture/orientation/loc_arrow.webp", CATEGORY_ORIENTATION, "小地图箭头"),
     # --- 设置菜单 ----------------------------------------------------------
-    "setting_icon": Asset("./picture/ui/setting_icon.webp", CATEGORY_SETTING),
+    "setting_icon": Asset(
+        "./picture/ui/setting_icon.webp",
+        CATEGORY_SETTING,
+        "设置菜单入口（底色随模糊背景变化，用形状匹配）",
+        match=MATCH_SHAPE,
+        search_offset=(1843, 0, -35, 0),
+    ),
     "setting_other": Asset(
         "./picture/ui/setting_other.webp",
         CATEGORY_SETTING,
@@ -202,10 +327,16 @@ ASSETS = {
     ),
     # --- 解谜 --------------------------------------------------------------
     "puzzle_exit_prompt": Asset(
-        "./picture/ui/puzzle_exit_prompt.png", CATEGORY_PUZZLE, "放弃游玩？提示"
+        "./picture/ui/puzzle_exit_prompt.png",
+        CATEGORY_PUZZLE,
+        "放弃游玩？提示",
+        match=MATCH_COLOR_CCOEFF,
     ),
     "puzzle_exit_confirm": Asset(
-        "./picture/ui/puzzle_exit_confirm.png", CATEGORY_PUZZLE, "放弃游玩确认按钮"
+        "./picture/ui/puzzle_exit_confirm.png",
+        CATEGORY_PUZZLE,
+        "放弃游玩确认按钮",
+        match=MATCH_COLOR_CCOEFF,
     ),
 }
 
@@ -225,8 +356,18 @@ def path(key):
 
 
 def _path_key(path):
-    """路径归一化：反斜杠/正斜杠、`.`/`..` 都抹平，用作策略表的键。"""
-    return os.path.normpath(path).replace("\\", "/")
+    """路径归一化：反斜杠/正斜杠、`.`/`..` 都抹平，用作策略表的键。
+
+    绝对路径会先剥到 `picture/` 这一段：WebUI 的探针按 `PICTURE_DIR`（绝对路径）
+    扫描并加载模板，`images.path_of` 反查回来也是绝对路径 —— 不归一化的话
+    `strategy_for_path` / `search_offset_for_path` 会查不到，模板被当成未登记。
+    """
+    key = os.path.normpath(path.replace("\\", "/")).replace("\\", "/")
+    marker = "/picture/"
+    index = key.rfind(marker)
+    if index != -1:
+        key = key[index + 1 :]
+    return key
 
 
 #: 登记路径 → 匹配策略。图片加载层反查模板身份时用（R13：状态属于读取方）。
@@ -237,6 +378,22 @@ def strategy_for_path(path):
     """图片路径 → 匹配策略；未登记的图片按颜色匹配。"""
     asset = ASSET_BY_PATH.get(_path_key(path))
     return asset.match if asset is not None else MATCH_COLOR
+
+
+def search_offset(key):
+    """登记 key → 调用点搜索区域（`take_screenshot` 的四边增量）；没登记时 None。"""
+    try:
+        return ASSETS[key].search_offset
+    except KeyError:
+        raise KeyError(
+            f"未登记的图片资源：{key!r}（请先在 utils/vision/assets.py 登记）"
+        ) from None
+
+
+def search_offset_for_path(path):
+    """图片路径 → 调用点搜索区域；未登记或没登记区域时 None。"""
+    asset = ASSET_BY_PATH.get(_path_key(path))
+    return asset.search_offset if asset is not None else None
 
 
 def is_picture_ref(value):

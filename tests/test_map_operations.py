@@ -110,7 +110,7 @@ class MapStub:
 
     def _record(self, name):
         def capture(*args, **kwargs):
-            self.calls.append((name, args))
+            self.calls.append((name, args, kwargs))
 
         return capture
 
@@ -528,6 +528,40 @@ class TestProcessMap:
 
         assert any("不存在" in r["message"] for r in log_records)
 
+    def test_monthly_pass_check_precedes_silver_wolf_settings(self, operations):
+        """回归 #450：月卡领取界面 ESC 关不掉，月卡检查必须先于设置流程。
+
+        银狼版本一进 process_map 就做 auto_use_technique_consumable，第一步是
+        back_to_main（只按 ESC）；停在「今日补给」界面时会空等 120 秒后中止。
+        所以月卡检查必须排在这段设置之前。
+        """
+        order = []
+
+        class RecordingMonthlyPass:
+            def monthly_pass_check(self):
+                order.append("monthly_pass")
+
+        class RecordingLv999:
+            def ensure_settings(self, handle):
+                order.append("ensure_settings")
+                return True
+
+        operations.map_info = SimpleNamespace(
+            map_version="SilverWolfLv999", map_list=[]
+        )
+        operations.cfg = SimpleNamespace(
+            CONFIG_FILE_NAME="config.json",
+            read_json_file=lambda *args, **kwargs: {
+                "auto_use_technique_consumable": True
+            },
+        )
+        operations.monthly_pass = RecordingMonthlyPass()
+        operations.lv999 = RecordingLv999()
+
+        operations.process_map("1-1_0")
+
+        assert order == ["monthly_pass", "ensure_settings"]
+
     def test_silver_wolf_settings_failure_aborts(self, operations):
         """银狼版本设置失败必须终止，交给 fhoe.py 顶层发通知。"""
         operations.map_info = SimpleNamespace(
@@ -812,6 +846,18 @@ class TestStartStepDispatch:
     def test_dream_machine_check_success_is_not_recorded(self, run):
         result = run({"picture\\check_4-1_point.png": 1}, click_ok=True)
         assert result.statu.error_check_point is False
+
+    def test_dream_machine_search_threshold_floor_matches_the_start_value(self, run):
+        """轮廓识别的 0.85 低于 find_transfer_point 默认下限 0.93。
+
+        下限不跟着传的话，阈值衰减那一步会被 `max(min_threshold, …)` 抬回 0.93，
+        比第一圈的 0.85 还高 —— 轮廓识别等于只生效一轮。
+        """
+        result = run({"picture\\check_4-1_point_1.png": 1})
+
+        kwargs = result.map.called("find_transfer_point")[0][2]
+        assert kwargs["threshold"] == pytest.approx(0.85)
+        assert kwargs["min_threshold"] == pytest.approx(0.85)
 
     def test_teleport_click_counter_increments(self, run):
         assert run({"picture\\unknown_point.png": 1}).statu.teleport_click_count == 1

@@ -140,6 +140,7 @@ Fhoe-Rail/
 │  │  ├─ viewer.py            #   调试图片窗口（cv2 显示接口）
 │  │  ├─ assets.py            #   图片资源登记表（R25）
 │  │  ├─ blackscreen.py       #   黑屏判定
+│  │  ├─ puzzle_exit.py       #   解谜放弃弹窗识别（两区域 AND，纯函数）
 │  │  ├─ get_angle.py         #   箭头朝向
 │  │  └─ mini_asu.py          #   小地图方向
 │  ├─ flows/                  # 【编排层】
@@ -151,6 +152,8 @@ Fhoe-Rail/
 │  │  ├─ map.py               #   地图拖动 / 传送点查找
 │  │  ├─ calculated.py        #   加载检测 / 购买 / 1 号位
 │  │  ├─ monthly_pass.py      #   月卡
+│  │  ├─ puzzle_exit.py       #   解谜放弃弹窗（pre_esc 的一项）
+│  │  ├─ pre_esc.py           #   ESC 关不掉的界面：统一识别 + 修复表（R27）
 │  │  └─ report.py            #   运行报告
 │  └─ ui/                     # 顶层（与 flows 平级）：交互入口
 │     ├─ setting.py           #   设置菜单
@@ -462,7 +465,21 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
 - **底色会变的图标用形状匹配**：登记时标 `match=MATCH_SHAPE`（范例：`setting_other`，
   底色随设置菜单的模糊背景变化）。匹配器先把帧和模板转成梯度幅值再跑 CCOEFF，
   只看轮廓、不看颜色；`match_probe` 的报告会显示「匹配方式」。新增同类图标时优先
-  用形状匹配，阈值按 probe 在实机上重新标定
+  用形状匹配，阈值按 probe 在实机上重新标定。
+  文字/对话框类如果 CCORR 的负样本余量不够，用 `MATCH_COLOR_CCOEFF`（原图不转
+  梯度、直接减均值相关），阈值按该方法实测 —— 解谜放弃弹窗就是（擦除文字的
+  负样本 CCORR 0.92 / CCOEFF 0.24）
+- **调用点搜索区域也登记在这里**：有模板的进 `Asset.search_offset`（四边增量，与
+  `take_screenshot(offset=...)` 同一口径；`None` = 全屏），运行时
+  `click_target(..., offset=assets.search_offset(key))` 与探针读的是同一份；
+  没有模板的（地图 JSON 的动态 `floor`/`fanhui` 图、色域、HSV 小地图、动态行动条）
+  进 `SEARCH_REGIONS`，用 `assets.region(name)` 引用。**同一帧上多个模板必须
+  联合校验**的绝对区域（帧内 `left, top, right, bottom`，不是四边增量）进
+  `ABSOLUTE_REGIONS`，用 `assets.bounds(name)` 引用（范例：解谜弹窗的提示语 +
+  确认按钮，拆分截图会各抓一帧）。`tests/test_assets.py` 扫描 `utils/` 的非零
+  `offset=` 字面量，只允许登记表自身有。
+  WebUI 探针可以临时改搜索区域，同时量「全屏」与「调用点」两组结果 ——
+  全屏分数好看不代表调用点找得到（范例：`setting_icon`）
 - `tests/test_assets.py` 校验每条路径存在、key/路径不重复，并扫描 `utils/` 的
   裸路径字面量（棘轮，只减不增；数据契约与工具文案在名单里注明原因）
 - 地图 JSON 里的 `picture\xxx.png` 是**资源 ID**，不是物理路径：`images.resolve_path`
@@ -502,6 +519,28 @@ CI —— `tests/test_map_names.py` 与 `tools/validate_maps.py` 的覆盖检查
 
 `tests/test_map_operations.py::test_back_to_main_precedes_map_steps` 钉住顺序。
 对应的用户文档在 README「执行地图步骤前的固定行为（主界面检测）」。
+
+---
+
+## §3.10 ESC 前的界面修复
+
+**R27 — 「ESC 关不掉的界面」统一登记在 `flows/pre_esc.py`，不要往 `back_to_main` 里加 `if`。**
+
+按 ESC 之前可能停在若干「ESC 处理不了」的界面（解谜放弃弹窗、月卡「今日补给」等）：
+ESC 会把确认框直接关掉，或者根本无响应，只按 ESC 会空转到 120 秒超时。
+现在 `back_to_main` 主循环每轮**只抓一帧**，交给 `PreEscFixer.try_fix(frame, left, top)`，
+表里全都没命中才按 ESC。
+
+- 每个修复分两段：`detect(frame)` 是纯识别（吃一帧、返回动作参数或 None，可直接用
+  黄金图测），`apply(action, left, top)` 才碰键鼠；动作坐标统一按**帧内坐标**记，
+  由 apply 加上窗口原点
+- `once=True` = 每次 `back_to_main` 只尝试一次（不管命中与否），给误识别代价高的
+  界面用（月卡）；没命中也不重试，防止 120 秒里反复点同一处
+- 新增界面加一条表项，顺序就是优先级（越具体、误点代价越大的越靠前）；
+  ESC 本来就能关的菜单 / 对话**不要**往里加 —— 它不是第二个 `handle`
+
+`tests/test_pre_esc.py` 钉住「同一帧、顺序、首次命中即停、once 语义」；
+`tests/test_handle.py::TestBackToMain` 钉住「一轮一帧、先修后 ESC、超时仍然生效」。
 
 ---
 

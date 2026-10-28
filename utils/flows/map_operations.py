@@ -135,6 +135,14 @@ class MapOperations:
         self.pause = Pause(dev=dev)
         self.map.pause_gate = self.pause.wait_if_paused  # 供 flows/map.py 的循环闸门调用
 
+        # 月卡领取必须排在所有游戏内设置之前（issue #450）。
+        # 每日刷新后首次登录会停在「今日补给」月卡领取界面，而 `back_to_main`
+        # 只会按 ESC —— 那个界面 ESC 关不掉，于是 120 秒超时把整轮中止。
+        # 银狼版本的流程一进来就做 auto_use_technique_consumable（第一步就是
+        # back_to_main），所以必须先把月卡领掉；黄泉版本没有这段前置设置，
+        # 一直是靠第一张图的月卡检查领掉的，所以没暴露过。
+        self.monthly_pass.monthly_pass_check()
+
         # 银狼专用设置（lv999_e 第一段）：整轮只做一次。
         # SilverWolf 版本做不成直接终止（fhoe.py 顶层负责日志 + notify_on_error）；
         # 其它版本保持原来的「警告后继续」，避免改掉既有行为。
@@ -426,8 +434,17 @@ class MapOperations:
         return STEP_COUNT
 
     def _step_dream_machine(self, key, value, map_data):
+        # 三张 check_4-1_point 是轮廓识别（assets.MATCH_SHAPE），阈值 0.85。
+        # `min_threshold` 必须跟着传：find_transfer_point 每轮把阈值降 0.01，
+        # 但下限默认是 TRANSFER_POINT_MIN（0.93）—— 不传的话第二圈起会被抬回
+        # 0.93，比起始的 0.85 还高。
         self.map.find_transfer_point(
-            key, threshold=DREAM_MACHINE, exact=self.map.drag_exact, offset=self.map.drag_offset)
+            key,
+            threshold=DREAM_MACHINE,
+            min_threshold=DREAM_MACHINE,
+            exact=self.map.drag_exact,
+            offset=self.map.drag_offset,
+        )
         if self.img.click_target(key, DREAM_MACHINE, retry_in_map=False):
             log.info("筑梦机关检查通过")
         else:

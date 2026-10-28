@@ -99,6 +99,9 @@ _multi_counts = {}
 #: 当前正在跑哪张地图，由 `flows/map_operations.py` 在开跑/跑完时告知（R15：有明确的所有者）
 _current_map = {"file": "", "name": ""}
 
+#: 本轮运行有没有在日志里报过产物目录 —— 每轮只说一次，别每帧匹配刷屏
+_location_logged = False
+
 
 #: 收集模式。配置键 `collect_picture_samples` 存这三个值之一。
 #:   single —— 每张图**本轮第一次**命中时落一张（默认，够看出"游戏里长什么样"）
@@ -127,6 +130,25 @@ def mode() -> str:
 def enabled() -> bool:
     """收集开着没有。匹配钩子每帧都问一次，所以它是 `mode()` 的薄包装。"""
     return mode() != MODE_OFF
+
+
+def log_location():
+    """收集开着时，把产物目录的**绝对路径**写进日志 —— 每轮运行只写一次。
+
+    逐张的「图片样本已存」只带相对 `new_pic/` 的路径，用户得自己猜它落在地盘哪里；
+    这里在开跑时先说清楚 `picture/new_pic/` 解析到的绝对位置。
+    """
+    global _location_logged
+    current = mode()
+    if current == MODE_OFF:
+        return
+    with _lock:
+        if _location_logged:
+            return
+        _location_logged = True
+    log.info(
+        f"图片样本收集已开启（模式：{current}），产物目录：{os.path.abspath(SAMPLES_DIR)}"
+    )
 
 
 def set_current_map(map_file, map_name=""):
@@ -235,10 +257,11 @@ def reset(clear_disk=False):
 
     每轮跑图是**新进程**，所以正常情况下不需要谁去调它 —— 模拟新一轮运行时才用得上。
     """
-    global _seen, _run_dir_name
+    global _seen, _run_dir_name, _location_logged
     with _lock:
         _seen = None
         _run_dir_name = None
+        _location_logged = False
         _sampled_this_run.clear()
         _multi_counts.clear()
         _blocked_until.clear()

@@ -1,26 +1,26 @@
 {
-  "name": "筑梦边境-5",
-  "author": "喵不可言",
-  "start": [
-    {
-      "map": 1
-    },
-    {
-      "picture\\map_4-0_point_3.png": 1.5
-    },
-    {
-      "picture\\transfer.png": 1.5
-    }  
-  ],
-  "map": [
-    {
-      "s": 8.02
-    },
-    {
-      "a": 0.15
-    },
-    {
-      "fighting": 2
-    }
-  ]
+    "name": "筑梦边境-5",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_4-0_point_3.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 8.02
+        },
+        {
+            "a": 0.15
+        },
+        {
+            "fighting": 2
+        }
+    ]
 }

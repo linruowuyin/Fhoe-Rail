@@ -190,6 +190,30 @@ class TestClickTarget:
         assert instance.click_target("x.png", 0.9, timeout=10) is True
         assert len(calls) == 2
 
+    def test_shape_registered_targets_skip_the_inverted_pass(self, instance, monkeypatch):
+        """轮廓模板不跑「阴阳变转」。
+
+        取反后的梯度幅值与原图相同（Sobel 是线性的），跑一遍是空转；更糟的是
+        反色数组查不回模板路径，会退回颜色匹配 —— 低阈值下等于绕开轮廓判定。
+        """
+        targets = []
+
+        def fake(target, threshold, offset, clicks, delay, click_offset=(0, 0)):
+            targets.append(id(target))
+            return False, 0.5
+
+        instance.click_target_above_threshold = fake
+        monkeypatch.setattr(
+            matcher_module.image_library,
+            "strategy_of",
+            lambda image: assets.MATCH_SHAPE,
+        )
+        monkeypatch.setattr(matcher_module, "time", FakeTime([0, 0, 2, 3, 999]))
+
+        assert instance.click_target("x.png", 0.85, timeout=10) is False
+        assert len(targets) == 2, "超时前应逐轮比原图"
+        assert len(set(targets)) == 1, "只该比原图，不该出现反色图"
+
     def test_inverted_pass_also_carries_the_offset(self, instance, monkeypatch):
         """原图没中改用反色图，第二击也要带偏移 —— 否则它会落回锚点。"""
         offsets = []
@@ -373,9 +397,53 @@ class TestShapeMatching:
     def test_setting_other_is_registered_for_shape_matching(self, template):
         assert image_library.strategy_of(template) == assets.MATCH_SHAPE
 
-    def test_other_assets_stay_on_color_matching(self, repo_root):
+    def test_setting_icon_is_registered_for_shape_matching(self, repo_root):
         icon = image_library.get_img(assets.path("setting_icon"))
+        assert image_library.strategy_of(icon) == assets.MATCH_SHAPE
+
+    def test_other_assets_stay_on_color_matching(self, repo_root):
+        icon = image_library.get_img(assets.path("setting_yes"))
         assert image_library.strategy_of(icon) == assets.MATCH_COLOR
+
+    @pytest.mark.parametrize("index", [1, 2, 3])
+    def test_check_4_1_points_are_registered_for_shape_matching(self, repo_root, index):
+        """筑梦机关检查三张图走轮廓识别（2026-10-28 用户指定，阈值 0.85）。"""
+        template = image_library.get_img(assets.path(f"check_4-1_point_{index}"))
+
+        assert template is not None
+        assert image_library.strategy_of(template) == assets.MATCH_SHAPE
+
+    @pytest.mark.parametrize("index", [1, 2, 3])
+    def test_check_4_1_shape_score_survives_colour_inversion(self, repo_root, index):
+        """整图颜色反过来、轮廓没变：形状分应过 0.85，颜色分过不了。"""
+        template = image_library.get_img(assets.path(f"check_4-1_point_{index}"))
+        inverted = cv2.bitwise_not(template)
+
+        shape = Matcher.match_peaks(inverted, template, strategy=assets.MATCH_SHAPE)
+        color = Matcher.match_peaks(inverted, template, strategy=assets.MATCH_COLOR)
+
+        assert shape["max_val"] >= 0.85
+        assert color["max_val"] < 0.85
+
+    @pytest.mark.parametrize(
+        "template_index,frame_index", [(1, 2), (1, 3), (3, 1)]
+    )
+    def test_a_different_check_point_does_not_match(
+        self, repo_root, template_index, frame_index
+    ):
+        """负样本：另外两个机关的画面不能误判成这个检查点（实测 ≤0.28）。"""
+        template = image_library.get_img(
+            assets.path(f"check_4-1_point_{template_index}")
+        )
+        frame = image_library.get_img(assets.path(f"check_4-1_point_{frame_index}"))
+        padded = cv2.copyMakeBorder(
+            frame, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(30, 30, 30)
+        )
+
+        # 不显式传 strategy —— 顺带验证登记表反查到的就是轮廓识别
+        result = Matcher.match_peaks(padded, template)
+
+        assert result["max_val"] < 0.85
 
     def test_shape_features_are_uint8_gradient_magnitude(self, template):
         features = Matcher.shape_features(template)
@@ -417,3 +485,42 @@ class TestShapeMatching:
         _paste_icon(frame, other, _icon_mask(other), 200, 100)
 
         assert Matcher.match_screenshot(frame, template, 0, 0)["max_val"] < 0.5
+
+
+class TestExplicitStrategy:
+    def test_match_peaks_can_run_each_strategy_on_demand(self):
+        rng = np.random.default_rng(0)
+        screenshot = rng.integers(0, 60, (80, 100, 3), dtype=np.uint8)
+        prepared = np.zeros((16, 20, 3), dtype=np.uint8)
+        prepared[3:13, 4:16] = 200
+        screenshot[30:46, 40:60] = prepared
+
+        color = Matcher.match_peaks(screenshot, prepared, strategy="color")
+        shape = Matcher.match_peaks(screenshot, prepared, strategy="shape")
+
+        assert color["max_loc"] == (40, 30)
+        assert shape["max_loc"] == (40, 30)
+        assert color["max_val"] >= 0.99
+        assert shape["max_val"] >= 0.95  # 梯度幅值化后有轻微量化损失
+
+
+class TestColorCCOEFFStrategy:
+    """`assets.MATCH_COLOR_CCOEFF`：原图不转梯度，直接减均值相关（解谜弹窗）。"""
+
+    def test_keeps_the_raw_images_and_uses_ccoeff(self):
+        frame = np.zeros((8, 8, 3), np.uint8)
+        template = np.zeros((4, 4, 3), np.uint8)
+
+        prepared_frame, prepared_template, method = Matcher._prepare_match(
+            frame, template, assets.MATCH_COLOR_CCOEFF
+        )
+
+        assert prepared_frame is frame
+        assert prepared_template is template
+        assert method == cv2.TM_CCOEFF_NORMED
+
+    def test_puzzle_templates_are_registered_for_it(self, repo_root):
+        template = image_library.get_img(assets.path("puzzle_exit_prompt"))
+
+        assert template is not None
+        assert image_library.strategy_of(template) == assets.MATCH_COLOR_CCOEFF

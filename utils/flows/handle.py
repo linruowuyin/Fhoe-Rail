@@ -6,9 +6,10 @@ import time
 from utils.config.config import ConfigurationManager
 from utils.core.exceptions import CustomException
 from utils.flows.combat import Combat
+from utils.flows.monthly_pass import MonthlyPass
 from utils.flows.movement import Movement
 from utils.flows.orientation import Orientation
-from utils.flows.puzzle_exit import try_exit_puzzle
+from utils.flows.pre_esc import PreEscFixer
 from utils.vision.img import Img
 from utils.vision import assets
 from utils.drivers.keyboard_event import KeyboardEvent
@@ -32,6 +33,10 @@ class Handle(metaclass=SingletonMeta):
         self.img = Img()
         self.cfg = ConfigurationManager()
         self.window = Window()
+
+        #: 月卡领取。back_to_main 遇到「今日补给」界面时兜底领取（issue #450）：
+        #: 那个界面 ESC 关不掉，只按 ESC 会空转到超时。
+        self.monthly_pass = MonthlyPass()
 
         # 战斗计数（total_fight_cnt / error_fight_cnt / snack_used …）已归
         # self.combat 持有，见 flows/combat.py
@@ -219,13 +224,17 @@ class Handle(metaclass=SingletonMeta):
         恢复超时则停止运行，避免在未知界面继续执行路线并反复重试。
         """
         start_time = time.time()
+        # 「ESC 关不掉的界面」统一交给这张表；它自己维护「本次只试一次」的状态
+        fixes = PreEscFixer(self.img, self.mouse_event, self.monthly_pass)
         while not self.img.on_main_interface(
             timeout=2
         ):  # 检测是否出现左上角灯泡，即主界面检测
             if time.time() - start_time > 120:
                 raise CustomException("回到主界面超时（120秒），请检查游戏界面后重试")
-            # ESC 会取消已经打开的确认框，必须先处理它，再尝试按 ESC。
-            if try_exit_puzzle(self.img, self.mouse_event):
+            # 解谜弹窗、月卡领取等界面 ESC 处理不了，先在同一帧上识别并修掉。
+            # 表里没命中才按 ESC —— 顺序反过来会把确认框直接关掉。
+            frame, left, top, _, _ = self.img.take_screenshot()
+            if fixes.try_fix(frame, left, top):
                 time.sleep(delay)
                 continue
             KeyboardEvent.keyboard_press("esc")
@@ -234,7 +243,7 @@ class Handle(metaclass=SingletonMeta):
                 check_list=[self.img.battle_esc_check],
                 timeout=0.0,
                 threshold=BATTLE_ESC_CHECK,
-                offset=(0, 0, -1800, -970),
+                offset=assets.search_offset("battle_esc_check"),
                 allow_log=True,
             ):
                 KeyboardEvent.keyboard_press("esc")
@@ -268,7 +277,13 @@ class Handle(metaclass=SingletonMeta):
             time.sleep(2)
 
             # 通过识图，选择设置
-            if not self.img.click_target(assets.path("setting_icon"), SETTING_ICON):
+            # 搜索区域登记在 assets.py 的 search_offset 上（探针也读同一份）：
+            # 设置入口固定在右侧窄条，主界面其它位置有长得像的图标，全屏会误点。
+            if not self.img.click_target(
+                assets.path("setting_icon"),
+                SETTING_ICON,
+                offset=assets.search_offset("setting_icon"),
+            ):
                 log.warning("未找到设置图标")
                 return False
             time.sleep(1)

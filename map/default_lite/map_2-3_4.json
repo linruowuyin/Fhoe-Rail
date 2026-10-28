@@ -23,7 +23,7 @@
             "w": 2.95
         },
         {
-			"fighting": 1
+            "fighting": 1
         },
         {
             "fighting": 2
@@ -39,12 +39,12 @@
         },
         {
             "fighting": 1
-		},
+        },
         {
             "w": 2.11
         },
         {
             "fighting": 2
-		}
+        }
     ]
 }

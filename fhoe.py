@@ -82,6 +82,7 @@ from utils.core.ports import SYSTEM_CLOCK
 from utils.ui.setting import Setting
 from utils.core.time_utils import TimeUtils
 from utils.drivers.window import Window
+from utils.vision import samples
 
 cfg = ConfigurationManager()
 time_mgr = TimeUtils()
@@ -408,6 +409,8 @@ def run_once(
     monkeypatch `fhoe.Window` 之类不会改变这里的默认值。
     """
     cfg.config_fix()
+    # 收集图片样本开着时，先把产物目录的绝对路径报进日志（关闭时不打扰）
+    samples.log_location()
     log.info(f"config.json:{cfg.load_config()}")
     log.info("切换至游戏窗口，请确保1号位角色普攻为远程，黄泉地图1号位为黄泉，银狼LV.999地图1号位为银狼LV.999")
     check_screens()

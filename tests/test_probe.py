@@ -11,6 +11,8 @@ import pytest
 from utils.core.match_offsets import FUZZY_PADDING
 from utils.core.thresholds import DEFAULT_MATCH
 from utils.drivers.screen import CAPTURE_PRINTWINDOW, CAPTURE_SCREENGRAB
+from utils.vision import assets
+from utils.vision import images as image_library
 from utils.vision import probe
 
 #: 一次截图对应的屏幕区域（1920×1080 的一块，故意不从 0 开始 —— 坐标换算容易在这里错）
@@ -257,3 +259,168 @@ class TestRenderPreviewPng:
         }
 
         assert probe.render_preview_png(degenerate) is None
+
+
+class TestTwoStrategies:
+    """探针同时给出原始颜色匹配与轮廓（梯度）匹配，共用同一帧。"""
+
+    def test_reports_color_and_shape_side_by_side(self, measured):
+        result, _ = measured
+
+        comparisons = result["comparisons"]
+        assert [item["strategy"] for item in comparisons] == ["color", "shape"]
+        assert [item["label"] for item in comparisons] == [
+            "原始识别（颜色）",
+            "轮廓识别（形状）",
+        ]
+        primary = [item for item in comparisons if item["primary"]]
+        assert len(primary) == 1
+        assert primary[0]["strategy"] == result["strategy"]
+
+    def test_both_comparisons_use_the_same_frame(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        probe.measure(screen, template, threshold=0.9)
+
+        assert len(screen.calls) == 1, "两种策略要复用同一帧，不能各抓一次"
+
+    def test_each_comparison_has_its_own_box_and_offsets(self, measured):
+        result, _ = measured
+
+        for item in result["comparisons"]:
+            for field in (
+                "score",
+                "second",
+                "box",
+                "center",
+                "margin",
+                "passed",
+                "exact_offset",
+                "fuzzy_offset",
+            ):
+                assert field in item
+            assert item["box"][0] == BOX_AT[0]
+
+
+class TestSearchArea:
+    """搜索区域：调用点带 offset 时，探针在同一帧上再量一次那个子区域。"""
+
+    def test_default_has_only_the_full_area(self, measured):
+        result, _ = measured
+
+        assert [area["area"] for area in result["areas"]] == ["full"]
+        assert result["areas"][0]["region"] == REGION
+        assert result["areas"][0]["error"] is None
+        assert result["search_offset"] is None
+
+    def test_top_level_fields_stay_the_full_screen_result(self):
+        """给 search_offset 不能改变旧字段的含义，否则旧调用方读到的就是子区域数字。"""
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        with_offset = probe.measure(
+            screen, template, threshold=0.9, search_offset=(700, 430, 0, 0)
+        )
+        without = probe.measure(screen, template, threshold=0.9)
+
+        assert with_offset["box"] == without["box"]
+        assert with_offset["score"] == pytest.approx(without["score"])
+        assert with_offset["region"] == REGION
+
+    def test_measures_the_cropped_region_in_screen_coordinates(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        result = probe.measure(
+            screen, template, threshold=0.9, search_offset=(700, 430, 0, 0)
+        )
+
+        assert len(screen.calls) == 1, "调用点区域要从同一帧裁，不能重新抓一帧"
+        areas = {area["area"]: area for area in result["areas"]}
+        search = areas["search"]
+        assert search["offset"] == (700, 430, 0, 0)
+        assert search["region"] == (800, 630, 2020, 1280)
+        color = next(c for c in search["comparisons"] if c["strategy"] == "color")
+        assert color["score"] == pytest.approx(1.0)
+        # 帧内坐标 → 屏幕坐标，和全屏那次一致
+        assert color["box"] == (812, 640, 836, 656)
+
+    def test_a_region_that_cuts_the_match_gets_a_lower_score(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        result = probe.measure(
+            screen, template, threshold=0.9, search_offset=(740, 470, 0, 0)
+        )
+
+        areas = {area["area"]: area for area in result["areas"]}
+        color = next(
+            c for c in areas["search"]["comparisons"] if c["strategy"] == "color"
+        )
+        assert color["score"] < result["score"]
+
+    def test_an_invalid_offset_reports_instead_of_crashing(self):
+        template = structured_template()
+        screen = StubScreen(frame_with(template))
+
+        result = probe.measure(
+            screen, template, threshold=0.9, search_offset=(5000, 0, -5000, 0)
+        )
+
+        areas = {area["area"]: area for area in result["areas"]}
+        assert areas["search"]["comparisons"] == []
+        assert "退回全屏" in areas["search"]["error"]
+        assert areas["search"]["region"] == REGION
+
+
+class TestCropToOffset:
+    def test_matches_the_take_screenshot_region(self):
+        frame = np.arange(12 * 20 * 3, dtype=np.uint8).reshape(12, 20, 3)
+        region = (100, 200, 120, 212)
+
+        crop, cropped_region, applied = probe.crop_to_offset(
+            frame, region, (2, 3, -4, -5)
+        )
+
+        assert applied is True
+        assert cropped_region == (102, 203, 116, 207)
+        assert crop.shape == (4, 14, 3)
+        assert np.array_equal(crop, frame[3:7, 2:16])
+
+    def test_an_invalid_offset_returns_the_frame_untouched(self):
+        frame = np.zeros((4, 4, 3), np.uint8)
+        region = (0, 0, 4, 4)
+
+        crop, cropped_region, applied = probe.crop_to_offset(
+            frame, region, (10, 0, -10, 0)
+        )
+
+        assert applied is False
+        assert cropped_region == region
+        assert crop is frame
+
+
+class TestRegisteredThirdStrategy:
+    """模板登记了 `MATCH_COLOR_CCOEFF` 时，探针要追加第三种比较并标成主策略。"""
+
+    def test_color_ccoeff_template_gets_a_third_comparison(self, repo_root):
+        template = image_library.get_img(assets.path("puzzle_exit_prompt"))
+        assert template is not None
+        frame = np.zeros((1080, 1920, 3), np.uint8)
+        height, width = template.shape[:2]
+        frame[300 : 300 + height, 500 : 500 + width] = template
+
+        result = probe.measure(StubScreen(frame), template, threshold=0.9)
+
+        assert [item["strategy"] for item in result["comparisons"]] == [
+            "color",
+            "shape",
+            "color_ccoeff",
+        ]
+        assert [item["primary"] for item in result["comparisons"]] == [
+            False,
+            False,
+            True,
+        ]
+        assert result["strategy"] == "color_ccoeff"

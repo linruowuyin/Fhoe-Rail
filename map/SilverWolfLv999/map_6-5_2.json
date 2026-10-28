@@ -9,6 +9,9 @@
             "picture\\fanhui_1.png": 1.5
         },
         {
+            "floor": [[1,2,3],2]
+        },
+        {
             "picture\\map_6-5_point_2.png": 1.5
         },
         {

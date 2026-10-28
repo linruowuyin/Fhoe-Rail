@@ -1,38 +1,38 @@
 {
-  "name": "丹鼎司-5",
-  "author": "喵不可言",
-  "start": [
-    {
-      "map": 1
-    },
-    {
-      "picture\\map_3-6_point_8.png": 1.5
-    },
-    {
-      "picture\\transfer.png": 1.5
-    }
-  ],
-  "map": [
-    {
-      "s": 2.3
-    },
-    {
-      "d": 1.09
-    },
-    {
-      "fighting": 2
-    },
-    {
-      "a": 1.23
-    },
-    {
-      "s": 2.1
-    },
-    {
-      "a": 2.3
-    },
-    {
-      "fighting": 2
-    }
-  ]
+    "name": "丹鼎司-5",
+    "author": "喵不可言",
+    "start": [
+        {
+            "map": 1
+        },
+        {
+            "picture\\map_3-6_point_8.png": 1.5
+        },
+        {
+            "picture\\transfer.png": 1.5
+        }
+    ],
+    "map": [
+        {
+            "s": 2.3
+        },
+        {
+            "d": 1.09
+        },
+        {
+            "fighting": 2
+        },
+        {
+            "a": 1.23
+        },
+        {
+            "s": 2.1
+        },
+        {
+            "a": 2.3
+        },
+        {
+            "fighting": 2
+        }
+    ]
 }

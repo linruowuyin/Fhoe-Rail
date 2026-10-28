@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from utils.config.config import ConfigurationManager
+from utils.core.thresholds import MONTHLY_PASS
 from utils.flows.monthly_pass import MonthlyPass
 
 
@@ -14,6 +15,8 @@ def monthly(make_instance, isolated_cwd):
     return make_instance(
         MonthlyPass,
         cfg=ConfigurationManager(),
+        pass_pictures=MonthlyPass.PASS_PICTURES,
+        pass_threshold=MONTHLY_PASS,
         refresh_hour=4,
         refresh_minute=0,
         next_check_time=None,
@@ -234,6 +237,129 @@ class TestTryClickPass:
 
         assert screen.clicks == []
         assert monthly.monthly_pass_status == MonthlyPass.Status.NOT_FOUND
+
+
+class TestTryClaimIfVisible:
+    """back_to_main 的兜底路径：只回答「这一帧是不是月卡界面、点了没有」。"""
+
+    def test_returns_false_without_clicking_when_not_the_pass_screen(
+        self, monthly, screen
+    ):
+        monthly.img = ScriptedScreen([{"max_val": 0.1}, {"max_val": 0.2}])
+
+        assert monthly.try_claim_if_visible() is False
+        assert screen.clicks == []
+        assert monthly.have_monthly_pass is False
+        assert monthly.monthly_pass_status is None, "兜底路径不下结论"
+
+    def test_claims_when_the_title_picture_matches(self, monthly, screen):
+        monthly.img = ScriptedScreen([{"max_val": 0.99}, {"max_val": 0.99}])
+
+        assert monthly.try_claim_if_visible() is True
+        assert screen.clicks == [(10, 20)]
+        assert screen.relative == [(50, 75)]
+        assert monthly.have_monthly_pass is True
+        assert monthly.monthly_pass_status == MonthlyPass.Status.CLAIMED
+
+    def test_claims_when_only_the_card_picture_matches(self, monthly, screen):
+        monthly.img = ScriptedScreen(
+            [{"max_val": 0.5}, {"max_val": 0.99}, {"max_val": 0.99}]
+        )
+
+        assert monthly.try_claim_if_visible() is True
+        assert screen.clicks == [(10, 20)]
+
+    def test_injected_picture_and_threshold_are_used(self, monthly, screen):
+        """手动流程测试入口用 setting_icon 这类好触发的图替换月卡图。"""
+        monthly.pass_pictures = (("setting_icon", "流程测试图"),)
+        monthly.pass_threshold = 0.80
+        monthly.img = ScriptedScreen([{"max_val": 0.85}, {"max_val": 0.99}])
+
+        assert monthly.try_claim_if_visible() is True, "0.85 在 0.80 阈值下应命中"
+        assert screen.clicks == [(10, 20)]
+
+
+class TestFrameMatching:
+    """`pre_esc` 修复表用的一帧式识别：不自己截图、结果按帧内坐标返回。"""
+
+    def test_match_frame_uses_the_same_frame_for_every_picture(
+        self, monthly, screen, monkeypatch
+    ):
+        import utils.flows.monthly_pass as monthly_module
+
+        frames = []
+
+        def fake_match(frame, prepared, left, top, strategy=None):
+            frames.append((frame, prepared.path))
+            return {"max_val": 0.2 if len(frames) == 1 else 0.99}
+
+        monkeypatch.setattr(
+            monthly_module.Matcher, "match_screenshot", staticmethod(fake_match)
+        )
+        frame = object()
+
+        match = monthly.match_frame(frame)
+
+        assert [item[0] is frame for item in frames] == [True, True]
+        assert match is not None
+        assert match[2] == "月卡动画中心图片", "第一张没过阈值，第二张命中"
+
+    def test_match_frame_returns_none_when_nothing_passes(self, monthly, screen, monkeypatch):
+        import utils.flows.monthly_pass as monthly_module
+
+        monkeypatch.setattr(
+            monthly_module.Matcher,
+            "match_screenshot",
+            staticmethod(lambda *a, **k: {"max_val": 0.1}),
+        )
+
+        assert monthly.match_frame(object()) is None
+
+    def test_claim_match_adds_the_frame_origin(self, monthly, screen):
+        confirmed = []
+        monthly._confirm_reward_claim = lambda: confirmed.append(1)
+        monthly.img = ScriptedScreen([])
+        pic_data = SimpleNamespace(shape=(4, 4, 3))
+
+        monthly.claim_match(pic_data, {"max_val": 0.99}, "月卡", 100, 200)
+
+        assert screen.clicks == [(110, 220)]
+        assert screen.slept == [5]
+        assert confirmed == [1]
+
+
+class TestConstructorInjection:
+    """`pass_pictures` / `pass_threshold` 可注入：生产默认值不变，测试入口换图。"""
+
+    @pytest.fixture(autouse=True)
+    def stub_singletons(self, monkeypatch):
+        import utils.flows.monthly_pass as monthly_module
+
+        monkeypatch.setattr(
+            monthly_module,
+            "ConfigurationManager",
+            lambda: SimpleNamespace(config_file={}),
+        )
+        monkeypatch.setattr(monthly_module, "Img", lambda: SimpleNamespace())
+        monkeypatch.setattr(monthly_module, "MouseEvent", lambda: SimpleNamespace())
+
+    def test_constructor_keeps_injected_picture_and_threshold(self):
+        import utils.flows.monthly_pass as monthly_module
+
+        injected = monthly_module.MonthlyPass(
+            pass_pictures=(("setting_icon", "流程测试图"),), pass_threshold=0.80
+        )
+
+        assert injected.pass_pictures == (("setting_icon", "流程测试图"),)
+        assert injected.pass_threshold == 0.80
+
+    def test_constructor_defaults_to_the_real_pass_pictures(self):
+        import utils.flows.monthly_pass as monthly_module
+
+        monthly = monthly_module.MonthlyPass()
+
+        assert monthly.pass_pictures == MonthlyPass.PASS_PICTURES
+        assert monthly.pass_threshold == MONTHLY_PASS
 
 
 class TestExecuteCheckFlow:

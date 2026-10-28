@@ -70,28 +70,39 @@ class Matcher:
         return np.clip(magnitude / 4.0, 0, 255).astype(np.uint8)
 
     @staticmethod
-    def _prepare_match(screenshot, prepared):
-        """按模板登记的匹配策略，返回 `(帧, 模板, matchTemplate 方法)`。"""
-        if image_library.strategy_of(prepared) == assets.MATCH_SHAPE:
+    def _prepare_match(screenshot, prepared, strategy=None):
+        """按匹配策略返回 `(帧, 模板, matchTemplate 方法)`。
+
+        :param strategy: 显式指定策略（探针要同时跑多种；解谜弹窗固定用
+            `MATCH_COLOR_CCOEFF`）；None 表示按模板登记的策略。
+        """
+        if strategy is None:
+            strategy = image_library.strategy_of(prepared)
+        if strategy == assets.MATCH_SHAPE:
             return (
                 Matcher.shape_features(screenshot),
                 Matcher.shape_features(prepared),
                 cv2.TM_CCOEFF_NORMED,
             )
+        if strategy == assets.MATCH_COLOR_CCOEFF:
+            # 不转梯度：原图直接减均值相关。对话框的整块亮度会变，CCORR 在
+            # 「擦掉文字」的负样本上仍有 0.92，CCOEFF 只有 0.24。
+            return screenshot, prepared, cv2.TM_CCOEFF_NORMED
         return screenshot, prepared, cv2.TM_CCORR_NORMED
 
     @staticmethod
-    def match_screenshot(screenshot, prepared, left, top):
+    def match_screenshot(screenshot, prepared, left, top, strategy=None):
         """比对 screenshot 与 prepared，返回匹配值与位置。
 
         这里是**全部匹配的唯一汇聚点**，所以图片样本收集也挂在这一处（见
         `vision/samples.py`）—— 挂在各调用点等于抄十几遍。
 
-        匹配策略跟着模板走：`assets.MATCH_SHAPE` 的模板先转成梯度幅值再比。
-        样本收集仍用原始帧/模板，落下来的样本是真实画面。
+        匹配策略跟着模板走：`assets.MATCH_SHAPE` 的模板先转成梯度幅值再比，
+        `assets.MATCH_COLOR_CCOEFF` 用原图 CCOEFF；其余用 CCORR。样本收集仍用
+        原始帧/模板，落下来的样本是真实画面。
         """
         match_frame, match_template, method = Matcher._prepare_match(
-            screenshot, prepared
+            screenshot, prepared, strategy
         )
         result = cv2.matchTemplate(match_frame, match_template, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
@@ -125,7 +136,7 @@ class Matcher:
         )
 
     @staticmethod
-    def match_peaks(screenshot, prepared, left=0, top=0):
+    def match_peaks(screenshot, prepared, left=0, top=0, strategy=None):
         """一次匹配，同时给出最优峰与**次优峰**。
 
         次优峰 = 屏蔽掉最优峰周围一个模板大小的邻域（即所有与最优位置有像素重叠的
@@ -133,14 +144,13 @@ class Matcher:
         最优 0.97 而次优也 0.96，说明帧里到处都长得像它，阈值定得再高也会指到错的
         位置 —— 这是标定阈值时比最优值更该看的一个数（CLAUDE.md §1.2 的负样本余量）。
 
-        注意 `TM_CCORR_NORMED` 对整体亮度缩放不敏感：暗一倍的同一图案一样是 1.0。
-        次优峰只区分「位置不重叠」，不区分「颜色深浅」。
-
+        :param strategy: 显式指定匹配策略（探针会同时跑 color 与 shape）；
+            None 表示按模板登记的策略（`images.strategy_of`）。
         :return: {"max_val", "max_loc"(已加 left/top), "second_val"}
                  模板与帧一样大（只有一个候选位置）时 `second_val` 为 0.0
         """
         match_frame, match_template, method = Matcher._prepare_match(
-            screenshot, prepared
+            screenshot, prepared, strategy
         )
         result = cv2.matchTemplate(match_frame, match_template, method)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
@@ -247,7 +257,8 @@ class Matcher:
         """检测是否在主界面（默认看左上角灯泡）。"""
         if check_list is None:
             check_list = [self.ui_images["main_ui"]]
-            offset = (0, 0, -1630, -800)
+            # 主界面灯泡固定在左上角；区域与探针/其它调用点同一份（R25）
+            offset = assets.search_offset("finish_fighting")
 
         return self.on_interface(
             check_list=check_list,
@@ -375,6 +386,11 @@ class Matcher:
         if original_target is None:
             log.error(f"图片不存在: {target_path}")
             return False
+        # 轮廓识别的模板不跑「阴阳变转」：梯度幅值对颜色取反不变
+        # （Sobel 是线性的，取反后幅值相同），再跑一遍反色图是空转；
+        # 而反色数组查不回路径、会退回颜色匹配 —— 那等于绕开轮廓判定，
+        # 在 0.85 这种低阈值下可能凭颜色点中错误位置。
+        strategy = image_library.strategy_of(original_target)
         inverted_target = cv2.bitwise_not(original_target)
         start_time = time.time()
 
@@ -384,7 +400,7 @@ class Matcher:
             )
             if click_it:
                 return True
-            if time.time() - start_time > 1:
+            if time.time() - start_time > 1 and strategy != assets.MATCH_SHAPE:
                 # 超过 1 秒仍未命中，同时试颜色反转图
                 click_it, _ = self.click_target_above_threshold(
                     inverted_target, threshold, offset, clicks, delay, click_offset

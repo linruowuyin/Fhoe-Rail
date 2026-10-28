@@ -52,6 +52,7 @@ from utils.core.thresholds import MAP_BACK, MAP_OPEN
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.drivers.screen import CAPTURE_PRINTWINDOW
 from utils.flows.map_operations import MapOperations
+from utils.vision import assets
 from utils.vision import compare
 
 #: 基座舱段-1：起点就在这个传送点旁边，start 里已经有完整导航
@@ -208,7 +209,7 @@ def _map_screen_visible(ops, img):
         timeout=1.0,
         interface_desc="地图界面",
         threshold=MAP_OPEN,
-        offset=(530, 960, -1050, -50),
+        offset=assets.search_offset("contraction"),
         allow_log=False,
     ):
         return True
@@ -221,7 +222,7 @@ def _map_screen_visible(ops, img):
             timeout=0.5,
             interface_desc="地图返回键",
             threshold=MAP_BACK,
-            offset=(1830, 0, 0, -975),
+            offset=assets.search_offset("map_back"),
             allow_log=False,
         )
     )

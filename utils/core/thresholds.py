@@ -53,6 +53,8 @@ BATTLE_ESC_CHECK = 0.97
 # 2026-10-02 雅努斯密径实机 1920x1080 样本，TM_CCOEFF_NORMED。
 # 正样本均为 1.000；同一弹窗去除对应文字/按钮的负样本分别为 0.243 / 0.447；
 # 解谜画面负样本为 0.147 / 0.265。实机样本见 tests/fixtures/puzzle_exit/dialog.png。
+# ⚠ 这两个阈值绑定 `MATCH_COLOR_CCOEFF`（原图 CCOEFF）。换回默认 CCORR 时，
+# 同样本负样本是 0.920 / 0.910，会直接越过 0.90 —— 换算法必须重新量。
 PUZZLE_EXIT_PROMPT = 0.90
 PUZZLE_EXIT_CONFIRM = 0.90
 
@@ -129,8 +131,11 @@ TRANSFER_ICON = 0.93
 #: `max.png`：购买入口图标
 BUY_ICON = 0.93
 
-#: `check_4-1_point*.png`：筑梦机关检查
-DREAM_MACHINE = 0.992
+#: `check_4-1_point_1/2/3.png`：筑梦边境机关检查（三张，轮廓识别 / 形状匹配，
+#: 见 `vision/assets.py` 的 `MATCH_SHAPE` 登记）。0.85 为用户实机实测后指定的值
+#: （2026-10-28），查找（含 `min_threshold` 下限）与点击判定共用此值。
+#: 复核方式：`tools/match_probe.py check_4-1_point_1`（主策略显示「轮廓识别」）。
+DREAM_MACHINE = 0.85
 
 #: `map_4-1_point_2.png` / `map_4-3_point*.png`：筑梦边境系列点位
 DREAM_POINT = 0.975
@@ -149,8 +154,11 @@ DREAM_BUILD = 0.90
 # 设置菜单（自动使用秘技消耗品）
 # ---------------------------------------------------------------------------
 
-#: `setting_icon.png`
-SETTING_ICON = 0.98
+#: `setting_icon.png`：设置菜单入口。**形状匹配**（与 `SETTING_OPTION` 同一套
+#: 梯度幅值 + CCOEFF）：入口图标的底色同样随菜单模糊背景变化。
+#: 0.90 来自用户指定；合成背景实测正样本 0.75–0.95、负样本（另一个图标）≤0.28，
+#: 实机请用 `tools/match_probe.py setting_icon` 复核，若低于阈值再按实测调整。
+SETTING_ICON = 0.90
 
 #: `setting_other.png`：设置菜单里的「其他设置」页签。**形状匹配**（见
 #: `vision/matcher.py::Matcher.shape_features`）：底色随游戏内模糊背景变化，
