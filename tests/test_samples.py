@@ -122,6 +122,32 @@ class TestEnabled:
         assert samples.enabled() is False
 
 
+class TestLogLocation:
+    """开跑时把产物目录报进日志 —— 用户不用猜 `picture/new_pic/` 落在哪。"""
+
+    def test_says_nothing_when_collection_is_off(self, picture_dir, log_records):
+        samples.log_location()
+
+        assert not [r for r in log_records if "产物目录" in r["message"]]
+
+    def test_logs_the_absolute_dir_once_per_run(self, picture_dir, collecting, log_records):
+        samples.log_location()
+        samples.log_location()  # 每帧都问也不该刷屏
+
+        hits = [r for r in log_records if "产物目录" in r["message"]]
+        assert len(hits) == 1
+        assert os.path.abspath(samples.SAMPLES_DIR) in hits[0]["message"]
+        assert samples.MODE_SINGLE in hits[0]["message"]
+
+    def test_a_new_run_speaks_again(self, picture_dir, collecting, log_records):
+        samples.log_location()
+        samples.reset()  # 新一轮跑图 = 新进程
+        samples.log_location()
+
+        hits = [r for r in log_records if "产物目录" in r["message"]]
+        assert len(hits) == 2
+
+
 class TestPictureNames:
     def test_lists_recursively_and_skips_new_pic(self, picture_dir):
         (picture_dir / "ui").mkdir()

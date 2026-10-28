@@ -208,6 +208,15 @@ class TestCrossDayBranching:
 
 
 class TestRunOnceBasics:
+    def test_reports_the_sample_folder_at_startup(self, fhoe_mod, monkeypatch):
+        """产图目录的日志由 run_once 在开跑时打（开关关着时它自己沉默）。"""
+        calls = []
+        monkeypatch.setattr(fhoe_mod.samples, "log_location", lambda: calls.append(True))
+
+        _run(fhoe_mod)
+
+        assert calls == [True]
+
     def test_window_is_switched_before_mapping(self, fhoe_mod):
         order = _run(fhoe_mod)
         assert order.index("check_screens") < order.index("switch_window")
