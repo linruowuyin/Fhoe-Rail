@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from utils.core import thresholds
 from utils.vision import assets
 from utils.vision import images as image_library
 
@@ -196,6 +197,43 @@ class TestSearchOffset:
             )
         }
         assert not invalid, f"search_offset 必须是 4 个整数（四边增量）：{invalid}"
+
+
+class TestThreshold:
+    """探针默认阈值登记在 `Asset.threshold` —— 数值仍只维护在 `core/thresholds.py`。"""
+
+    def test_registered_threshold_is_returned(self):
+        assert (
+            assets.threshold_for_path(assets.path("transfer"))
+            == thresholds.TRANSFER_ICON
+        )
+
+    def test_assets_without_a_threshold_return_none(self):
+        """动态点位、HSV 类模板没有专属阈值常量，探针会沿用 DEFAULT_MATCH。"""
+        assert assets.threshold_for_path(assets.path("warn")) is None
+        assert assets.threshold_for_path(assets.path("loc_arrow")) is None
+
+    def test_lookup_by_absolute_path_finds_the_asset(self):
+        absolute = os.path.abspath(assets.path("setting_icon"))
+
+        assert assets.threshold_for_path(absolute) == thresholds.SETTING_ICON
+
+    def test_an_unregistered_path_has_no_threshold(self):
+        assert assets.threshold_for_path("./picture/nope.webp") is None
+
+    def test_registered_values_come_from_the_thresholds_module(self):
+        assert assets.ASSETS["setting_other"].threshold == thresholds.SETTING_OPTION
+        assert assets.ASSETS["check_4-1_point_1"].threshold == thresholds.DREAM_MACHINE
+        assert assets.ASSETS["puzzle_exit_prompt"].threshold == thresholds.PUZZLE_EXIT_PROMPT
+
+    def test_every_registered_threshold_is_a_probability(self):
+        invalid = {
+            key: asset.threshold
+            for key, asset in assets.ASSETS.items()
+            if asset.threshold is not None
+            and not 0.0 < asset.threshold <= 1.0
+        }
+        assert not invalid, f"threshold 必须是 (0, 1] 内的匹配度：{invalid}"
 
 class TestSearchRegion:
     """没有模板的搜索区域：动态地图资源、色域/HSV/动态截图的区域。"""

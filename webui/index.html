@@ -810,7 +810,7 @@
               </div>
               <span class="badge b-dim" id="probe-picked-strategy">—</span>
             </div>
-            <label class="probe-threshold">阈值 <input type="number" id="probe-threshold" value="0.90" min="0" max="1" step="0.01"></label>
+            <label class="probe-threshold">阈值 <input type="number" id="probe-threshold" value="0.90" min="0" max="1" step="0.001"></label>
             <label class="probe-threshold">搜索区域
               <input type="text" id="probe-offset" class="probe-offset" placeholder="留空 = 只量全屏，例如 1843, 0, -35, 0">
             </label>
@@ -1079,6 +1079,10 @@ async function probeApi(path, opts) {
 
 let probePicked = null;
 
+// 探针阈值的兜底值：模板没登记阈值时（动态地图点位等）用它。
+// 正常情况点图后会从 /api/probe/meta 读这张图登记的阈值（core/thresholds.py）。
+const DEFAULT_PROBE_THRESHOLD = 0.9;
+
 // 向量统一显示成 (a, b, c, d)
 const fmtVec = v => Array.isArray(v) ? "(" + v.join(", ") + ")" : String(v);
 
@@ -1283,6 +1287,7 @@ function updateProbePicked() {
     $("#probe-picked-strategy").textContent = "—";
     $("#probe-run").disabled = true;
     $("#probe-offset").value = "";
+    $("#probe-threshold").value = DEFAULT_PROBE_THRESHOLD.toFixed(2);
     $("#probe-offset-hint").textContent = "";
     return;
   }
@@ -1296,19 +1301,27 @@ async function pickProbeImage(name) {
   $$("#probe-images .probe-item").forEach(i =>
     i.classList.toggle("selected", i.dataset.name === name));
   updateProbePicked();
-  // 搜索区域取登记表里调用点用的那份（Asset.search_offset），这里只是预填；
-  // 用户改了只影响本次探针，不写回 assets.py。
+  // 搜索区域与阈值都取登记表里调用点用的那份（Asset.search_offset / Asset.threshold），
+  // 这里只是预填；用户改了只影响本次探针，不写回 assets.py。
   const hint = $("#probe-offset-hint");
   $("#probe-offset").value = "";
+  $("#probe-threshold").value = DEFAULT_PROBE_THRESHOLD.toFixed(2);
   $("#probe-picked-meta").textContent = "读取登记配置…";
   hint.textContent = "读取登记配置…";
   try {
     const meta = await probeApi("/api/probe/meta?name=" + encodeURIComponent(name));
+    const threshold = typeof meta.threshold === "number" ? meta.threshold : null;
+    const fallback = typeof meta.default_threshold === "number"
+      ? meta.default_threshold : DEFAULT_PROBE_THRESHOLD;
+    // 用原值而不是 toFixed(2)：SPRINT_ICON 之类是 0.996，两位小数会变成 1.00
+    $("#probe-threshold").value = threshold === null ? fallback : threshold;
     $("#probe-offset").value = meta.search_offset ? meta.search_offset.join(", ") : "";
     $("#probe-picked-strategy").textContent = meta.strategy_label || meta.strategy || "—";
-    $("#probe-picked-meta").textContent = meta.search_offset
-      ? `登记区域 ${fmtVec(meta.search_offset)}`
-      : "未登记搜索区域（只量全屏）";
+    const parts = [
+      threshold === null ? `未登记阈值（沿用 ${fallback}）` : `阈值 ${threshold}`,
+      meta.search_offset ? `登记区域 ${fmtVec(meta.search_offset)}` : "未登记搜索区域（只量全屏）",
+    ];
+    $("#probe-picked-meta").textContent = parts.join(" · ");
     hint.textContent = "";
   } catch (e) {
     $("#probe-picked-meta").textContent = "读取登记配置失败：" + e.message;

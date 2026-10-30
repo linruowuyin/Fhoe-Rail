@@ -13,6 +13,7 @@ import cv2
 
 from utils.core.log import log
 from utils.vision import assets
+from utils.vision import recognition
 
 #: 运行时默认加载的 UI 图。键名即 `Img` 实例上的属性名，路径从登记表取。
 DEFAULT_IMAGE_PATHS = {
@@ -150,14 +151,16 @@ def path_of(image):
 
 
 def strategy_of(image):
-    """一张模板 → 匹配策略（`assets.MATCH_COLOR` / `MATCH_SHAPE`）。
+    """一张模板 → 匹配策略（`assets.MATCH_COLOR` / `MATCH_SHAPE` / `MATCH_COLOR_CCOEFF`）。
 
+    经 `recognition.mode_of_path` 查询：先取图片识别参数覆盖层（地图点位图的
+    逐张定制），再回退到 `assets` 登记（代码引用图），最后默认 color。
     未登记、或反色/旋转造出来的临时数组按颜色匹配。
     """
     path = path_of(image)
     if not path:
         return assets.MATCH_COLOR
-    return assets.strategy_for_path(path)
+    return recognition.mode_of_path(path)
 
 
 def search_offset_of(image):
@@ -166,6 +169,14 @@ def search_offset_of(image):
     if not path:
         return None
     return assets.search_offset_for_path(path)
+
+
+def threshold_of(image):
+    """一张模板 → 探针默认阈值（登记表里主要检测用途的值）；未登记时 None。"""
+    path = path_of(image)
+    if not path:
+        return None
+    return assets.threshold_for_path(path)
 
 
 def load_all(image_paths=None) -> dict:

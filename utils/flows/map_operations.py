@@ -15,6 +15,7 @@ from utils.drivers.keyboard_event import KeyboardEvent
 from utils.vision.img import Img
 from utils.vision import assets
 from utils.vision import samples
+from utils.vision import recognition
 from utils.core.log import log
 from utils.core.thresholds import (
     BUY_ICON,
@@ -434,18 +435,23 @@ class MapOperations:
         return STEP_COUNT
 
     def _step_dream_machine(self, key, value, map_data):
-        # 三张 check_4-1_point 是轮廓识别（assets.MATCH_SHAPE），阈值 0.85。
-        # `min_threshold` 必须跟着传：find_transfer_point 每轮把阈值降 0.01，
-        # 但下限默认是 TRANSFER_POINT_MIN（0.93）—— 不传的话第二圈起会被抬回
-        # 0.93，比起始的 0.85 还高。
+        # 三张 check_4-1_point 是轮廓识别（recognition 覆盖层只覆盖 mode=shape）；
+        # 查找 / 点击 / 下限阈值都回退到 DREAM_MACHINE（覆盖层不写阈值，单一来源
+        # 在 thresholds.py）。`min_threshold` 必须跟着传：find_transfer_point 每轮
+        # 把阈值降 0.01，但下限默认是 TRANSFER_POINT_MIN（0.93）—— 不传的话第二圈
+        # 起会被抬回 0.93，比起始的 0.85 还高（见 tests/test_map_operations.py 对应用例）。
+        stem = assets.asset_id(key)
+        search, click, min_t = recognition.thresholds_of(
+            stem, search_default=DREAM_MACHINE, click_default=DREAM_MACHINE,
+            min_default=DREAM_MACHINE)
         self.map.find_transfer_point(
             key,
-            threshold=DREAM_MACHINE,
-            min_threshold=DREAM_MACHINE,
+            threshold=search,
+            min_threshold=min_t,
             exact=self.map.drag_exact,
             offset=self.map.drag_offset,
         )
-        if self.img.click_target(key, DREAM_MACHINE, retry_in_map=False):
+        if self.img.click_target(key, click, retry_in_map=False):
             log.info("筑梦机关检查通过")
         else:
             log.info("筑梦机关检查不通过，请将机关调整到正确的位置上")
@@ -455,9 +461,16 @@ class MapOperations:
 
     def _step_dream_fix(self, key, value, map_data):
         """筑梦边境尝试性修复（`picture\\map_4-1_point_2.png`）。"""
+        stem = assets.asset_id(key)
+        search, click, min_t = recognition.thresholds_of(
+            stem, search_default=DREAM_POINT, click_default=DREAM_POINT_CLICK)
+        # min 非 None 才传：覆盖层若给普通点位设了下限阈值，这里会生效；
+        # 否则不传，沿用 find_transfer_point 自身的 TRANSFER_POINT_MIN（0.93）。
+        kwargs = {"min_threshold": min_t} if min_t is not None else {}
         self.map.find_transfer_point(
-            key, threshold=DREAM_POINT, exact=self.map.drag_exact, offset=self.map.drag_offset)
-        self.img.click_target(key, DREAM_POINT_CLICK)
+            key, threshold=search, exact=self.map.drag_exact,
+            offset=self.map.drag_offset, **kwargs)
+        self.img.click_target(key, click)
         self.map_statu.temp_point = key
         return STEP_COUNT
 
@@ -466,9 +479,14 @@ class MapOperations:
         return STEP_COUNT
 
     def _step_dream_point(self, key, value, map_data):
+        stem = assets.asset_id(key)
+        search, click, min_t = recognition.thresholds_of(
+            stem, search_default=DREAM_POINT, click_default=TELEPORT_POINT)
+        kwargs = {"min_threshold": min_t} if min_t is not None else {}
         self.map.find_transfer_point(
-            key, threshold=DREAM_POINT, exact=self.map.drag_exact, offset=self.map.drag_offset)
-        self.img.click_target(key, TELEPORT_POINT)
+            key, threshold=search, exact=self.map.drag_exact,
+            offset=self.map.drag_offset, **kwargs)
+        self.img.click_target(key, click)
         self.map_statu.temp_point = key
         time.sleep(1.7)
         return STEP_COUNT
@@ -478,19 +496,24 @@ class MapOperations:
         return STEP_COUNT
 
     def _step_generic(self, key, value, map_data):
-        """普通点位：拖图 → 点它。"""
+        """普通点位：拖图 → 点它。阈值走图片识别参数覆盖层（recognition）。"""
+        stem = assets.asset_id(key)
+        search, click, min_t = recognition.thresholds_of(
+            stem, search_default=POINT_SEARCH, click_default=TELEPORT_POINT)
+        kwargs = {"min_threshold": min_t} if min_t is not None else {}
         if self.map.allow_drap_map_switch or self.map_drag:
             self.map.find_transfer_point(
-                key, threshold=POINT_SEARCH, exact=self.map.drag_exact, offset=self.map.drag_offset)
+                key, threshold=search, exact=self.map.drag_exact,
+                offset=self.map.drag_offset, **kwargs)
         if self.map.allow_scene_drag_switch:
             self.map.find_scene(key, threshold=DREAM_SCENE)
         if self.img.on_main_interface(timeout=0.5, allow_log=False):
             log.info("执行alt")
             self.mouse_event.click_target_with_alt(
-                self.img, key, TELEPORT_POINT, clicks=self.map.multi_click)
+                self.img, key, click, clicks=self.map.multi_click)
         else:
             self.img.click_target(
-                key, TELEPORT_POINT, clicks=self.map.multi_click,
+                key, click, clicks=self.map.multi_click,
                 retry_in_map=self.map.allow_retry_in_map_switch)
         self.map_statu.temp_point = key
         return STEP_COUNT

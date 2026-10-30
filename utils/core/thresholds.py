@@ -132,8 +132,9 @@ TRANSFER_ICON = 0.93
 BUY_ICON = 0.93
 
 #: `check_4-1_point_1/2/3.png`：筑梦边境机关检查（三张，轮廓识别 / 形状匹配，
-#: 见 `vision/assets.py` 的 `MATCH_SHAPE` 登记）。0.85 为用户实机实测后指定的值
-#: （2026-10-28），查找（含 `min_threshold` 下限）与点击判定共用此值。
+#: 匹配策略见 `vision/recognition.py` 覆盖层，键 check_4-1_point_1/2/3）。
+#: 0.85 为用户实机实测后指定的值（2026-10-28），查找（含 `min_threshold` 下限）
+#: 与点击判定共用此值，运行时由 `_step_dream_machine` 作为默认传入覆盖层。
 #: 复核方式：`tools/match_probe.py check_4-1_point_1`（主策略显示「轮廓识别」）。
 DREAM_MACHINE = 0.85
 

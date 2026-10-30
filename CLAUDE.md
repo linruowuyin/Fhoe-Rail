@@ -139,6 +139,7 @@ Fhoe-Rail/
 │  │  ├─ colors.py            #   色域判定（按 HSV 区间找颜色）
 │  │  ├─ viewer.py            #   调试图片窗口（cv2 显示接口）
 │  │  ├─ assets.py            #   图片资源登记表（R25）
+│  │  ├─ recognition.py       #   图片识别参数覆盖层：逐张 mode/阈值（稀疏，单一真相源）
 │  │  ├─ blackscreen.py       #   黑屏判定
 │  │  ├─ puzzle_exit.py       #   解谜放弃弹窗识别（两区域 AND，纯函数）
 │  │  ├─ get_angle.py         #   箭头朝向

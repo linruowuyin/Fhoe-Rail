@@ -724,6 +724,26 @@ class TestProbeMetaRoute:
         assert status == 200
         assert body["search_offset"] is None
 
+    def test_returns_the_registered_threshold(self, webui):
+        """选中模板时前端要预填这张图登记的阈值（core/thresholds.py 的常量）。"""
+        from utils.core.thresholds import DEFAULT_MATCH, TRANSFER_ICON
+
+        status, body = request(f"{webui}/api/probe/meta?name=transfer.webp")
+
+        assert status == 200
+        assert body["threshold"] == TRANSFER_ICON
+        assert body["default_threshold"] == DEFAULT_MATCH
+
+    def test_an_unregistered_threshold_returns_null_with_a_default(self, webui):
+        """地图点位这类没登记阈值的图：threshold 为 null，前端沿用默认值并提示。"""
+        from utils.core.thresholds import DEFAULT_MATCH
+
+        status, body = request(f"{webui}/api/probe/meta?name=map_1.webp")
+
+        assert status == 200
+        assert body["threshold"] is None
+        assert body["default_threshold"] == DEFAULT_MATCH
+
     def test_a_missing_picture_is_404(self, webui):
         status, _ = request(f"{webui}/api/probe/meta?name=ghost.webp")
 

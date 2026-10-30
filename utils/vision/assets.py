@@ -8,8 +8,11 @@
     这里只登记**代码直接引用**的图。地图 JSON 里的 `picture\\xxx.png` 是地图
     作者/录制器写进数据的「地图点位」资产（633 张地图里几千处引用），不属于
     代码资源，不在这里逐条登记 —— 它们由 `core/schema.py` 与地图目录管理。
-    例外：点位图需要**按路径查匹配策略**时（如筑梦机关检查的轮廓识别），
-    策略表只认这里，必须补一条（`strategy_for_path` 反查不到就不会生效）。
+    例外：点位图若需要被代码按 ID 取到物理路径（如筑梦机关检查），仍要在这里
+    登记一条 —— 只为 `path()` 与 `threshold_for_path`（WebUI 探针 meta）能查到。
+    但**匹配策略不再在这里设 `match=`**：已迁到 `vision/recognition.py` 的覆盖层
+    （按资源 ID 精确控制逐张模式），避免同一张图出现「登记表 + 覆盖层」两个
+    模式来源。`threshold_for_path` 会优先读覆盖层里的显式 threshold，三层合一。
 
 用法
     from utils.vision import assets
@@ -38,10 +41,18 @@
     默认 `MATCH_COLOR`（整图 CCORR）。底色会随游戏内模糊背景变化的图标标
     `MATCH_SHAPE`：匹配器先把帧和模板转成梯度幅值再比，只看轮廓不看颜色
     （见 `vision/matcher.py::Matcher.shape_features`）。新增同类图标时优先用形状匹配。
+
+阈值
+    `threshold` 登记这张模板**主要检测用途**的阈值，值是 `core/thresholds.py`
+    常量的引用（数值只在那边维护）。WebUI 探针选中模板时预填它；没有专属常量
+    的图（动态地图点位等）留空，探针沿用 `DEFAULT_MATCH` 并提示。
 """
 
 import os
 from typing import NamedTuple
+
+from utils.core import thresholds
+
 #: 图片资源根目录（相对仓库根）。`black_screen` 之类按目录扫描的代码用它。
 PICTURE_ROOT = "./picture"
 
@@ -105,7 +116,7 @@ MATCH_COLOR_CCOEFF = "color_ccoeff"
 
 
 class Asset(NamedTuple):
-    """一条图片资源：路径 + 分类 + 备注 + 匹配策略 + 调用点搜索区域。"""
+    """一条图片资源：路径 + 分类 + 备注 + 匹配策略 + 调用点搜索区域 + 探针阈值。"""
 
     path: str
     category: str
@@ -114,6 +125,11 @@ class Asset(NamedTuple):
     #: 调用点实际使用的 `take_screenshot(offset=...)`（四边增量，不是宽高）。
     #: `None` 表示调用点全屏搜索。登记后探针会用同一份区域再量一次「调用点」结果。
     search_offset: tuple | None = None
+    #: 这张模板**主要检测用途**的阈值，直接引用 `core/thresholds.py` 的常量
+    #: （值仍只在那边维护）。WebUI 探针选中模板时预填这个值。
+    #: `None` = 没有专属阈值常量（动态地图点位、HSV 类识别），探针沿用
+    #: `DEFAULT_MATCH` 并提示「未登记阈值」。
+    threshold: float | None = None
 
 
 #: 没有对应模板的搜索区域：动态资源（地图 JSON 里的 `1floor_*` / `fanhui_*`
@@ -180,112 +196,261 @@ ASSETS = {
         CATEGORY_MAIN_UI,
         "主界面判定（Img.main_ui）",
         search_offset=(0, 0, -1630, -800),
+        threshold=thresholds.MAIN_INTERFACE,
     ),
-    "finish_fighting2": Asset("./picture/ui/finish_fighting2.webp", CATEGORY_MAIN_UI),
+    "finish_fighting2": Asset(
+        "./picture/ui/finish_fighting2.webp",
+        CATEGORY_MAIN_UI,
+        threshold=thresholds.MAIN_INTERFACE,
+    ),
     "finish_fighting2_1": Asset(
-        "./picture/ui/finish_fighting2_1.webp", CATEGORY_MAIN_UI
+        "./picture/ui/finish_fighting2_1.webp",
+        CATEGORY_MAIN_UI,
+        threshold=thresholds.MAIN_INTERFACE,
     ),
     "finish_fighting2_2": Asset(
-        "./picture/ui/finish_fighting2_2.webp", CATEGORY_MAIN_UI
+        "./picture/ui/finish_fighting2_2.webp",
+        CATEGORY_MAIN_UI,
+        threshold=thresholds.MAIN_INTERFACE,
     ),
-    "finish_fighting3": Asset("./picture/ui/finish_fighting3.webp", CATEGORY_MAIN_UI),
-    "finish_fighting4": Asset("./picture/ui/finish_fighting4.webp", CATEGORY_MAIN_UI),
-    "finish_fighting5": Asset("./picture/ui/finish_fighting5.webp", CATEGORY_MAIN_UI),
-    "doubt": Asset("./picture/ui/doubt.webp", CATEGORY_MAIN_UI, "疑问气泡（附近有敌人）"),
+    "finish_fighting3": Asset(
+        "./picture/ui/finish_fighting3.webp",
+        CATEGORY_MAIN_UI,
+        threshold=thresholds.MAIN_INTERFACE,
+    ),
+    "finish_fighting4": Asset(
+        "./picture/ui/finish_fighting4.webp",
+        CATEGORY_MAIN_UI,
+        threshold=thresholds.MAIN_INTERFACE,
+    ),
+    "finish_fighting5": Asset(
+        "./picture/ui/finish_fighting5.webp",
+        CATEGORY_MAIN_UI,
+        threshold=thresholds.MAIN_INTERFACE,
+    ),
+    "doubt": Asset(
+        "./picture/ui/doubt.webp",
+        CATEGORY_MAIN_UI,
+        "疑问气泡（附近有敌人）",
+        threshold=thresholds.DOUBT_ICON,
+    ),
     "warn": Asset("./picture/ui/warn.webp", CATEGORY_MAIN_UI),
     "battle_esc_check": Asset(
         "./picture/ui/battle_esc_check.webp",
         CATEGORY_MAIN_UI,
         "战斗中按 ESC 的确认画面",
         search_offset=(0, 0, -1800, -970),
+        threshold=thresholds.BATTLE_ESC_CHECK,
     ),
     "switch_run": Asset(
         "./picture/ui/switch_run.webp",
         CATEGORY_MAIN_UI,
         "疾跑图标",
         search_offset=(1720, 930, 0, 0),
+        threshold=thresholds.SPRINT_ICON,
     ),
-    "map_load": Asset("./picture/map_ui/map_load.webp", CATEGORY_MAIN_UI, "地图加载中"),
-    "round": Asset("./picture/ui/round.webp", CATEGORY_MAIN_UI, "必定不在战斗中"),
+    "map_load": Asset(
+        "./picture/map_ui/map_load.webp",
+        CATEGORY_MAIN_UI,
+        "地图加载中",
+        threshold=thresholds.MAP_LOADING,
+    ),
+    "round": Asset(
+        "./picture/ui/round.webp",
+        CATEGORY_MAIN_UI,
+        "必定不在战斗中",
+        threshold=thresholds.ROUND_ICON,
+    ),
     # --- 战斗 --------------------------------------------------------------
-    "auto": Asset("./picture/ui/auto.webp", CATEGORY_COMBAT, "自动战斗已开启"),
-    "not_auto": Asset("./picture/ui/not_auto.webp", CATEGORY_COMBAT, "自动战斗未开启"),
-    "continue_fighting": Asset(
-        "./picture/ui/continue_fighting.webp", CATEGORY_COMBAT, "继续战斗按钮"
+    "auto": Asset(
+        "./picture/ui/auto.webp",
+        CATEGORY_COMBAT,
+        "自动战斗已开启（combat 用 AUTO_OFF_ICON 判定状态）",
+        threshold=thresholds.AUTO_OFF_ICON,
     ),
-    "defeat": Asset("./picture/ui/defeat.webp", CATEGORY_COMBAT),
+    "not_auto": Asset(
+        "./picture/ui/not_auto.webp",
+        CATEGORY_COMBAT,
+        "自动战斗未开启",
+        threshold=thresholds.AUTO_OFF_ICON,
+    ),
+    "continue_fighting": Asset(
+        "./picture/ui/continue_fighting.webp",
+        CATEGORY_COMBAT,
+        "继续战斗按钮",
+        threshold=thresholds.CONTINUE_FIGHTING,
+    ),
+    "defeat": Asset(
+        "./picture/ui/defeat.webp",
+        CATEGORY_COMBAT,
+        threshold=thresholds.DEFEAT,
+    ),
     # --- 购买 / 零食 / 弹窗 ------------------------------------------------
-    "eat": Asset("./picture/ui/eat.webp", CATEGORY_PURCHASE, "秘技点不足对话框"),
+    "eat": Asset(
+        "./picture/ui/eat.webp",
+        CATEGORY_PURCHASE,
+        "秘技点不足对话框",
+        threshold=thresholds.TECHNIQUE_DIALOG,
+    ),
     "qiqiao": Asset(
         "./picture/ui/qiqiao.webp",
         CATEGORY_PURCHASE,
         "奇巧零食图标",
         search_offset=(900, 300, -400, -300),
+        threshold=thresholds.QIQIAO_ICON,
     ),
-    "qiqiao_lab": Asset("./picture/ui/qiqiao_lab.webp", CATEGORY_PURCHASE),
-    "cancel": Asset("./picture/ui/cancel.webp", CATEGORY_PURCHASE),
-    "round_disable": Asset("./picture/ui/round_disable.webp", CATEGORY_PURCHASE, "无法购买"),
-    "max": Asset("./picture/ui/max.webp", CATEGORY_PURCHASE, "购买数量拉满"),
+    "qiqiao_lab": Asset(
+        "./picture/ui/qiqiao_lab.webp",
+        CATEGORY_PURCHASE,
+        threshold=thresholds.QIQIAO_LAB,
+    ),
+    "cancel": Asset(
+        "./picture/ui/cancel.webp",
+        CATEGORY_PURCHASE,
+        threshold=thresholds.CANCEL_BUTTON,
+    ),
+    "round_disable": Asset(
+        "./picture/ui/round_disable.webp",
+        CATEGORY_PURCHASE,
+        "无法购买",
+        threshold=thresholds.ROUND_DISABLE,
+    ),
+    "max": Asset(
+        "./picture/ui/max.webp",
+        CATEGORY_PURCHASE,
+        "购买数量拉满",
+        threshold=thresholds.BUY_ICON,
+    ),
     # --- F 键交互 ----------------------------------------------------------
-    "sw": Asset("./picture/f_icon/sw.webp", CATEGORY_F_ICON, "F 图标（通用）"),
-    "f_teleport": Asset("./picture/f_icon/F_Teleport.webp", CATEGORY_F_ICON),
-    "f_space_anchor": Asset("./picture/f_icon/F_SpaceAnchor.webp", CATEGORY_F_ICON),
-    "f_dream_module": Asset("./picture/f_icon/F_DreamModule.webp", CATEGORY_F_ICON),
-    "f_dream_pop": Asset("./picture/f_icon/F_DreamPop.webp", CATEGORY_F_ICON),
-    "f_dream_scape": Asset("./picture/f_icon/F_DreamScape.webp", CATEGORY_F_ICON),
-    "f_listen": Asset("./picture/f_icon/F_Listen.webp", CATEGORY_F_ICON),
-    "f_goto": Asset("./picture/f_icon/F_Goto.webp", CATEGORY_F_ICON),
+    "sw": Asset(
+        "./picture/f_icon/sw.webp",
+        CATEGORY_F_ICON,
+        "F 图标（通用）",
+        threshold=thresholds.F_ICON,
+    ),
+    "f_teleport": Asset(
+        "./picture/f_icon/F_Teleport.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
+    "f_space_anchor": Asset(
+        "./picture/f_icon/F_SpaceAnchor.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
+    "f_dream_module": Asset(
+        "./picture/f_icon/F_DreamModule.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
+    "f_dream_pop": Asset(
+        "./picture/f_icon/F_DreamPop.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
+    "f_dream_scape": Asset(
+        "./picture/f_icon/F_DreamScape.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
+    "f_listen": Asset(
+        "./picture/f_icon/F_Listen.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
+    "f_goto": Asset(
+        "./picture/f_icon/F_Goto.webp",
+        CATEGORY_F_ICON,
+        threshold=thresholds.F_ICON,
+    ),
     # --- 地图 / 星轨航图 ---------------------------------------------------
-    "transfer": Asset("./picture/map_ui/transfer.webp", CATEGORY_MAP_UI, "传送锚点"),
+    "transfer": Asset(
+        "./picture/map_ui/transfer.webp",
+        CATEGORY_MAP_UI,
+        "传送锚点",
+        threshold=thresholds.TRANSFER_ICON,
+    ),
     "contraction": Asset(
         "./picture/map_ui/contraction.webp",
         CATEGORY_MAP_UI,
         "地图收缩图标",
         search_offset=(530, 960, -1050, -50),
+        threshold=thresholds.MAP_OPEN,
     ),
     "map_back": Asset(
         "./picture/map_ui/map_back.webp",
         CATEGORY_MAP_UI,
         "地图返回按钮",
         search_offset=(1830, 0, 0, -975),
+        threshold=thresholds.MAP_BACK,
     ),
     "kaituoli_1": Asset(
         "./picture/map_ui/kaituoli_1.webp",
         CATEGORY_MAP_UI,
         "星轨航图",
         search_offset=(1580, 0, 0, -910),
+        threshold=thresholds.STAR_MAP,
     ),
-    # 筑梦边境机关检查：地图 JSON 引用的点位图，**为了匹配策略而登记**。
-    # 策略表只认登记表（`strategy_for_path` 按物理路径反查），不登记这三条
-    # `MATCH_SHAPE` 就不会生效。阈值见 `core/thresholds.py::DREAM_MACHINE`。
+    # 筑梦边境机关检查：地图 JSON 引用的点位图。此处登记只为两件事：
+    #   1. `assets.path()` 能按 ID 取到物理路径（`tests/test_matcher.py` 用到）；
+    #   2. `threshold_for_path`（WebUI 探针 meta）能读到「主要检测用途」阈值 ——
+    #      直接引用 `core/thresholds.py::DREAM_MACHINE` 常量，单一来源，不复制数字。
+    # 匹配策略（shape）已迁到 `vision/recognition.py` 的覆盖层
+    # （键 check_4-1_point_1/2/3），故本表**不设 `match=`** —— 避免同一张图出现
+    # 「登记表 + 覆盖层」两个模式来源。`threshold_for_path` 也会优先读覆盖层的
+    # 显式 threshold，三层（覆盖层 / 登记表 / 全局默认）合一。
     "check_4-1_point_1": Asset(
         "./picture/map_points/4/check_4-1_point_1.webp",
         CATEGORY_MAP_UI,
         "筑梦边境机关检查 1（地图点位，轮廓识别）",
-        match=MATCH_SHAPE,
+        threshold=thresholds.DREAM_MACHINE,
     ),
     "check_4-1_point_2": Asset(
         "./picture/map_points/4/check_4-1_point_2.webp",
         CATEGORY_MAP_UI,
         "筑梦边境机关检查 2（地图点位，轮廓识别）",
-        match=MATCH_SHAPE,
+        threshold=thresholds.DREAM_MACHINE,
     ),
     "check_4-1_point_3": Asset(
         "./picture/map_points/4/check_4-1_point_3.webp",
         CATEGORY_MAP_UI,
         "筑梦边境机关检查 3（地图点位，轮廓识别）",
-        match=MATCH_SHAPE,
+        threshold=thresholds.DREAM_MACHINE,
     ),
     # --- 视角 / 小地图 -----------------------------------------------------
     "screenshot_arrow": Asset(
         "./picture/orientation/screenshot_arrow.webp", CATEGORY_ORIENTATION, "视角校准箭头"
     ),
-    "orientation_2": Asset("./picture/orientation/orientation_2.webp", CATEGORY_ORIENTATION),
-    "orientation_3": Asset("./picture/orientation/orientation_3.webp", CATEGORY_ORIENTATION),
-    "orientation_4": Asset("./picture/orientation/orientation_4.webp", CATEGORY_ORIENTATION),
-    "orientation_5": Asset("./picture/orientation/orientation_5.webp", CATEGORY_ORIENTATION),
-    "orientation_6": Asset("./picture/orientation/orientation_6.webp", CATEGORY_ORIENTATION),
-    "orientation_7": Asset("./picture/orientation/orientation_7.webp", CATEGORY_ORIENTATION),
+    "orientation_2": Asset(
+        "./picture/orientation/orientation_2.webp",
+        CATEGORY_ORIENTATION,
+        threshold=thresholds.PLANET,
+    ),
+    "orientation_3": Asset(
+        "./picture/orientation/orientation_3.webp",
+        CATEGORY_ORIENTATION,
+        threshold=thresholds.PLANET,
+    ),
+    "orientation_4": Asset(
+        "./picture/orientation/orientation_4.webp",
+        CATEGORY_ORIENTATION,
+        threshold=thresholds.PLANET,
+    ),
+    "orientation_5": Asset(
+        "./picture/orientation/orientation_5.webp",
+        CATEGORY_ORIENTATION,
+        threshold=thresholds.PLANET,
+    ),
+    "orientation_6": Asset(
+        "./picture/orientation/orientation_6.webp",
+        CATEGORY_ORIENTATION,
+        threshold=thresholds.PLANET,
+    ),
+    "orientation_7": Asset(
+        "./picture/orientation/orientation_7.webp",
+        CATEGORY_ORIENTATION,
+        threshold=thresholds.PLANET,
+    ),
     "loc_arrow": Asset("./picture/orientation/loc_arrow.webp", CATEGORY_ORIENTATION, "小地图箭头"),
     # --- 设置菜单 ----------------------------------------------------------
     "setting_icon": Asset(
@@ -294,36 +459,59 @@ ASSETS = {
         "设置菜单入口（底色随模糊背景变化，用形状匹配）",
         match=MATCH_SHAPE,
         search_offset=(1843, 0, -35, 0),
+        threshold=thresholds.SETTING_ICON,
     ),
     "setting_other": Asset(
         "./picture/ui/setting_other.webp",
         CATEGORY_SETTING,
         "设置菜单-其他设置（底色随模糊背景变化，用形状匹配）",
         match=MATCH_SHAPE,
+        threshold=thresholds.SETTING_OPTION,
     ),
-    "setting_yes": Asset("./picture/ui/setting_yes.webp", CATEGORY_SETTING),
+    "setting_yes": Asset(
+        "./picture/ui/setting_yes.webp",
+        CATEGORY_SETTING,
+        threshold=thresholds.SETTING_CONFIRM,
+    ),
     "auto_use_technique_consumable": Asset(
-        "./picture/ui/auto_use_technique_consumable.webp", CATEGORY_SETTING
+        "./picture/ui/auto_use_technique_consumable.webp",
+        CATEGORY_SETTING,
+        threshold=thresholds.TECHNIQUE_CONSUMABLE,
     ),
     # --- 月卡 --------------------------------------------------------------
-    "monthly_pass_pic": Asset("./picture/ui/monthly_pass_pic.webp", CATEGORY_MONTHLY_PASS),
+    "monthly_pass_pic": Asset(
+        "./picture/ui/monthly_pass_pic.webp",
+        CATEGORY_MONTHLY_PASS,
+        threshold=thresholds.MONTHLY_PASS,
+    ),
     "monthly_pass_pic_2": Asset(
-        "./picture/ui/monthly_pass_pic_2.webp", CATEGORY_MONTHLY_PASS
+        "./picture/ui/monthly_pass_pic_2.webp",
+        CATEGORY_MONTHLY_PASS,
+        threshold=thresholds.MONTHLY_PASS,
     ),
     "monthly_pass_pic_3": Asset(
-        "./picture/ui/monthly_pass_pic_3.webp", CATEGORY_MONTHLY_PASS
+        "./picture/ui/monthly_pass_pic_3.webp",
+        CATEGORY_MONTHLY_PASS,
+        threshold=thresholds.MONTHLY_PASS,
     ),
     # --- 角色 --------------------------------------------------------------
     "silver_wolf_lv999_e": Asset(
-        "./picture/role/silver_wolf_lv999_e.png", CATEGORY_ROLE, "银狼 LV.999 秘技状态"
+        "./picture/role/silver_wolf_lv999_e.png",
+        CATEGORY_ROLE,
+        "银狼 LV.999 秘技状态",
+        threshold=thresholds.SILVER_WOLF_LV999_E_ICON,
     ),
     "role_acheron": Asset(
-        "./picture/role/role_acheron.png", CATEGORY_ROLE, "1 号位黄泉头像"
+        "./picture/role/role_acheron.png",
+        CATEGORY_ROLE,
+        "1 号位黄泉头像",
+        threshold=thresholds.FIRST_ROLE_ICON,
     ),
     "role_silver_wolf_lv999": Asset(
         "./picture/role/role_silver_wolf_lv999.png",
         CATEGORY_ROLE,
         "1 号位银狼 LV.999 头像",
+        threshold=thresholds.FIRST_ROLE_ICON,
     ),
     # --- 解谜 --------------------------------------------------------------
     "puzzle_exit_prompt": Asset(
@@ -331,12 +519,14 @@ ASSETS = {
         CATEGORY_PUZZLE,
         "放弃游玩？提示",
         match=MATCH_COLOR_CCOEFF,
+        threshold=thresholds.PUZZLE_EXIT_PROMPT,
     ),
     "puzzle_exit_confirm": Asset(
         "./picture/ui/puzzle_exit_confirm.png",
         CATEGORY_PUZZLE,
         "放弃游玩确认按钮",
         match=MATCH_COLOR_CCOEFF,
+        threshold=thresholds.PUZZLE_EXIT_CONFIRM,
     ),
 }
 
@@ -394,6 +584,26 @@ def search_offset_for_path(path):
     """图片路径 → 调用点搜索区域；未登记或没登记区域时 None。"""
     asset = ASSET_BY_PATH.get(_path_key(path))
     return asset.search_offset if asset is not None else None
+
+
+def threshold_for_path(path):
+    """图片路径 → 探针默认阈值。
+
+    合并三层来源，避免「标定值与运行时值分家」：
+      1. 覆盖层（`vision/recognition.py`）里显式写的 threshold 最高优先级；
+      2. 否则本表登记的「主要检测用途」阈值（直接引用 `core/thresholds.py`
+         常量，数值只在那边维护）；
+      3. 都没有返回 None —— 探针沿用 `DEFAULT_MATCH` 并提示「未登记阈值」。
+
+    这样无论是登记表常量还是覆盖层定制，探针（WebUI meta 与 CLI 默认）读到的
+    都和运行时一致。
+    """
+    from utils.vision import recognition  # 延迟导入，避免与 recognition 的互相引用
+
+    asset = ASSET_BY_PATH.get(_path_key(path))
+    base = asset.threshold if asset is not None else None
+    override = recognition.threshold_override_of_path(path)
+    return override if override is not None else base
 
 
 def is_picture_ref(value):

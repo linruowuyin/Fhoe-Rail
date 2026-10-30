@@ -72,6 +72,17 @@ def test_probe_page_is_tree_plus_grid():
     assert "① 选一张模板" not in HTML
 
 
+def test_probe_threshold_comes_from_the_registry():
+    """点图后阈值要读这张图登记的值（/api/probe/meta），读不到时沿用默认并提示。"""
+    start = HTML.index("async function pickProbeImage")
+    end = HTML.index("async function runProbe")
+    body = HTML[start:end]
+    assert "meta.threshold" in body
+    assert "meta.default_threshold" in body
+    assert "未登记阈值" in body
+    assert 'id="probe-threshold"' in HTML
+
+
 def test_config_actions_are_frozen_at_the_top():
     """保存/重新读取/查看JSON/下载 四个按钮在最上面并冻结，不随长表单滚走。"""
     toolbar = HTML.split('id="config-toolbar"', 1)[1].split("</div>", 1)[0]
