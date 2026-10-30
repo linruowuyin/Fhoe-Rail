@@ -416,6 +416,15 @@ def main():
                     continue
 
         try:
+            # 未显式给阈值（即仍是默认 0.9）时，按「覆盖层 → 登记表阈值」解析探针
+            # 默认：与 WebUI 探针 meta 走同一条路径（`assets.threshold_for_path`），
+            # 保证标定值与运行时值不脱节 —— 单独控制某张图的阈值在探针里也能看见。
+            # 用户手敲的阈值（非 0.9）一律尊重，这里只在用默认值时才尝试升级。
+            if threshold == DEFAULT_MATCH:
+                resolved = asset_registry.threshold_for_path(
+                    resolve_template(candidate))
+                if resolved is not None:
+                    threshold = resolved
             outcome = recognize(
                 screen,
                 candidate,

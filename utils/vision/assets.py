@@ -8,8 +8,11 @@
     这里只登记**代码直接引用**的图。地图 JSON 里的 `picture\\xxx.png` 是地图
     作者/录制器写进数据的「地图点位」资产（633 张地图里几千处引用），不属于
     代码资源，不在这里逐条登记 —— 它们由 `core/schema.py` 与地图目录管理。
-    例外：点位图需要**按路径查匹配策略**时（如筑梦机关检查的轮廓识别），
-    策略表只认这里，必须补一条（`strategy_for_path` 反查不到就不会生效）。
+    例外：点位图若需要被代码按 ID 取到物理路径（如筑梦机关检查），仍要在这里
+    登记一条 —— 只为 `path()` 与 `threshold_for_path`（WebUI 探针 meta）能查到。
+    但**匹配策略不再在这里设 `match=`**：已迁到 `vision/recognition.py` 的覆盖层
+    （按资源 ID 精确控制逐张模式），避免同一张图出现「登记表 + 覆盖层」两个
+    模式来源。`threshold_for_path` 会优先读覆盖层里的显式 threshold，三层合一。
 
 用法
     from utils.vision import assets
@@ -388,28 +391,30 @@ ASSETS = {
         search_offset=(1580, 0, 0, -910),
         threshold=thresholds.STAR_MAP,
     ),
-    # 筑梦边境机关检查：地图 JSON 引用的点位图，**为了匹配策略而登记**。
-    # 策略表只认登记表（`strategy_for_path` 按物理路径反查），不登记这三条
-    # `MATCH_SHAPE` 就不会生效。阈值见 `core/thresholds.py::DREAM_MACHINE`。
+    # 筑梦边境机关检查：地图 JSON 引用的点位图。此处登记只为两件事：
+    #   1. `assets.path()` 能按 ID 取到物理路径（`tests/test_matcher.py` 用到）；
+    #   2. `threshold_for_path`（WebUI 探针 meta）能读到「主要检测用途」阈值 ——
+    #      直接引用 `core/thresholds.py::DREAM_MACHINE` 常量，单一来源，不复制数字。
+    # 匹配策略（shape）已迁到 `vision/recognition.py` 的覆盖层
+    # （键 check_4-1_point_1/2/3），故本表**不设 `match=`** —— 避免同一张图出现
+    # 「登记表 + 覆盖层」两个模式来源。`threshold_for_path` 也会优先读覆盖层的
+    # 显式 threshold，三层（覆盖层 / 登记表 / 全局默认）合一。
     "check_4-1_point_1": Asset(
         "./picture/map_points/4/check_4-1_point_1.webp",
         CATEGORY_MAP_UI,
         "筑梦边境机关检查 1（地图点位，轮廓识别）",
-        match=MATCH_SHAPE,
         threshold=thresholds.DREAM_MACHINE,
     ),
     "check_4-1_point_2": Asset(
         "./picture/map_points/4/check_4-1_point_2.webp",
         CATEGORY_MAP_UI,
         "筑梦边境机关检查 2（地图点位，轮廓识别）",
-        match=MATCH_SHAPE,
         threshold=thresholds.DREAM_MACHINE,
     ),
     "check_4-1_point_3": Asset(
         "./picture/map_points/4/check_4-1_point_3.webp",
         CATEGORY_MAP_UI,
         "筑梦边境机关检查 3（地图点位，轮廓识别）",
-        match=MATCH_SHAPE,
         threshold=thresholds.DREAM_MACHINE,
     ),
     # --- 视角 / 小地图 -----------------------------------------------------
@@ -582,13 +587,23 @@ def search_offset_for_path(path):
 
 
 def threshold_for_path(path):
-    """图片路径 → 探针默认阈值（`core/thresholds.py` 里主要检测用途的常量）。
+    """图片路径 → 探针默认阈值。
 
-    未登记、或这张图没有专属阈值常量时返回 None —— 探针会沿用
-    `DEFAULT_MATCH` 并提示「未登记阈值」。
+    合并三层来源，避免「标定值与运行时值分家」：
+      1. 覆盖层（`vision/recognition.py`）里显式写的 threshold 最高优先级；
+      2. 否则本表登记的「主要检测用途」阈值（直接引用 `core/thresholds.py`
+         常量，数值只在那边维护）；
+      3. 都没有返回 None —— 探针沿用 `DEFAULT_MATCH` 并提示「未登记阈值」。
+
+    这样无论是登记表常量还是覆盖层定制，探针（WebUI meta 与 CLI 默认）读到的
+    都和运行时一致。
     """
+    from utils.vision import recognition  # 延迟导入，避免与 recognition 的互相引用
+
     asset = ASSET_BY_PATH.get(_path_key(path))
-    return asset.threshold if asset is not None else None
+    base = asset.threshold if asset is not None else None
+    override = recognition.threshold_override_of_path(path)
+    return override if override is not None else base
 
 
 def is_picture_ref(value):
