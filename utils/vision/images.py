@@ -168,6 +168,14 @@ def search_offset_of(image):
     return assets.search_offset_for_path(path)
 
 
+def threshold_of(image):
+    """一张模板 → 探针默认阈值（登记表里主要检测用途的值）；未登记时 None。"""
+    path = path_of(image)
+    if not path:
+        return None
+    return assets.threshold_for_path(path)
+
+
 def load_all(image_paths=None) -> dict:
     """按 {属性名: 路径} 批量加载，加载失败的只告警、不进结果。
 

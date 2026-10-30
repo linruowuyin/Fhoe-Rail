@@ -163,8 +163,9 @@ def measure(
     :param screen: `ScreenSource`（测试里可以是替身）。必须由调用方持有 ——
         抓帧来源记在它身上（`last_capture_source`），这里只能读。
     :param template: 模板图 ndarray（BGR，与帧同序）
-    :param threshold: 用于算余量的阈值。仓库里没有「图片名 → 阈值」的表，所以这个
-        值由调用方给，默认取 `DEFAULT_MATCH`
+    :param threshold: 用于算余量的阈值。模板登记的默认值在 `Asset.threshold`
+        （`images.threshold_of` 可按图反查，WebUI 选中模板时预填）；没登记阈值
+        的图由调用方给，默认取 `DEFAULT_MATCH`
     :param pad: 模糊 offset 的四边外扩量
     :param max_retries: 抓帧重试次数，见 `PROBE_MAX_RETRIES`
     :param retry_interval: 每次重试之间等几秒

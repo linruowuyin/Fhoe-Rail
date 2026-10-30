@@ -1427,14 +1427,18 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/api/probe/meta":
                 """选中一张模板后，取出它的默认配置（开发者模式）。
 
-                搜索区域取 `Asset.search_offset` —— 与运行时点击用的是同一份配置，
+                搜索区域取 `Asset.search_offset`、阈值取 `Asset.threshold` ——
+                与运行时用的是同一份配置（阈值本身仍只维护在 `core/thresholds.py`），
                 WebUI 只是把它显示出来给用户改，不存在第二份副本。
+                该图没有登记阈值时 `threshold` 为 null，前端沿用
+                `default_threshold`（`DEFAULT_MATCH`）并提示。
                 """
                 if not dev_mode_enabled():
                     self._send(403, {"ok": False, "error": "开发者模式未开启"})
                     return
                 from urllib.parse import parse_qs
 
+                from utils.core.thresholds import DEFAULT_MATCH
                 from utils.vision import images as image_library
                 from utils.vision import probe as probe_module
 
@@ -1459,6 +1463,8 @@ class Handler(BaseHTTPRequestHandler):
                         "strategy_label": probe_module.STRATEGY_INFO[strategy][
                             "label"
                         ],
+                        "threshold": image_library.threshold_of(template),
+                        "default_threshold": DEFAULT_MATCH,
                     },
                 )
             elif path == "/api/stats":
