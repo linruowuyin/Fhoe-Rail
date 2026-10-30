@@ -20,10 +20,13 @@
             "scene": 1
         },
         {
-            "floor": [[1,2,3],2]
+            "floor": [[1,2,3],1]
         },
         {
             "picture\\map_6-5_point_1.png": 1.5
+        },
+        {
+            "picture\\map_6-5_point_3.png": 1.5
         },
         {
             "picture\\transfer.png": 1.5
