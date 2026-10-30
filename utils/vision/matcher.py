@@ -23,6 +23,14 @@ from utils.vision import images as image_library
 from utils.vision import samples
 
 
+#: 匹配策略 → 中文名，仅用于日志输出，方便排查某张图实际用了哪种识别方式。
+_MATCH_STRATEGY_LABEL = {
+    assets.MATCH_COLOR: "颜色匹配",
+    assets.MATCH_SHAPE: "轮廓识别",
+    assets.MATCH_COLOR_CCOEFF: "颜色CCOEFF",
+}
+
+
 class Matcher:
     """模板匹配、界面判定、以及「找到图就点它」。
 
@@ -391,6 +399,7 @@ class Matcher:
         # 而反色数组查不回路径、会退回颜色匹配 —— 那等于绕开轮廓判定，
         # 在 0.85 这种低阈值下可能凭颜色点中错误位置。
         strategy = image_library.strategy_of(original_target)
+        mode_label = _MATCH_STRATEGY_LABEL.get(strategy, str(strategy))
         inverted_target = cv2.bitwise_not(original_target)
         start_time = time.time()
 
@@ -420,7 +429,8 @@ class Matcher:
             time.sleep(0.5)
 
         log.info(
-            f"查找图片超时 {target_path} ，最相似图片匹配值 {img_search_val}，所需匹配值 {threshold}"
+            f"查找图片超时 {target_path} ，识别模式 {mode_label}，"
+            f"最相似图片匹配值 {img_search_val:.3f}，所需匹配值 {threshold:.3f}"
         )
         # 只有超时这一条路径会写入：提前返回（flag=False）与图片缺失都不算「可重试的失败」。
         # 标志放在 MouseEvent 上而不是这里：读取方是 flows/map_operations，

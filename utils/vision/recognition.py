@@ -59,6 +59,12 @@ class RecognitionEntry:
 #: 筑梦三张图只覆盖 `mode`（轮廓识别），查找 / 点击 / 下限阈值全部回退到调用点传入
 #: 的默认（运行时即 `thresholds.DREAM_MACHINE`，探针即 `assets.threshold_for_path`），
 #: 数字只在 `thresholds.py` 那一处。哪天重新标定 DREAM_MACHINE，这里**不用动**。
+#: 6-5 地图点位图的实测匹配阈值（轮廓识别，底色随场景变化）。0.85 低于
+#: `find_transfer_point` 默认下限 `TRANSFER_POINT_MIN`(0.93)，故查找 / 点击 /
+#: 下限三处都用它（详见下方三条记录的注释），避免被默认下限抬回 0.93。
+_MAP_6_5_POINT_THRESHOLD = 0.85
+
+
 RECOGNITION_OVERRIDES: dict[str, RecognitionEntry] = {
     # 筑梦边境机关检查：底色随游戏内模糊背景变化，用轮廓识别（梯度幅值 + CCOEFF，
     # 见 `vision/matcher.py::Matcher.shape_features`）。只覆盖 mode；阈值（含下限）
@@ -67,10 +73,20 @@ RECOGNITION_OVERRIDES: dict[str, RecognitionEntry] = {
     "check_4-1_point_1": RecognitionEntry("shape"),
     "check_4-1_point_2": RecognitionEntry("shape"),
     "check_4-1_point_3": RecognitionEntry("shape"),
-    # 单独控制某张地图点位图的模式与阈值时，照此加一条（值须经探针实测，不要凭手感）。
-    # 阈值类字段请优先引用 `thresholds` 常量、或干脆不写（回退默认），别复制数字：
-    # "map_6-5_point_2": RecognitionEntry("shape", thresholds.DREAM_MACHINE,
-    #                                    click_threshold=thresholds.TELEPORT_POINT),
+    # 6-5 地图点位：底色随场景变化，整图颜色匹配易漏，故用轮廓识别（shape）。
+    # 阈值 0.85 为实机实测值（2026-10-30）。查找 / 点击 / 下限三者同为 0.85 ——
+    # 因为 `find_transfer_point` 默认下限 `TRANSFER_POINT_MIN`(0.93) 会把阈值抬回
+    # 0.93（见其 `max(min, 阈值-0.01)`），下限不跟着设就会「设了 0.85 实际按 0.93 跑」。
+    # 复核方式：`tools/match_probe.py map_6-5_point_1`（主策略显示「轮廓识别」，阈值 0.85）。
+    "map_6-5_point_1": RecognitionEntry("shape", _MAP_6_5_POINT_THRESHOLD,
+                                        click_threshold=_MAP_6_5_POINT_THRESHOLD,
+                                        min_threshold=_MAP_6_5_POINT_THRESHOLD),
+    "map_6-5_point_2": RecognitionEntry("shape", _MAP_6_5_POINT_THRESHOLD,
+                                        click_threshold=_MAP_6_5_POINT_THRESHOLD,
+                                        min_threshold=_MAP_6_5_POINT_THRESHOLD),
+    "map_6-5_point_3": RecognitionEntry("shape", _MAP_6_5_POINT_THRESHOLD,
+                                        click_threshold=_MAP_6_5_POINT_THRESHOLD,
+                                        min_threshold=_MAP_6_5_POINT_THRESHOLD),
 }
 
 
