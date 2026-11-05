@@ -11,6 +11,8 @@ on:
     paths:
       - '**.py'
       - 'map/**.json'
+      - 'installer/**'
+      - '.github/workflows/**'
 permissions:
   contents: write
 jobs:
@@ -184,6 +186,22 @@ jobs:
           name: Fhoe-Rail
           path: .\dist\Fhoe-Rail\
 
+      # 用 Inno Setup 把 PyInstaller 产物封装成单个安装 exe（老牌开源安装器）。
+      # windows-latest 自带 choco；installer.iss 参照 VS Code code.iss 纯脚本
+      # （WizardStyle=modern，无 botva2/InnoCallback DLL 依赖）。
+      - name: Install Inno Setup
+        if: startsWith(github.ref, 'refs/tags/')
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          $tag = git describe --tags --abbrev=0
+          # tag 形如 4.6.0_261030，取主版本段作为 AppVersion
+          $ver = ($tag -split '_')[0]
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$ver" "installer\installer.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Create zip archive
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -198,4 +216,5 @@ jobs:
 #          name: Fhoe-Rail
           files: |
            ./dist/Fhoe-Rail.zip
+           ./dist/installer/Fhoe-Rail-Setup-*.exe
 #          prerelease: true
