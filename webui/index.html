@@ -1481,6 +1481,7 @@ async function loadDashboard() {
     const data = await api("/api/stats");
     const cfg = data.config || {};
     const stats = data.log_stats || {};
+    const tele = data.telemetry || null;
     const verMap = data.map_versions || {};
     const verBadges = Object.entries(verMap)
       .map(([v, n]) => `<span class="badge b-cyan">${esc(VERSION_NAMES[v] || v)} · ${n}图</span>`).join(" ");
@@ -1492,6 +1493,7 @@ async function loadDashboard() {
         <div class="glass"><div class="stat-num">${statVal(stats.save_time)}</div><div class="stat-label">疾跑节约时间</div></div>
         <div class="glass"><div class="stat-num">${statVal(stats.stuck_cnt)}</div><div class="stat-label">系统卡顿次数</div></div>
         <div class="glass"><div class="stat-num">${statVal(stats.snack_used)}</div><div class="stat-label">奇巧零食使用次数</div></div>
+        ${tele ? `<div class="glass"><div class="stat-num">${tele.map_count ?? "—"}</div><div class="stat-label">本次运行锄图${tele.map_time != null ? " · " + tele.map_time + "s" : ""}</div></div>` : ""}
       </div>
       <div class="grid g-2">
         <div class="glass">
@@ -1513,6 +1515,10 @@ async function loadDashboard() {
           <div class="card-title">🗂️ 地图版本分布</div>
           <div style="font-size: 15px;line-height:2.2">${verBadges || "暂无数据"}</div>
           <hr class="divider">
+          ${tele ? `<div style="font-size:14px;color:var(--txt-dim);line-height:1.9;margin-bottom:8px">
+            <span class="badge b-cyan">run ${esc(tele.run_id || "")}</span>
+            wait 静止 ${tele.wait_stable ?? 0} 次${tele.wait_timeout ? ` · 兜底 ${tele.wait_timeout} 次` : ""}${tele.load_timeout ? ` · 加载超时 ${tele.load_timeout} 次` : ""}
+          </div>` : ""}
           <div style="font-size: 15px;color:var(--txt-dim);line-height:2">
             ${(stats.recent_maps || []).length ? "最近锄过的地图：" : "日志中还没有锄地记录"}
             ${(stats.recent_maps || []).map(m => `<div style="color:var(--cyan)">· ${esc(m)}</div>`).join("")}

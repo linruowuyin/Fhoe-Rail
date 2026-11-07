@@ -96,6 +96,7 @@ NOTES_DIR = os.path.join(BASE_DIR, "新图注意事项")
 PICTURE_DIR = os.path.join(BASE_DIR, "picture")
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 LOG_PATH = os.path.join(BASE_DIR, "logs", "日志文件.log")
+TELEMETRY_PATH = os.path.join(BASE_DIR, "logs", "telemetry.jsonl")
 PORT = 8666
 #: 关停端点（/api/shutdown）的令牌：启动时随机生成，只能通过本机请求 /api/ping 读到。
 #: 有它才能做「新实例接管旧实例」，同时拦住浏览器里随便一个网页把你的面板关掉 ——
@@ -1182,6 +1183,61 @@ def parse_log_stats(tail_lines):
     return stats
 
 
+def parse_telemetry(max_lines=5000):
+    """聚合最近一次运行的遥测摘要（logs/telemetry.jsonl，utils/core/telemetry.py 产出）。
+
+    无文件（旧版本）或无完整 run_start 时返回 None，前端显示为空，不报错。
+    只读文件尾部 2MB —— 遥测按 run 顺序追加，最近一次 run 一定在尾部。
+    """
+    try:
+        with open(TELEMETRY_PATH, "rb") as file:
+            file.seek(0, os.SEEK_END)
+            size = file.tell()
+            file.seek(max(0, size - 2_000_000))
+            raw = file.read().decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    events = []
+    for line in raw.splitlines()[-max_lines:]:
+        try:
+            events.append(json.loads(line))
+        except Exception:
+            continue
+    run_id = None
+    for ev in reversed(events):
+        if ev.get("kind") == "run_start":
+            run_id = ev.get("run_id")
+            break
+    if not run_id:
+        return None
+    run_events = [ev for ev in events if ev.get("run_id") == run_id]
+
+    def _first(kind):
+        return next((ev for ev in run_events if ev.get("kind") == kind), None)
+
+    map_ends = [ev for ev in run_events if ev.get("kind") == "map_end"]
+    return {
+        "run_id": run_id,
+        "mode": (_first("run_start") or {}).get("mode"),
+        "started_at": run_events[0].get("ts") if run_events else None,
+        "ended_at": (_first("run_end") or {}).get("ts"),
+        "map_count": len(map_ends),
+        "map_time": round(sum(ev.get("duration") or 0 for ev in map_ends), 1),
+        "load_timeout": sum(
+            1 for ev in run_events if ev.get("kind") == "map_load" and ev.get("timeout")
+        ),
+        "wait_stable": sum(
+            1 for ev in run_events
+            if ev.get("kind") == "wait" and ev.get("outcome") == "stable"
+        ),
+        "wait_timeout": sum(
+            1 for ev in run_events
+            if ev.get("kind") == "wait" and ev.get("outcome") == "timeout"
+        ),
+        "recent_maps": [ev.get("map") for ev in map_ends][-8:],
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "FhoeRailWebUI/1.0"
     # POST body 上限（1MB），防止恶意超大请求耗尽内存
@@ -1482,6 +1538,7 @@ class Handler(BaseHTTPRequestHandler):
                             for k, ver in tree.items()
                         },
                         "log_stats": stats,
+                        "telemetry": parse_telemetry(),
                         "planet_names": PLANET_NAMES,
                         "version_names": VERSION_NAMES,
                     },

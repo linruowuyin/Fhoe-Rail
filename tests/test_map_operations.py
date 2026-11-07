@@ -1144,6 +1144,22 @@ class TestWaitStable:
         monkeypatch.setattr(operations_module.compare, "frame_diff", lambda prev, cur: 0.0)
         assert operations._wait_stable({"wait": 0.6}, dev=False) is False
 
+    def test_wait_outcomes_emit_telemetry(self, operations, monkeypatch):
+        """wait 的两种结局都要进遥测（run 复盘的地基，见 utils/core/telemetry.py）。"""
+        events = []
+        monkeypatch.setattr(
+            operations_module.telemetry, "event", lambda kind, **f: events.append((kind, f))
+        )
+        monkeypatch.setattr(operations, "_freeze_frame", lambda: b"f")
+        monkeypatch.setattr(operations_module.compare, "frame_diff", lambda prev, cur: 0.0)
+        operations._wait_stable({"wait": 0.6}, dev=False)
+        assert ("wait", {"outcome": "stable", "seconds": 0.6}) in events
+
+        monkeypatch.setattr(operations_module, "WAIT_TIMEOUT", 0.05)
+        monkeypatch.setattr(operations_module.compare, "frame_diff", lambda prev, cur: 50.0)
+        operations._wait_stable({"wait": 0.6}, dev=False)
+        assert ("wait", {"outcome": "timeout", "seconds": 0.6}) in events
+
     def test_moving_frames_hit_timeout_fallback(self, operations, monkeypatch):
         monkeypatch.setattr(operations_module, "WAIT_TIMEOUT", 0.05)
         monkeypatch.setattr(operations, "_freeze_frame", lambda: b"f")

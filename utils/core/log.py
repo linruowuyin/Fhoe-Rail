@@ -37,7 +37,8 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 from loguru import logger
-from utils.core.requests import post
+
+from utils.core import telemetry
 
 # 日志配置
 log = logger
@@ -116,6 +117,7 @@ def update_extra(record):
     version = get_ver()
     record["new_module"] = f"{module}.{function}:{line}"
     record["VER"] = f"{version}"
+    record["RUN_ID"] = telemetry.current_run_id()
 
 
 def webhook_and_log(message):
@@ -134,7 +136,9 @@ def webhook_and_log(message):
     if url == "" or url is None:
         return
     try:
-        post(url, json={"content": message})
+        # 必须用同步 requests 且带 timeout：跑图主流程每张图调一次，
+        # 网络卡不能拖住跑图（历史教训见 tests/test_log.py::TestWebhookAndLog）。
+        requests.post(url, json={"content": message}, timeout=5)
     except Exception as e:
         log.error(f"Webhook发送失败: {e}")
 

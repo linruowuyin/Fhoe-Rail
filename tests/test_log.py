@@ -107,6 +107,12 @@ class TestUpdateExtra:
         assert record["new_module"] == "m.f:7"
         assert record["VER"]
 
+    def test_adds_run_id_field(self):
+        """每条日志都带 RUN_ID（当前 run 或空串），机器可读复盘的地基。"""
+        record = {"module": "m", "function": "f", "line": 7}
+        log_module.update_extra(record)
+        assert record["RUN_ID"] == log_module.telemetry.current_run_id()
+
     def test_raises_when_record_is_missing_keys(self):
         """patcher 依赖 record 结构，键缺失时会抛 KeyError —— 记录当前契约。"""
         with pytest.raises(KeyError):
@@ -147,9 +153,20 @@ class TestLoggingCost:
 
 
 class TestWebhookAndLog:
+    """webhook 转发必须走**同步** requests.post。
+
+    历史教训：这里曾经调用 utils/core/requests.py 的 post —— 那是 async 函数，
+    不 await 只会拿到一个 coroutine 对象，请求从未发出且不报错（webhook 静默
+    失效）。测试当年 mock 的是 log_module.post，mock 掉了调用过程本身，所以
+    全绿。现在钉住：用的是同步 requests 库，且必须带 timeout（网络卡不能拖住
+    跑图主流程）。
+    """
+
     def test_returns_early_without_url(self, log_records, monkeypatch):
         sent = []
-        monkeypatch.setattr(log_module, "post", lambda *a, **k: sent.append(a))
+        monkeypatch.setattr(
+            log_module.requests, "post", lambda *a, **k: sent.append(a)
+        )
         log_module.webhook_and_log("hello")
         assert sent == []
         assert any("hello" in r["message"] for r in log_records)
@@ -161,12 +178,15 @@ class TestWebhookAndLog:
             json.dumps(config, ensure_ascii=False), encoding="utf-8"
         )
         sent = []
-        monkeypatch.setattr(log_module, "post", lambda url, **kw: sent.append((url, kw)))
+        monkeypatch.setattr(
+            log_module.requests, "post", lambda url, **kw: sent.append((url, kw))
+        )
 
         log_module.webhook_and_log("hello")
 
         assert sent and sent[0][0] == "https://example.invalid/hook"
         assert sent[0][1]["json"] == {"content": "hello"}
+        assert sent[0][1]["timeout"] == 5
 
     def test_post_failure_is_swallowed(self, isolated_cwd, monkeypatch, log_records):
         config = json.loads((isolated_cwd / "config.json").read_text(encoding="utf-8"))
@@ -178,7 +198,7 @@ class TestWebhookAndLog:
         def boom(*args, **kwargs):
             raise RuntimeError("network down")
 
-        monkeypatch.setattr(log_module, "post", boom)
+        monkeypatch.setattr(log_module.requests, "post", boom)
         log_module.webhook_and_log("hello")  # 不应抛出
         assert any("Webhook发送失败" in r["message"] for r in log_records)
 

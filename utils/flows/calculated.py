@@ -10,6 +10,7 @@ from utils.vision import assets
 from utils.vision import colors as color
 from utils.vision.img import Img
 from utils.core.log import log
+from utils.core import telemetry
 from utils.core.thresholds import (
     DREAM_BUILD,
     MAIN_INTERFACE,
@@ -93,6 +94,11 @@ class Calculated:
         loading_time = end_time - start_time
         if error_count < max_error_count:
             log.info(f"地图载毕，用时 {loading_time:.1f} 秒")
+        telemetry.event(
+            "map_load",
+            duration=round(loading_time, 1),
+            timeout=error_count >= max_error_count,
+        )
         time.sleep(1)  # 增加1秒等待防止人物未加载错轴
 
     def run_dreambuild_check(self, error_count=0, max_error_count=10):

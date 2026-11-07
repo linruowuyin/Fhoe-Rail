@@ -73,6 +73,7 @@ if _is_webui_server_mode():
 
 from get_width import check_mult_screen
 from utils.config.config import ConfigurationManager
+from utils.core import telemetry
 from utils.core.log import fetch_php_file_content, log
 from utils.flows.map_operations import MapOperations
 from utils.core.map_info import MapInfo
@@ -118,10 +119,12 @@ def print_info():
     log.info("")  # 添加一行空行
     log.info("=" * 60)
     log.info("开始运行")
+    telemetry.start_run()
     print_version()
 
 
 def print_end():
+    telemetry.end_run()
     log.info("结束运行")
     log.info("=" * 60)
     # 清理 keyboard 全局监听（Pause 注册的 F7-F10 监听线程非 daemon，

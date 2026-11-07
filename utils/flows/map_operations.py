@@ -29,6 +29,7 @@ from utils.core.thresholds import (
     TRANSFER_ICON,
 )
 from utils.core.log import webhook_and_log
+from utils.core import telemetry
 from utils.flows.map import Map
 from utils.core.map_info import MapInfo
 from utils.core.map_statu import MapStatu
@@ -591,11 +592,13 @@ class MapOperations:
                     stable += WAIT_SAMPLE
                     if stable >= seconds:
                         log.info(f"画面已静止 {seconds:g}s（帧差均值 {diff:.2f}），继续")
+                        telemetry.event("wait", outcome="stable", seconds=seconds)
                         return False
                 else:
                     stable = 0.0
             prev = cur
         log.info(f"wait 兜底超时（{WAIT_TIMEOUT:g}s），按原节奏继续")
+        telemetry.event("wait", outcome="timeout", seconds=seconds)
         return False
 
     def _freeze_frame(self):
@@ -623,6 +626,8 @@ class MapOperations:
             f"map/{self.map_info.map_version}/{map_base}.json"))
         map_data_name = map_data['name']
         map_filename = map_base
+        _map_t0 = time.time()
+        telemetry.event("map_start", map=map_base, version=self.map_info.map_version)
         self.handle.combat.fighting_count = sum(
             1 for map in map_data["map"] if "fighting" in map and map["fighting"] == 1)
         self.handle.combat.current_fighting_index = 0
@@ -760,6 +765,10 @@ class MapOperations:
                     fight_status = self.handle.combat.fight_elapsed()
                     if not fight_status:
                         log.info('未进入战斗')
+
+        telemetry.event(
+            "map_end", map=map_base, duration=round(time.time() - _map_t0, 1)
+        )
 
     def show_dev_info(self, dev: bool, text, x_offset: int, y_offset: int, text_mode):
         """
