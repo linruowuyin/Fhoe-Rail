@@ -11,6 +11,7 @@
     warning  键不在已知集合里 —— 可能是新步骤，也可能是笔误
 """
 
+import re
 from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
@@ -131,6 +132,18 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+# ---------------------------------------------------------------------------
+# v2 格式（utils/core/map_format.py 的保留字段，docs/MAP_FORMAT.md）
+# ---------------------------------------------------------------------------
+
+#: v2 步骤保留字段。v1 的合法键里没有它们，所以「v1 文件里出现即报错」不会误伤。
+RESERVED_KEYS = ("img", "delay", "rep", "c")
+
+#: 图片资源 stem 的形状（如 `transfer` / `map_4-3_point_5` / `fanhui_1`）：
+#: 不含路径分隔符、不含后缀。是否真的解析得到图片文件由 tools/validate_pictures.py 查。
+IMG_STEM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_\-]*$")
+
+
 def _check_entry(entry, path, allowed, picture_prefix=None) -> list:
     """校验一条步骤：必须是单键字典，且键在允许集合里。"""
     issues = []
@@ -192,7 +205,41 @@ def validate_map(data, filename: str = "") -> list:
     if issues:
         return issues  # 结构都不对，再往下查没意义
 
+    # ---- 版本判定（docs/MAP_FORMAT.md）：有 "v" 就是 v2，只接受 2 ----
+    version = 1
+    if "v" in data:
+        if not isinstance(data["v"], int) or isinstance(data["v"], bool) or data["v"] != 2:
+            issues.append(
+                Issue("error", f"{where}.v", f'"v" 只接受 2，实际是 {data["v"]!r}')
+            )
+        version = 2
+
+    if version == 2:
+        for index, entry in enumerate(data["start"]):
+            issues += _check_v2_start_entry(entry, f"{where}.start[{index}]")
+        for index, entry in enumerate(data["map"]):
+            issues += _check_v2_map_entry(entry, f"{where}.map[{index}]")
+        return issues
+
+    # v1 文件里出现 v2 保留字段 = 作者想把 v2 语法写进 v1：运行时会整条走错分支。
+    # 命中保留字段的条目只报这一条专用错误，不再叠加单键/未知键的通用检查。
+    def _has_reserved(entry):
+        return isinstance(entry, dict) and bool({"img", "rep", "c"} & set(entry))
+
+    for array in ("start", "map"):
+        for index, entry in enumerate(data[array]):
+            if _has_reserved(entry):
+                issues.append(
+                    Issue(
+                        "error",
+                        f"{where}.{array}[{index}]",
+                        "出现了 v2 保留字段（img/rep/c）—— 请在顶层加 \"v\": 2，或改回 v1 写法",
+                    )
+                )
+
     for index, entry in enumerate(data["start"]):
+        if _has_reserved(entry):
+            continue
         issues += _check_start_entry(entry, f"{where}.start[{index}]")
         if not isinstance(entry, dict) or not entry:
             continue
@@ -206,6 +253,8 @@ def validate_map(data, filename: str = "") -> list:
             issues += _check_floor(value, f"{where}.start[{index}].floor")
 
     for index, entry in enumerate(data["map"]):
+        if _has_reserved(entry):
+            continue
         issues += _check_entry(entry, f"{where}.map[{index}]", MAP_KEYS | MOVEMENT_KEYS)
         if not isinstance(entry, dict) or len(entry) != 1:
             continue
@@ -324,3 +373,171 @@ def summarize(issues, filename: str = "") -> str:
     errors = sum(1 for i in issues if i.level == "error")
     warnings = len(issues) - errors
     return f"{filename or '<地图>'}: {errors} 个错误, {warnings} 个警告"
+
+
+# ---------------------------------------------------------------------------
+# v2 条目校验
+# ---------------------------------------------------------------------------
+
+
+def _check_reserved_values(entry, path) -> list:
+    """rep / c / delay 的类型约束（img 步和动作步共用）。"""
+    issues = []
+    if "rep" in entry:
+        rep = entry["rep"]
+        if not isinstance(rep, int) or isinstance(rep, bool) or rep < 1:
+            issues.append(
+                Issue("error", f"{path}.rep", f"应为 ≥1 的整数（本步总执行次数），实际是 {rep!r}")
+            )
+    if "c" in entry and not isinstance(entry["c"], str):
+        issues.append(
+            Issue("error", f"{path}.c", f"注释应为字符串，实际是 {entry['c']!r}")
+        )
+    if "delay" in entry and not _is_number(entry["delay"]):
+        issues.append(
+            Issue("error", f"{path}.delay", f"应为数字（点击后停顿秒数），实际是 {entry['delay']!r}")
+        )
+    return issues
+
+
+def _check_v2_start_entry(entry, path) -> list:
+    """v2 的 `start` 条目：步骤键（动作键或 img）在前，保留字段与修饰键在后。
+
+    与 v1 的差别：
+        * `picture\\...` 键整个不允许 —— v2 文件统一写 `{"img": ...}`
+        * img 的 stem 有形状约束；delay 有类型约束
+        * 除步骤键/保留字段/修饰键之外的键直接报错（v1 是 warning，
+          因为 v1 只有单键步骤无处可挂；v2 的 img 步是结构化条目，
+          拼错的修饰键会被静默丢掉，必须拦下）
+    """
+    if not isinstance(entry, dict):
+        return [Issue("error", path, f"步骤必须是对象，实际是 {type(entry).__name__}")]
+    if not entry:
+        return [Issue("error", path, "空步骤")]
+
+    issues = _check_reserved_values(entry, path)
+    first_key = next(iter(entry))
+
+    if isinstance(first_key, str) and first_key.startswith(START_PICTURE_PREFIX):
+        issues.append(
+            Issue(
+                "error",
+                f"{path}.{first_key}",
+                "v2 文件里图片步骤统一写 {\"img\": \"<stem>\", \"delay\": ...}，"
+                "不再用 picture\\ 键",
+            )
+        )
+        return issues
+
+    for key in entry:
+        if isinstance(key, str) and key.startswith(START_PICTURE_PREFIX):
+            issues.append(
+                Issue(
+                    "error",
+                    f"{path}.{key}",
+                    "v2 文件里图片步骤统一写 {\"img\": \"<stem>\", \"delay\": ...}，"
+                    "不再用 picture\\ 键",
+                )
+            )
+
+    if first_key in MODIFIER_KEYS or first_key in ("delay", "rep", "c"):
+        issues.append(
+            Issue(
+                "error",
+                f"{path}.{first_key}",
+                f"第一个键必须是步骤键（动作键或 img），实际是 {first_key!r}。"
+                f"当前条目：{list(entry)}",
+            )
+        )
+        return issues
+
+    if first_key == "img":
+        stem = entry["img"]
+        if not isinstance(stem, str) or not IMG_STEM.match(stem):
+            issues.append(
+                Issue(
+                    "error",
+                    f"{path}.img",
+                    f"img 应为图片资源 stem（如 \"transfer\"，无路径无后缀），实际是 {stem!r}",
+                )
+            )
+    elif first_key not in START_KEYS:
+        issues.append(Issue("warning", f"{path}.{first_key}", "未知步骤键"))
+
+    for extra in list(entry)[1:]:
+        if extra in RESERVED_KEYS or extra in MODIFIER_KEYS:
+            if extra == "click_offset":
+                issues += _check_click_offset(entry[extra], f"{path}.{extra}")
+            continue
+        issues.append(
+            Issue(
+                "error",
+                f"{path}.{extra}",
+                f"未知键（v2 条目只允许步骤键 + 保留字段 img/delay/rep/c + 修饰键 "
+                f"{sorted(MODIFIER_KEYS)}）",
+            )
+        )
+    return issues
+
+
+def _check_v2_map_entry(entry, path) -> list:
+    """v2 的 `map` 条目：一个动作键 + 可选 rep/c。图片与修饰键都不属于 map。
+
+    实测 633 张自有地图 map 数组里没有任何 picture 键，运行时的 map 循环也
+    没有图片分派（图片步骤全在 start）—— 所以 v2 明确禁止 img 进 map。
+    """
+    if not isinstance(entry, dict):
+        return [Issue("error", path, f"步骤必须是对象，实际是 {type(entry).__name__}")]
+    if not entry:
+        return [Issue("error", path, "空步骤")]
+
+    issues = _check_reserved_values(entry, path)
+    step_keys = [k for k in entry if k not in RESERVED_KEYS]
+
+    if len(step_keys) != 1:
+        issues.append(
+            Issue(
+                "error",
+                path,
+                f"v2 的 map 条目应为「一个动作键 + 可选 rep/c」，实际步骤键有 {step_keys}",
+            )
+        )
+        return issues
+
+    key, value = step_keys[0], entry[step_keys[0]]
+    if isinstance(key, str) and key.startswith(START_PICTURE_PREFIX):
+        issues.append(
+            Issue("error", f"{path}.{key}", "map 数组里没有图片步骤，请把这条移到 start 并改写 img")
+        )
+    if key == "img":
+        issues.append(
+            Issue("error", f"{path}.img", "map 数组里没有图片步骤（img 只用于 start）")
+        )
+    if key in MODIFIER_KEYS:
+        issues.append(
+            Issue("error", f"{path}.{key}", f"修饰键 {key!r} 只用于 start 条目")
+        )
+    elif key not in MAP_KEYS and key not in MOVEMENT_KEYS:
+        issues.append(Issue("warning", f"{path}.{key}", "未知步骤键"))
+
+    if key in NUMERIC_KEYS and not _is_number(value):
+        issues.append(
+            Issue("error", f"{path}.{key}", f"值应为数字，实际是 {value!r}")
+        )
+    if key == "fighting" and "rep" in entry:
+        issues.append(
+            Issue(
+                "error",
+                f"{path}.rep",
+                "fighting 不允许配 rep：fighting_count 按条数统计，合并会漏计",
+            )
+        )
+    if key == "fighting" and value not in (1, 2):
+        issues.append(
+            Issue(
+                "error",
+                f"{path}.{key}",
+                f"只接受 1（进入战斗）或 2（打障碍物），实际是 {value!r}",
+            )
+        )
+    return issues

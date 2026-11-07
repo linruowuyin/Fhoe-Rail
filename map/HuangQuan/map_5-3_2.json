@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "命运重渊-2",
     "author": "smjes3",
     "start": [
@@ -6,14 +7,17 @@
             "map": 1
         },
         {
-            "picture\\2floor.png": 1.5
+            "img": "2floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-3_point_4.png": 1.5,
+            "img": "map_5-3_point_4",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

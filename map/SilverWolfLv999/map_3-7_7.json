@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "鳞渊境-7",
     "author": "喵不可言",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_3-7_point_5.png": 1.5
+            "img": "map_3-7_point_5",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -35,19 +38,8 @@
             "s": 1.45
         },
         {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
+            "ss": 0.52,
+            "rep": 5
         },
         {
             "w": 0.66

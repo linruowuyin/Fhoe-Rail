@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "幽囚狱-1",
     "author": "smjes3",
     "start": [
@@ -6,22 +7,28 @@
             "map": 1
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_4.png": 1.5
+            "img": "orientation_4",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-8.png": 1.5
+            "img": "map_3-8",
+            "delay": 1.5
         },
         {
-            "picture\\b1floor.png": 1.5
+            "img": "b1floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-8_point_1.png": 1.5
+            "img": "map_3-8_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -50,34 +57,8 @@
             "w": 5
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 10
         },
         {
             "w": 0.15
@@ -110,10 +91,8 @@
             "a": 2.5
         },
         {
-            "aa": 0.52
-        },
-        {
-            "aa": 0.52
+            "aa": 0.52,
+            "rep": 2
         },
         {
             "lv999_await": 2

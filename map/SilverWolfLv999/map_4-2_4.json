@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "稚子的梦-4",
     "author": "喵不可言",
     "start": [
@@ -6,13 +7,16 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_4-2_point_2.png": 1.5
+            "img": "map_4-2_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -50,10 +54,8 @@
             "d": 0.35
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "d": 1.34
@@ -80,16 +82,8 @@
             "s": 11.35
         },
         {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
+            "ss": 0.52,
+            "rep": 4
         },
         {
             "lv999_await": 2

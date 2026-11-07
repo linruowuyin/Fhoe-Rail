@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "零食合成-1",
     "author": "喵不可言",
     "start": [
@@ -12,43 +13,51 @@
             "b": 1
         },
         {
-            "picture\\xiaohaoping.png": 1.5
+            "img": "xiaohaoping",
+            "delay": 1.5
         },
         {
-            "picture\\filter.png": 1.5
+            "img": "filter",
+            "delay": 1.5
         },
         {
-            "picture\\filter_energy.png": 1.5
+            "img": "filter_energy",
+            "delay": 1.5
         },
         {
-            "picture\\confirm.png": 1.5
+            "img": "confirm",
+            "delay": 1.5
         },
         {
-            "picture\\qiqiao.png": 1.5
+            "img": "qiqiao",
+            "delay": 1.5
         },
         {
-            "picture\\hechengji.png": 1.5
+            "img": "hechengji",
+            "delay": 1.5
         },
         {
-            "picture\\zengjia.png": 1.5,
+            "img": "zengjia",
+            "delay": 1.5,
             "clicks": 100
         },
         {
-            "picture\\hecheng.png": 1.5
+            "img": "hecheng",
+            "delay": 1.5
         },
         {
-            "picture\\round.png": 1.5
+            "img": "round",
+            "delay": 1.5
         },
         {
-            "picture\\finish_fighting4.png": 1.5
+            "img": "finish_fighting4",
+            "delay": 1.5
         }
     ],
     "map": [
         {
-            "esc": 1
-        },
-        {
-            "esc": 1
+            "esc": 1,
+            "rep": 2
         },
         {
             "fighting": 2

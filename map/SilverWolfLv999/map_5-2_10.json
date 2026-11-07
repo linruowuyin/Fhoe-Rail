@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "纷争荒墟-10",
     "author": "smjes3,ibukiizumi",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\2floor.png": 1.5
+            "img": "2floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-2_point_5.png": 1.5,
+            "img": "map_5-2_point_5",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [7,4,2]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "幽囚狱-6",
     "author": "和月",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_3-8_point_4.png": 1.5
+            "img": "map_3-8_point_4",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

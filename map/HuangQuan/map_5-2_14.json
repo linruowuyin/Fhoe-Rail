@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "纷争荒墟-14",
     "author": "smjes3",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\2floor.png": 1.5
+            "img": "2floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-2_point_8.png": 1.5,
+            "img": "map_5-2_point_8",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [7,2,1]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -37,19 +41,8 @@
             "d": 0.26
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 5
         },
         {
             "a": 0.15
@@ -67,19 +60,8 @@
             "a": 0.1
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 5
         }
     ]
 }

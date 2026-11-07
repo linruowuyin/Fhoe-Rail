@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "云端遗堡-3",
     "author": "和月,smjes3",
     "start": [
@@ -9,12 +10,14 @@
             "floor": [[1,2,3,4],4]
         },
         {
-            "picture\\map_5-8_point_4.png": 1.5,
+            "img": "map_5-8_point_4",
+            "delay": 1.5,
             "drag": 1,
             "drag_offset": [0,0,2,0]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -46,10 +49,8 @@
             "d": 2.0
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "lv999_await": 2

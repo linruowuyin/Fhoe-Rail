@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "纷争荒墟-4",
     "author": "smjes3",
     "start": [
@@ -6,19 +7,23 @@
             "map": 1
         },
         {
-            "picture\\map_5-1.png": 1.5,
+            "img": "map_5-1",
+            "delay": 1.5,
             "scene": 1
         },
         {
-            "picture\\map_5-1_point_5.png": 1.5,
+            "img": "map_5-1_point_5",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [4,0,4]
         },
         {
-            "picture\\map_5-1_point_6.png": 1.5
+            "img": "map_5-1_point_6",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -62,43 +67,8 @@
             "a": 0.5
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 13
         }
     ]
 }

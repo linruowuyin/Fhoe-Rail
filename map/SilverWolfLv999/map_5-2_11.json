@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "纷争荒墟-11",
     "author": "smjes3",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\1floor.png": 1.5
+            "img": "1floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-2_point_6.png": 1.5,
+            "img": "map_5-2_point_6",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [7,5,2]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -55,10 +59,8 @@
             "d": 0.54
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "lv999_await": 2

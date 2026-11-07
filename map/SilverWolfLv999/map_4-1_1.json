@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "筑梦边境-1",
     "author": "喵不可言",
     "start": [
@@ -6,37 +7,46 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_5.png": 1.5
+            "img": "orientation_5",
+            "delay": 1.5
         },
         {
-            "picture\\map_4-1.png": 2
+            "img": "map_4-1",
+            "delay": 2
         },
         {
-            "picture\\map_4-1_point_4.png": 1.5,
+            "img": "map_4-1_point_4",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         },
         {
             "map": 1
         },
         {
-            "picture\\check_4-1_point_2.png": 1.5,
+            "img": "check_4-1_point_2",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\check_4-1_point_3.png": 1.5,
+            "img": "check_4-1_point_3",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\check_4-1_point_1.png": 1.5,
+            "img": "check_4-1_point_1",
+            "delay": 1.5,
             "drag": 1
         },
         {
@@ -66,10 +76,8 @@
             "d": 0.1
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "a": 1.94
@@ -96,31 +104,15 @@
             "w": 0.3
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 2
         },
         {
             "s": 0.1
         },
         {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
+            "ss": 0.52,
+            "rep": 6
         },
         {
             "lv999_await": 2

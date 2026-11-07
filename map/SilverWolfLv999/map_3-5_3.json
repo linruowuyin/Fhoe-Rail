@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "绥  园-3",
     "author": "喵不可言,龙女姬",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_3-5_point_1.png": 1.5
+            "img": "map_3-5_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -41,10 +44,8 @@
             "d": 0.35
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "lv999_await": 2

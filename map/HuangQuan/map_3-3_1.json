@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "太卜司-1",
     "author": "喵不可言,雪见璃,夜里无星",
     "start": [
@@ -6,22 +7,28 @@
             "map": 1
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_4.png": 1.5
+            "img": "orientation_4",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-3.png": 2
+            "img": "map_3-3",
+            "delay": 2
         },
         {
-            "picture\\2floor.png": 1.5
+            "img": "2floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-3_point_4.png": 1.5
+            "img": "map_3-3_point_4",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -143,10 +150,8 @@
             "d": 0.1
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "w": 0.5
@@ -197,28 +202,15 @@
             "a": 1.18
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 3
         },
         {
             "d": 0.08
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 4
         }
     ]
 }

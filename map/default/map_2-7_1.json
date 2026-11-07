@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "机器聚落-1",
     "author": "夜里无星,小明",
     "start": [
@@ -6,19 +7,24 @@
             "map": 1
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_3.png": 1.5
+            "img": "orientation_3",
+            "delay": 1.5
         },
         {
-            "picture\\map_2-7.png": 2
+            "img": "map_2-7",
+            "delay": 2
         },
         {
-            "picture\\map_2-7_point_1.png": 1.5
+            "img": "map_2-7_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

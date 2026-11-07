@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "无晖祈堂-3",
     "author": "smjes3",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-6_point_2.png": 1.5,
+            "img": "map_5-6_point_2",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [7,0,5]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -40,16 +44,8 @@
             "s": 0.48
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 4
         },
         {
             "s": 0.1
@@ -67,13 +63,8 @@
             "s": 0.35
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 3
         }
     ]
 }

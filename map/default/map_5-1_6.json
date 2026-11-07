@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "浴血战端-6",
     "author": "和月",
     "start": [
@@ -9,13 +10,16 @@
             "floor": [[-1,1,2,3],1]
         },
         {
-            "picture\\map_5-1_point_2.png": 1.5
+            "img": "map_5-1_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-1_point_3.png": 1.5
+            "img": "map_5-1_point_3",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

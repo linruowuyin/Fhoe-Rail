@@ -31,6 +31,7 @@ from utils.core.log import webhook_and_log
 from utils.flows.map import Map
 from utils.core.map_info import MapInfo
 from utils.core.map_statu import MapStatu
+from utils.core.map_format import normalize_map_data
 from utils.flows.monthly_pass import MonthlyPass
 from utils.drivers.mouse_event import MouseEvent
 from utils.ui.pause import Pause
@@ -236,8 +237,10 @@ class MapOperations:
         处理单张地图的开始
         """
         map_base = map_json.split('.')[0]
-        map_data = self.cfg.read_json_file(
-            f"map/{self.map_info.map_version}/{map_base}.json")
+        # v1/v2 双认：v2 步骤（img/delay/rep/c）在这里统一展开成 v1 规范形，
+        # 下面的分发表只看 v1（utils/core/map_format.py，docs/MAP_FORMAT.md）
+        map_data = normalize_map_data(self.cfg.read_json_file(
+            f"map/{self.map_info.map_version}/{map_base}.json"))
         map_data_name = map_data['name']
         map_data_author = map_data['author']
         # 告诉图片样本收集器「现在跑的是哪张图」，报告里低分项要能指回具体地图
@@ -262,8 +265,8 @@ class MapOperations:
             # 当成查找失败而跳过这张图
             if self._pause_checkpoint(dev=dev):
                 retry = True
-                map_data = self.cfg.read_json_file(
-                    f"map/{self.map_info.map_version}/{map_base}.json")
+                map_data = normalize_map_data(self.cfg.read_json_file(
+                    f"map/{self.map_info.map_version}/{map_base}.json"))
                 continue
             # 选择地图
             self.map_statu.start_map_name = map_data_name if index == 0 else self.map_statu.start_map_name
@@ -279,8 +282,8 @@ class MapOperations:
                 # start 阶段的检查点：这里以前一次检查都没有，按 F8 会被静默丢弃
                 if self._pause_checkpoint(dev=dev):
                     retry = True
-                    map_data = self.cfg.read_json_file(
-                        f"map/{self.map_info.map_version}/{map_base}.json")
+                    map_data = normalize_map_data(self.cfg.read_json_file(
+                        f"map/{self.map_info.map_version}/{map_base}.json"))
                     break
                 key = list(start.keys())[0]
                 log.info(key)
@@ -542,8 +545,9 @@ class MapOperations:
         # self.asu.screen = self.img.take_screenshot()[0]
         # self.ang = self.asu.get_now_direc()
         map_base = map_json.split('.')[0]
-        map_data = self.cfg.read_json_file(
-            f"map/{self.map_info.map_version}/{map_base}.json")
+        # v1/v2 双认：先归一化再统计 fighting_count —— rep 展开后条数与真实执行一致
+        map_data = normalize_map_data(self.cfg.read_json_file(
+            f"map/{self.map_info.map_version}/{map_base}.json"))
         map_data_name = map_data['name']
         map_filename = map_base
         self.handle.combat.fighting_count = sum(
@@ -573,8 +577,8 @@ class MapOperations:
             for map_index, map_value in enumerate(map_data["map"]):
                 if self._pause_checkpoint(dev=dev, last_point=last_point):
                     dev_restart = True  # 检测到需要重开
-                    map_data = self.cfg.read_json_file(
-                        f"map/{self.map_info.map_version}/{map_base}.json")  # 重新读取最新地图文件
+                    map_data = normalize_map_data(self.cfg.read_json_file(
+                        f"map/{self.map_info.map_version}/{map_base}.json"))  # 重新读取最新地图文件
                     break
 
                 # 当前地图执行步骤

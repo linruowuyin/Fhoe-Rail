@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "世界尽头酒馆-2",
     "author": "smjes3",
     "start": [
@@ -6,16 +7,19 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
             "floor": [[1,2,3],1]
         },
         {
-            "picture\\map_6-5_point_2.png": 1.5
+            "img": "map_6-5_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -86,10 +90,8 @@
             "s": 0.62
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         }
     ]
 }

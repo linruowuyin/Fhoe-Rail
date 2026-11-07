@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "铆钉镇-1",
     "author": "夜里无星,小明",
     "start": [
@@ -6,19 +7,24 @@
             "map": 1
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_3.png": 3
+            "img": "orientation_3",
+            "delay": 3
         },
         {
-            "picture\\map_2-6.png": 2
+            "img": "map_2-6",
+            "delay": 2
         },
         {
-            "picture\\map_2-6_point_1.png": 1.5
+            "img": "map_2-6_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

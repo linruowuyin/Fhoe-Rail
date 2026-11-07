@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "珠星大厦-2",
     "author": "smjes3",
     "start": [
@@ -6,16 +7,20 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_6-4_point_1.png": 1.5
+            "img": "map_6-4_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_6-4_point_2.png": 1.5
+            "img": "map_6-4_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

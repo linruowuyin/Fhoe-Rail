@@ -199,3 +199,126 @@ class TestIssue:
     def test_issue_renders_level_and_path(self):
         text = str(Issue("error", "m.json.map[0].fighting", "值不对"))
         assert text == "[error] m.json.map[0].fighting: 值不对"
+
+
+# ---------------------------------------------------------------------------
+# v2 格式（"v": 2）—— img / delay / rep / c
+# ---------------------------------------------------------------------------
+
+
+class TestV2TopLevel:
+    def test_valid_v2_map_passes(self):
+        data = make_map(
+            start=[{"img": "transfer", "delay": 1.5}],
+            map_steps=[{"a": 0.2, "rep": 3, "c": "连点"}],
+            v=2,
+        )
+        assert validate_map(data) == []
+
+    @pytest.mark.parametrize("value", [1, "2", 2.0, True, None])
+    def test_bad_version_value_is_an_error(self, value):
+        issues = validate_map(make_map(v=value))
+        assert levels(issues) == ["error"]
+        assert issues[0].path.endswith(".v")
+
+    def test_v1_file_with_reserved_keys_is_an_error(self):
+        data = make_map(map_steps=[{"a": 0.2, "rep": 2}])
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert "v" in issues[0].message
+
+    def test_v1_file_with_img_in_start_is_an_error(self):
+        data = make_map(start=[{"img": "transfer", "delay": 1.5}])
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+
+    def test_v1_file_with_c_in_map_is_an_error(self):
+        data = make_map(map_steps=[{"e": 1, "c": "注释"}])
+        assert levels(validate_map(data)) == ["error"]
+
+
+class TestV2StartEntries:
+    def test_img_step_passes(self):
+        data = make_map(start=[{"img": "transfer", "delay": 1.5}], v=2)
+        assert validate_map(data) == []
+
+    def test_img_step_without_delay_passes(self):
+        data = make_map(start=[{"img": "transfer"}], v=2)
+        assert validate_map(data) == []
+
+    def test_img_step_with_modifiers_passes(self):
+        data = make_map(
+            start=[{"img": "x", "delay": 0.5, "click_offset": [60, 0], "drag": True}],
+            v=2,
+        )
+        assert validate_map(data) == []
+
+    def test_v1_picture_key_in_v2_file_is_an_error(self):
+        data = make_map(start=[{"picture\\transfer.png": 1.5}], v=2)
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert "img" in issues[0].message
+
+    @pytest.mark.parametrize("stem", ["picture/x.png", "x.png", "a/b", "", " x", "x y"])
+    def test_bad_img_stem_is_an_error(self, stem):
+        data = make_map(start=[{"img": stem}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_delay_non_number_is_an_error(self):
+        data = make_map(start=[{"img": "x", "delay": "0.5"}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_modifier_first_is_still_an_error(self):
+        data = make_map(start=[{"delay": 0.5, "img": "x"}], v=2)
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert "修饰键" in issues[0].message or "步骤键" in issues[0].message
+
+    def test_unknown_extra_key_is_an_error(self):
+        data = make_map(start=[{"img": "x", "whatever": 1}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_action_start_step_keeps_v1_rules(self):
+        # v2 文件里的动作步沿用 v1 语义：已知键、check/floor 形状等
+        data = make_map(start=[{"await": 1.0}], v=2)
+        assert validate_map(data) == []
+
+    def test_rep_bad_value_is_an_error(self):
+        for rep in [0, -1, 1.5, "3", True]:
+            data = make_map(start=[{"await": 1.0, "rep": rep}], v=2)
+            assert levels(validate_map(data)) == ["error"], rep
+
+    def test_c_non_string_is_an_error(self):
+        data = make_map(start=[{"await": 1.0, "c": 123}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_img_step_with_rep_passes(self):
+        data = make_map(start=[{"img": "x", "rep": 2}], v=2)
+        assert validate_map(data) == []
+
+
+class TestV2MapEntries:
+    def test_action_step_with_rep_and_c_passes(self):
+        data = make_map(map_steps=[{"a": 0.2, "rep": 3, "c": "连点"}], v=2)
+        assert validate_map(data) == []
+
+    def test_img_in_map_is_an_error(self):
+        data = make_map(map_steps=[{"img": "x", "delay": 0.5}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_modifier_in_map_is_an_error(self):
+        data = make_map(map_steps=[{"a": 0.2, "click_offset": [1, 2]}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_fighting_with_rep_is_an_error(self):
+        # fighting_count 按条数统计，rep 合并会漏计
+        data = make_map(map_steps=[{"fighting": 1, "rep": 2}], v=2)
+        assert levels(validate_map(data)) == ["error"]
+
+    def test_unknown_action_key_warns_as_in_v1(self):
+        data = make_map(map_steps=[{"zzz": 1.0}], v=2)
+        assert "warning" in levels(validate_map(data))
+
+    def test_fighting_value_rule_still_applies(self):
+        data = make_map(map_steps=[{"fighting": 9}], v=2)
+        assert levels(validate_map(data)) == ["error"]

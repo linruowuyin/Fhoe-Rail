@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "云端遗堡-1",
     "author": "和月",
     "start": [
@@ -6,20 +7,24 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-8.png": 1.5,
+            "img": "map_5-8",
+            "delay": 1.5,
             "scene": 1
         },
         {
             "floor": [[1,2,3,4],4]
         },
         {
-            "picture\\map_5-8_point_1.png": 1.5
+            "img": "map_5-8_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

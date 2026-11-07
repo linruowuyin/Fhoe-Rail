@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "残响回廊-1",
     "author": "喵不可言,Starry-Wind,CDCP,lrwy",
     "start": [
@@ -6,19 +7,24 @@
             "map": 1
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_3.png": 1.5
+            "img": "orientation_3",
+            "delay": 1.5
         },
         {
-            "picture\\map_2-3.png": 2
+            "img": "map_2-3",
+            "delay": 2
         },
         {
-            "picture\\map_2-3_point_4.png": 1.5
+            "img": "map_2-3_point_4",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -35,13 +41,8 @@
             "w": 2.95
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 3
         },
         {
             "a": 1.3
@@ -53,13 +54,8 @@
             "w": 0.3
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 3
         },
         {
             "lv999_await": 2

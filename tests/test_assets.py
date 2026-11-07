@@ -32,8 +32,12 @@ REGISTRY_FILE = "utils/vision/assets.py"
 
 #: 允许保留的裸路径字面量（棘轮，只减不增）。每条都写明为什么不能换 key：
 ALLOWED_LITERALS = {
-    # 地图 JSON 的格式契约：合法的 start 图片 + `picture\` 前缀规则。
-    "utils/core/schema.py": 3,
+    # 地图 JSON 的格式契约：合法的 start 图片 + `picture\` 前缀规则；
+    # v2 双认后新增 2 处：v2 校验文案（提示作者把 img 写法换回/加上 "v": 2）。
+    "utils/core/schema.py": 5,
+    # v2 归一化的数据契约：v1 图片键的构造与识别（docs/MAP_FORMAT.md）——
+    # 前缀常量 + `picture\{stem}.png` 组装 + 文档字符串外的默认键示例。
+    "utils/core/map_format.py": 3,
     # 调试参数 `use_sample_image` 的历史路径，文件已不存在；只影响调试分支。
     "utils/vision/get_angle.py": 1,
     # 报告文案里的字符串，不是路径。

@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "大剧院-6",
     "author": "smjes3",
     "start": [
@@ -6,11 +7,13 @@
             "map": 1
         },
         {
-            "picture\\map_4-7_point_4.png": 1.5,
+            "img": "map_4-7_point_4",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -39,10 +42,8 @@
             "d": 3.5
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "a": 0.2

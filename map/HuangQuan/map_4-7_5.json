@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "大剧院-5",
     "author": "smjes3",
     "start": [
@@ -6,11 +7,13 @@
             "map": 1
         },
         {
-            "picture\\map_4-7_point_3.png": 1.5,
+            "img": "map_4-7_point_3",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -33,31 +36,15 @@
             "s": 16
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 6
         },
         {
             "d": 0.2
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         }
     ]
 }

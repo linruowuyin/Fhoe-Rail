@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "鳞渊境-1",
     "author": "喵不可言,龙女姬",
     "start": [
@@ -6,19 +7,24 @@
             "map": 1
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_4.png": 1.5
+            "img": "orientation_4",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-7.png": 2
+            "img": "map_3-7",
+            "delay": 2
         },
         {
-            "picture\\map_3-7_point_1.png": 1.5
+            "img": "map_3-7_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

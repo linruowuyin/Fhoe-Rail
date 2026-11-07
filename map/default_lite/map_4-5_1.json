@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "影视乐园-1",
     "author": "喵不可言",
     "start": [
@@ -6,25 +7,32 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_5.png": 1.5
+            "img": "orientation_5",
+            "delay": 1.5
         },
         {
-            "picture\\map_4-5.png": 2
+            "img": "map_4-5",
+            "delay": 2
         },
         {
-            "picture\\map_4-5_point_1.png": 1.5
+            "img": "map_4-5_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_4-5_point_2.png": 1.5
+            "img": "map_4-5_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

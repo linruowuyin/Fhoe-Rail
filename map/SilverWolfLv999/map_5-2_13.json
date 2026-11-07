@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "纷争荒墟-13",
     "author": "smjes3,ibukiizumi",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\1floor.png": 1.5
+            "img": "1floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-2_point_8.png": 1.5,
+            "img": "map_5-2_point_8",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [7,3,1]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -94,10 +98,8 @@
             "d": 0.66
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "d": 0.4
@@ -142,13 +144,8 @@
             "w": 7
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 3
         },
         {
             "w": 4.5

@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "命运重渊-5",
     "author": "和月",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-3_point_4.png": 1.5,
+            "img": "map_5-3_point_4",
+            "delay": 1.5,
             "drag": 1,
             "drag_offset": [0,0,0,1]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

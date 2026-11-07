@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "浴血战端-4",
     "author": "smjes3,ibukiizumi",
     "start": [
@@ -6,15 +7,18 @@
             "map": 1
         },
         {
-            "picture\\map_5-1_point_5.png": 1.5,
+            "img": "map_5-1_point_5",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [4,0,4]
         },
         {
-            "picture\\map_5-1_point_6.png": 1.5
+            "img": "map_5-1_point_6",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -97,10 +101,8 @@
             "d": 0.95
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 2
         },
         {
             "lv999_await": 2

@@ -543,12 +543,33 @@ ESC 会把确认框直接关掉，或者根本无响应，只按 ESC 会空转�
 `tests/test_pre_esc.py` 钉住「同一帧、顺序、首次命中即停、once 语义」；
 `tests/test_handle.py::TestBackToMain` 钉住「一轮一帧、先修后 ESC、超时仍然生效」。
 
+**R28 — 地图 JSON 有两个编写格式（v1/v2），运行时规范形只有 v1。**
+
+格式规范全文在 `docs/MAP_FORMAT.md`；解析点只有
+`utils/core/map_format.py::normalize_step` 一个。新增加载地图文件的代码必须包
+`normalize_map_data(...)`（`map_operations.py` 的 5 处是范例），不许自己猜测格式。
+
+- v2 = 命名字段（`{"img": "transfer", "delay": 1.5}`、`{"a": 0.2, "rep": 3}`、
+  注释键 `c`，顶层 `"v": 2`）；v1 = 没有任何 `v` 字段，原样透传。图片步的值语义
+  是**点击后停顿秒数**，字段名是 `delay` 不是 threshold
+- `img` 只允许在 `start`；`map` 里 `fighting` 不许带 `rep`（打障碍物不可折叠）
+- rep 必须**循环前**展开：`process_single_map_handle` 的 `prev_key`/`next_key` 与
+  `fighting_count` 都按展开后的条数工作，原地循环会搞乱语义
+- 校验走 `utils/core/schema.py`（按 `v` 字段分支）；写盘唯一出口仍是 R22 的
+  `dumps_map`（webui/录制器落盘前把 v2 展开成 v1）
+- 图片引用检查：`tools/validate_pictures.py` 会把 `img` stem 折算回
+  `picture\<stem>.png` 解析；`img` 的 stem 全局唯一性沿用 R25
+- 批量迁移用 `tools/migrate_maps_v2.py`（默认干跑，`--write` 落盘，自带往返校验）
+
+`tests/test_map_format.py` 钉「展开等价、深拷贝、fighting 不合并、迁移往返一致」；
+`tests/test_schema.py` 的 `TestV2*` 组钉 v2 校验规则。
+
 ---
 
 ## §4 测试
 
 ```bash
-py -m pytest tests/          # 585 passed, 31 xfailed, utils/ 覆盖率 64%
+py -m pytest tests/          # 664 passed, 31 xfailed, utils/ 覆盖率 64%
 py -m pytest tests/ -q -rx   # 列出全部 xfail 及其原因 = 已知缺陷清单
 ```
 

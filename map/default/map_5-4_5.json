@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "神谕圣地-5",
     "author": "和月",
     "start": [
@@ -9,10 +10,12 @@
             "floor": [[-3,-2,-1,1],1]
         },
         {
-            "picture\\map_5-4_point_3.png": 1.5
+            "img": "map_5-4_point_3",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

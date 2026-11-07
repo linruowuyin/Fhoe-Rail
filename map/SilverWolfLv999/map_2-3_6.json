@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "残响回廊-6",
     "author": "喵不可言,Starry-Wind,小明",
     "start": [
@@ -6,11 +7,13 @@
             "map": 1
         },
         {
-            "picture\\map_2-3_point_1.png": 1.5,
+            "img": "map_2-3_point_1",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -33,22 +36,15 @@
             "w": 1.76
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 2
         },
         {
             "a": 0.05
         },
         {
-            "aa": 0.52
-        },
-        {
-            "aa": 0.52
-        },
-        {
-            "aa": 0.52
+            "aa": 0.52,
+            "rep": 3
         },
         {
             "d": 0.66

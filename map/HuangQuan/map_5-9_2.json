@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "穹顶关塞-2",
     "author": "smjes3",
     "start": [
@@ -6,18 +7,21 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
             "floor": [[-2,-1,1,2,3],1]
         },
         {
-            "picture\\map_5-9_point_1.png": 1.5,
+            "img": "map_5-9_point_1",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [3,1,1]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -85,10 +89,8 @@
             "s": 2.3
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "w": 3
@@ -112,28 +114,22 @@
             "d": 2
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "w": 0.15
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "a": 0.15
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         }
     ]
 }

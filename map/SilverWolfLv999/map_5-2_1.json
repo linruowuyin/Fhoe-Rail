@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "纷争荒墟-1",
     "author": "smjes3,ibukiizumi",
     "remark": {
@@ -9,24 +10,30 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_6.png": 1.5
+            "img": "orientation_6",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-2.png": 1.5,
+            "img": "map_5-2",
+            "delay": 1.5,
             "scene": 1
         },
         {
-            "picture\\map_5-2_point_1.png": 1.5,
+            "img": "map_5-2_point_1",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -70,13 +77,8 @@
             "w": 2.8
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 3
         },
         {
             "w": 5.6
@@ -139,13 +141,8 @@
             "d": 0.5
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 3
         },
         {
             "d": 1.2
@@ -181,13 +178,8 @@
             "s": 2
         },
         {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
+            "ss": 0.52,
+            "rep": 3
         },
         {
             "a": 0.36
@@ -304,19 +296,15 @@
             "a": 0.7
         },
         {
-            "aa": 0.52
-        },
-        {
-            "aa": 0.52
+            "aa": 0.52,
+            "rep": 2
         },
         {
             "s": 0.16
         },
         {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
+            "ss": 0.52,
+            "rep": 2
         },
         {
             "a": 0.6

@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "禁闭舱段-1",
     "author": "喵不可言",
     "start": [
@@ -6,16 +7,20 @@
             "map": 1
         },
         {
-            "picture\\map_1-4.png": 2
+            "img": "map_1-4",
+            "delay": 2
         },
         {
-            "picture\\2floor.png": 1.5
+            "img": "2floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_1-4_point_2.png": 1.5
+            "img": "map_1-4_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -47,13 +52,8 @@
             "d": 0.3
         },
         {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
-        },
-        {
-            "dd": 0.52
+            "dd": 0.52,
+            "rep": 3
         },
         {
             "d": 1.5
@@ -86,22 +86,8 @@
             "s": 0.1
         },
         {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
-        },
-        {
-            "ss": 0.52
+            "ss": 0.52,
+            "rep": 6
         },
         {
             "lv999_await": 2

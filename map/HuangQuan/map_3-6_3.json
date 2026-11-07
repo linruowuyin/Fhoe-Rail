@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "丹鼎司-3",
     "author": "喵不可言,龙女姬",
     "start": [
@@ -6,16 +7,20 @@
             "map": 1
         },
         {
-            "picture\\2floor.png": 1.5
+            "img": "2floor",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-6_point_4.png": 1.5
+            "img": "map_3-6_point_4",
+            "delay": 1.5
         },
         {
-            "picture\\map_3-5_point_7.png": 1.5
+            "img": "map_3-5_point_7",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -74,10 +79,8 @@
             "s": 0.6
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         }
     ]
 }

@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "无晖祈堂-4",
     "author": "和月",
     "start": [
@@ -6,12 +7,14 @@
             "map": 1
         },
         {
-            "picture\\map_5-6_point_4.png": 1.5,
+            "img": "map_5-6_point_4",
+            "delay": 1.5,
             "drag": 1,
             "drag_offset": [0,1,0,0]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

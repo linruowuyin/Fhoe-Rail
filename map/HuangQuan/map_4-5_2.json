@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "影视乐园-2",
     "author": "喵不可言",
     "start": [
@@ -6,13 +7,16 @@
             "map": 1
         },
         {
-            "picture\\map_4-5_point_1.png": 1.5
+            "img": "map_4-5_point_1",
+            "delay": 1.5
         },
         {
-            "picture\\map_4-5_point_2.png": 1.5
+            "img": "map_4-5_point_2",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -89,10 +93,8 @@
             "s": 1.57
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "a": 0.66
@@ -143,13 +145,8 @@
             "s": 0.31
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 3
         }
     ]
 }

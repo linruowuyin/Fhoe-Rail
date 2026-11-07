@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "酒店梦境-7",
     "author": "喵不可言",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_4-3_point_4.png": 1.5
+            "img": "map_4-3_point_4",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -35,13 +38,8 @@
             "w": 0.1
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 3
         },
         {
             "lv999_await": 2

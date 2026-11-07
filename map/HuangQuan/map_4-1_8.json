@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "筑梦边境-8",
     "author": "喵不可言,ibukiizumi",
     "start": [
@@ -6,11 +7,13 @@
             "map": 1
         },
         {
-            "picture\\map_4-1_point_4.png": 1.5,
+            "img": "map_4-1_point_4",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -84,10 +87,8 @@
             "d": 0.4
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "d": 2
@@ -156,16 +157,8 @@
             "w": 0.5
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 4
         }
     ]
 }

@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "永冬岭-2",
     "author": "喵不可言,Starry-Wind,小明",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_2-4_point_3.png": 1.5
+            "img": "map_2-4_point_3",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -41,10 +44,8 @@
             "d": 1.33
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         }
     ]
 }

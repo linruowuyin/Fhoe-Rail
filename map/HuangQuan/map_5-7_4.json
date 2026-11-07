@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "龙骸古城-4",
     "author": "smjes3",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_5-7_point_5.png": 1.5
+            "img": "map_5-7_point_5",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -71,10 +74,8 @@
             "a": 0.5
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         },
         {
             "d": 0.15
@@ -92,10 +93,8 @@
             "a": 0.15
         },
         {
-            "e": 2
-        },
-        {
-            "e": 2
+            "e": 2,
+            "rep": 2
         }
     ]
 }

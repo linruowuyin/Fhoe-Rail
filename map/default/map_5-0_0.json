@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "收集记忆代币-1",
     "author": "smjes3",
     "start": [
@@ -12,34 +13,42 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_6.png": 1.5
+            "img": "orientation_6",
+            "delay": 1.5
         },
         {
-            "picture\\map_5-0.png": 1.5,
+            "img": "map_5-0",
+            "delay": 1.5,
             "scene": 1
         },
         {
-            "picture\\map_5-0_point_1.png": 1.5,
+            "img": "map_5-0_point_1",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         },
         {
             "map": 1
         },
         {
-            "picture\\map_5-0_point_2.png": 1.5,
+            "img": "map_5-0_point_2",
+            "delay": 1.5,
             "drag": 1
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -47,10 +56,8 @@
             "w": 1.6
         },
         {
-            "a": 1.8
-        },
-        {
-            "a": 1.8
+            "a": 1.8,
+            "rep": 2
         },
         {
             "await": 3

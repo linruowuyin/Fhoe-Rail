@@ -64,14 +64,23 @@ def _iter_strings(node):
 
 
 def picture_refs(data):
-    """一张地图里所有 `picture\\...` 引用（去重、排序）。"""
-    return sorted(
-        {
-            text
-            for text in _iter_strings(data)
-            if text.startswith(PICTURE_PREFIXES)
-        }
-    )
+    """一张地图里所有 `picture\\...` 引用（去重、排序）。
+
+    v2 格式的图片步骤写 `{"img": "<stem>", "delay": ...}`，这里折算成 v1 引用形
+    一起解析 —— 两个格式对图片文件的约束完全一致（utils/core/map_format.py）。
+    """
+    refs = {
+        text
+        for text in _iter_strings(data)
+        if text.startswith(PICTURE_PREFIXES)
+    }
+    start = data.get("start", []) if isinstance(data, dict) else []
+    for entry in start:
+        if isinstance(entry, dict):
+            stem = entry.get("img")
+            if isinstance(stem, str) and stem:
+                refs.add(f"picture\\{stem}.png")
+    return sorted(refs)
 
 
 def check(map_dir=MAP_DIR):

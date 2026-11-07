@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "观览云岛站-1",
     "author": "smjes3",
     "start": [
@@ -6,26 +7,32 @@
             "map": 1
         },
         {
-            "picture\\fanhui_1.png": 1.5
+            "img": "fanhui_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_1.png": 1.5
+            "img": "orientation_1",
+            "delay": 1.5
         },
         {
-            "picture\\orientation_7.png": 1.5,
+            "img": "orientation_7",
+            "delay": 1.5,
             "click_offset": [60,0]
         },
         {
-            "picture\\map_6-3.png": 1.5,
+            "img": "map_6-3",
+            "delay": 1.5,
             "scene": 1
         },
         {
-            "picture\\map_6-3_point_1.png": 1.5,
+            "img": "map_6-3_point_1",
+            "delay": 1.5,
             "drag": 1,
             "drag_exact": [2,1,2]
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [

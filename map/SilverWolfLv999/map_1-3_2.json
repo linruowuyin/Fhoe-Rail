@@ -1,4 +1,5 @@
 {
+    "v": 2,
     "name": "支援舱段-2",
     "author": "喵不可言,Starry-Wind,小明",
     "start": [
@@ -6,10 +7,12 @@
             "map": 1
         },
         {
-            "picture\\map_1-3_point_4.png": 1.5
+            "img": "map_1-3_point_4",
+            "delay": 1.5
         },
         {
-            "picture\\transfer.png": 1.5
+            "img": "transfer",
+            "delay": 1.5
         }
     ],
     "map": [
@@ -35,10 +38,8 @@
             "w": 7.83
         },
         {
-            "ww": 0.52
-        },
-        {
-            "ww": 0.52
+            "ww": 0.52,
+            "rep": 2
         },
         {
             "lv999_await": 2
