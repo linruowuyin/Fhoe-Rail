@@ -331,46 +331,46 @@ class TestDefensive:
         assert mf.normalize_step({"c": "纯注释"}) == []
 
 
-class TestWaitFreezesPassthrough:
-    """v2 可选字段 wait_freezes：normalize 原样透传、migrate 往返保真。
+class TestWaitPassthrough:
+    """v2 可选字段 wait：normalize 原样透传、migrate 往返保真。
 
     解析层对它零逻辑（当作普通修饰键），只钉行为防止将来改动悄悄丢字段；
     语义与校验见 utils/core/schema.py 与 docs/MAP_FORMAT.md。
     """
 
-    def test_normalize_img_step_keeps_wait_freezes(self):
-        assert mf.normalize_step({"img": "transfer", "delay": 1.5, "wait_freezes": 2}) == [
-            {"picture\\transfer.png": 1.5, "wait_freezes": 2}
+    def test_normalize_img_step_keeps_wait(self):
+        assert mf.normalize_step({"img": "transfer", "delay": 1.5, "wait": 2}) == [
+            {"picture\\transfer.png": 1.5, "wait": 2}
         ]
 
-    def test_normalize_wait_freezes_with_default_delay(self):
-        assert mf.normalize_step({"img": "x", "wait_freezes": 3}) == [
-            {"picture\\x.png": 0.8, "wait_freezes": 3}
+    def test_normalize_wait_with_default_delay(self):
+        assert mf.normalize_step({"img": "x", "wait": 3}) == [
+            {"picture\\x.png": 0.8, "wait": 3}
         ]
 
-    def test_rep_expansion_keeps_wait_freezes_in_each_copy(self):
+    def test_rep_expansion_keeps_wait_in_each_copy(self):
         assert mf.normalize_step(
-            {"img": "x", "delay": 0.5, "wait_freezes": 2, "rep": 2}
+            {"img": "x", "delay": 0.5, "wait": 2, "rep": 2}
         ) == [
-            {"picture\\x.png": 0.5, "wait_freezes": 2},
-            {"picture\\x.png": 0.5, "wait_freezes": 2},
+            {"picture\\x.png": 0.5, "wait": 2},
+            {"picture\\x.png": 0.5, "wait": 2},
         ]
 
-    def test_collapse_does_not_merge_wait_freezes_entries(self):
+    def test_collapse_does_not_merge_wait_entries(self):
         steps = [
-            {"picture\\x.png": 1.5, "wait_freezes": 2},
-            {"picture\\x.png": 1.5, "wait_freezes": 2},
+            {"picture\\x.png": 1.5, "wait": 2},
+            {"picture\\x.png": 1.5, "wait": 2},
         ]
         assert mf.collapse_adjacent(steps) == steps
 
-    def test_migrate_map_preserves_wait_freezes_and_is_idempotent(self):
+    def test_migrate_map_preserves_wait_and_is_idempotent(self):
         v1 = {
             "name": "n",
             "author": "a",
-            "start": [{"picture\\x.png": 1.5, "wait_freezes": 2}],
+            "start": [{"picture\\x.png": 1.5, "wait": 2}],
             "map": [],
         }
         v2 = mf.migrate_map(v1)
-        assert v2["start"] == [{"img": "x", "delay": 1.5, "wait_freezes": 2}]
+        assert v2["start"] == [{"img": "x", "delay": 1.5, "wait": 2}]
         assert mf.migrate_map(v2) == v2
         assert mf.verify_migration(v1, v2)

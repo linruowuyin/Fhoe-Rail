@@ -33,7 +33,7 @@ from utils.flows.map import Map
 from utils.core.map_info import MapInfo
 from utils.core.map_statu import MapStatu
 from utils.core.map_format import normalize_map_data
-from utils.core.schema import WAIT_FREEZES_MAX
+from utils.core.schema import WAIT_MAX
 from utils.flows.monthly_pass import MonthlyPass
 from utils.drivers.mouse_event import MouseEvent
 from utils.ui.pause import Pause
@@ -58,15 +58,15 @@ STEP_BREAK = "break"
 STEP_COUNT = "count"
 STEP_PLAIN = "plain"
 
-# --- wait_freezes：画面静止检测（v2 可选字段，docs/MAP_FORMAT.md）------------
+# --- wait：画面静止检测（v2 可选字段，docs/MAP_FORMAT.md）------------
 #
 # 图片步点击完成后等画面静止 N 秒再走下一步：加载时长随机器浮动，固定 sleep
 # 是慢机翻车/快机白等的根源。帧差均值 ≤ 阈值累计满 N 秒放行；超时兜底强制
-# 继续，永不卡死。字段值域在 schema 校验（WAIT_FREEZES_MAX），这里兜底容忍脏值。
-WAIT_FREEZES_TIMEOUT = 15.0   # 单次等待兜底上限（秒）
-WAIT_FREEZES_DIFF = 2.0       # 帧差均值阈值（0-255 灰度）
-WAIT_FREEZES_SAMPLE = 0.3     # 采样间隔（秒）
-WAIT_FREEZES_WIDTH = 480      # 采样帧降采样宽度（像素）
+# 继续，永不卡死。字段值域在 schema 校验（WAIT_MAX），这里兜底容忍脏值。
+WAIT_TIMEOUT = 15.0   # 单次等待兜底上限（秒）
+WAIT_DIFF = 2.0       # 帧差均值阈值（0-255 灰度）
+WAIT_SAMPLE = 0.3     # 采样间隔（秒）
+WAIT_WIDTH = 480      # 采样帧降采样宽度（像素）
 
 #: 资源 ID → handler 方法名。新增特殊图片语义只加一行，不改控制流。
 PICTURE_STEP_HANDLERS = {
@@ -401,9 +401,9 @@ class MapOperations:
                                 self.map_statu.next_map_drag = True
                             break
 
-                    # v2 可选字段 wait_freezes（docs/MAP_FORMAT.md）：仅图片步，
+                    # v2 可选字段 wait（docs/MAP_FORMAT.md）：仅图片步，
                     # 收尾判定完成后再等画面静止；等待中用户请求重跑 → 重跑本图
-                    if outcome in (STEP_PLAIN, STEP_COUNT) and self._wait_freezes(start, dev=dev):
+                    if outcome in (STEP_PLAIN, STEP_COUNT) and self._wait_stable(start, dev=dev):
                         retry = True
                         break
 
@@ -557,45 +557,45 @@ class MapOperations:
         return True
 
     # ------------------------------------------------------------------
-    # wait_freezes：画面静止检测（v2 可选字段，docs/MAP_FORMAT.md）
+    # wait：画面静止检测（v2 可选字段，docs/MAP_FORMAT.md）
     # ------------------------------------------------------------------
 
-    def _wait_freezes(self, entry, dev: bool) -> bool:
-        """条目带 wait_freezes 时等画面静止 N 秒再走下一步。
+    def _wait_stable(self, entry, dev: bool) -> bool:
+        """条目带 wait 时等画面静止 N 秒再走下一步。
 
         返回 True 表示等待中用户按了 F9/F10（请求重跑本图），调用方应置 retry
         并跳出 start 循环 —— 与其它检查点同语义。脏值（schema 拦不住的手改
         文件）按缺省忽略，运行时不猜。
         """
-        raw = entry.get("wait_freezes") if isinstance(entry, dict) else None
+        raw = entry.get("wait") if isinstance(entry, dict) else None
         if not isinstance(raw, (int, float)) or isinstance(raw, bool):
             return False
-        if not 0 < raw <= WAIT_FREEZES_MAX:
+        if not 0 < raw <= WAIT_MAX:
             return False
         seconds = float(raw)
 
         log.info(
-            f"wait_freezes={seconds:g}s：等待画面静止（兜底 {WAIT_FREEZES_TIMEOUT:g}s）"
+            f"wait={seconds:g}s：等待画面静止（兜底 {WAIT_TIMEOUT:g}s）"
         )
-        deadline = time.time() + WAIT_FREEZES_TIMEOUT
+        deadline = time.time() + WAIT_TIMEOUT
         stable = 0.0
         prev = self._freeze_frame()
         while time.time() < deadline:
-            time.sleep(WAIT_FREEZES_SAMPLE)
+            time.sleep(WAIT_SAMPLE)
             if self._pause_checkpoint(dev=dev):
                 return True
             cur = self._freeze_frame()
             if prev is not None and cur is not None:
                 diff = compare.frame_diff(prev, cur)
-                if diff <= WAIT_FREEZES_DIFF:
-                    stable += WAIT_FREEZES_SAMPLE
+                if diff <= WAIT_DIFF:
+                    stable += WAIT_SAMPLE
                     if stable >= seconds:
                         log.info(f"画面已静止 {seconds:g}s（帧差均值 {diff:.2f}），继续")
                         return False
                 else:
                     stable = 0.0
             prev = cur
-        log.info(f"wait_freezes 兜底超时（{WAIT_FREEZES_TIMEOUT:g}s），按原节奏继续")
+        log.info(f"wait 兜底超时（{WAIT_TIMEOUT:g}s），按原节奏继续")
         return False
 
     def _freeze_frame(self):
@@ -607,9 +607,9 @@ class MapOperations:
         try:
             frame, *_ = self.img.take_screenshot()
         except Exception as e:  # noqa: BLE001 —— 截图层异常不该炸掉跑图主流程
-            log.info(f"wait_freezes 截图失败，本样本作废：{e}")
+            log.info(f"wait 截图失败，本样本作废：{e}")
             return None
-        return compare.to_sample_frame(frame, WAIT_FREEZES_WIDTH)
+        return compare.to_sample_frame(frame, WAIT_WIDTH)
 
     def process_single_map_handle(self, map_json, normal_run, dev=False, last_point=""):
         """

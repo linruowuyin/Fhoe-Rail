@@ -110,7 +110,7 @@ class TestProjection:
 
 
 class TestSampleFrame:
-    """帧稳定检测的采样形（wait_freezes，docs/MAP_FORMAT.md §2.1.1）。"""
+    """帧稳定检测的采样形（wait，docs/MAP_FORMAT.md §2.1.1）。"""
 
     def test_downscales_to_target_width_and_grayscale(self):
         frame = texture(size=(1080, 1920))

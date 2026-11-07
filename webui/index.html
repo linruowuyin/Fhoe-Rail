@@ -1879,7 +1879,7 @@ const START_CMDS = ["main","map","scene","await","floor","space","drag","drag_of
 const MAP_CMDS = ["w","a","s","d","b","fighting","f","e","esc","check"];
 // 修饰键（core/schema.py 的 MODIFIER_KEYS）：和步骤键挤在同一条目里、必须写在步骤键之后，
 // 且只在 start 条目上合法 —— 行进（map）条目多带一个键会被校验器判 error。
-const MOD_KEYS = ["click_offset", "drag", "drag_exact", "drag_offset", "scene", "clicks", "forbid_retry", "wait_freezes"];
+const MOD_KEYS = ["click_offset", "drag", "drag_exact", "drag_offset", "scene", "clicks", "forbid_retry", "wait"];
 
 // 编辑态的「保存 / 取消」放弹窗头部：长地图要滚很久才到底，按钮跟在底部等于每次保存都要拉一趟
 const setEditBtns = on => {
@@ -1924,7 +1924,7 @@ function renderMapReadOnly() {
     // v2（docs/MAP_FORMAT.md）：rep 显示 ×N、c 显示成备注，img 步的 delay 本来就是修饰键位。
     const modStr = mk => mk === "rep" ? `×${valStr(s[mk])}`
       : mk === "c" ? `备注：${valStr(s[mk])}`
-      : mk === "wait_freezes" ? `静止 ${valStr(s[mk])}s`
+      : mk === "wait" ? `静止 ${valStr(s[mk])}s`
       : `${mk} ${valStr(s[mk])}`;
     const mods = keys.slice(1).map(mk =>
       `<span class="badge b-dim" style="margin-left:6px">${esc(modStr(mk))}</span>`).join("");

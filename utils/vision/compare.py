@@ -38,7 +38,7 @@ def frame_diff(prev, cur):
     """两帧同尺寸灰度图的平均绝对差（0-255）。
 
     帧稳定检测的度量：静止 = 低于调用方的阈值（map_operations 的
-    WAIT_FREEZES_DIFF），加载动画/转场会显著高于它。
+    WAIT_DIFF），加载动画/转场会显著高于它。
     """
     import cv2
 

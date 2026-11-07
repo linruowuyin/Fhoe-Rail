@@ -45,7 +45,7 @@ StarRailAssistant 的地图互导契约不受影响。
 | `delay` | 点击后停顿秒数 | 数字；省略 = 0.8（= v1 运行时上限） |
 | `rep` | 本步总执行次数 | 整数 ≥ 1；省略 = 1；CI 拦 > 100（运行时兜底夹到 100） |
 | `c` | 注释，运行时剥掉 | 字符串；写在哪一层都行 |
-| `wait_freezes` | **可选**，图片步点击后等画面静止 N 秒再走下一步 | 数字 (0, 30]；**只能跟在 `img` 步上**；省略 = 不检测（老写法行为不变） |
+| `wait` | **可选**，图片步点击后等画面静止 N 秒再走下一步 | 数字 (0, 30]；**只能跟在 `img` 步上**；省略 = 不检测（老写法行为不变） |
 
 ```jsonc
 // v2 写法，等价于上面的 v1 示例
@@ -57,7 +57,7 @@ StarRailAssistant 的地图互导契约不受影响。
         {"map": 1},
         {"img": "transfer", "delay": 1.5},
         {"img": "x", "delay": 0.8, "click_offset": [60, 0]},
-        {"img": "y", "delay": 0.5, "wait_freezes": 2.0}
+        {"img": "y", "delay": 0.5, "wait": 2.0}
     ],
     "map": [{"s": 0.5}, {"a": 0.2, "rep": 2}, {"w": 2.0}]
 }
@@ -70,21 +70,21 @@ StarRailAssistant 的地图互导契约不受影响。
   `back_to_main`（CLAUDE.md R26），图片导航没有意义）
 * `map` 里禁止 `img`、修饰键；`fighting` 禁止带 `rep`（打障碍物不可折叠）
 * 未知键：v2 的 `start` 直接 error（v1 是 warning）—— 命名字段格式就该严
-* v1 文件里出现 `img`/`rep`/`c`/`wait_freezes` = 作者想写 v2 忘加 `"v": 2`，报 error 并提示
+* v1 文件里出现 `img`/`rep`/`c`/`wait` = 作者想写 v2 忘加 `"v": 2`，报 error 并提示
 
-### 2.1.1 wait_freezes：画面静止检测（可选增强）
+### 2.1.1 wait：画面静止检测（可选增强）
 
 加载时长随机器浮动，固定 `delay` 是慢机翻车、快机白等的根源。给图片步加
-`wait_freezes: N` 后，点击收尾完成（含重试判定）会**截帧比较帧差**：帧差均值
+`wait: N` 后，点击收尾完成（含重试判定）会**截帧比较帧差**：帧差均值
 低于阈值累计满 N 秒 → 放行；持续变化 → 清零重计；总等待超过兜底上限（15s，
-`map_operations.py::WAIT_FREEZES_TIMEOUT`）→ 强制继续，**永不卡死**。等待循环
+`map_operations.py::WAIT_TIMEOUT`）→ 强制继续，**永不卡死**。等待循环
 过暂停检查点，F8/F9 语义与其它检查点一致（F9 = 重跑本图）。
 
 * 适用场景：传送/开图/菜单点击后界面加载不确定的步骤。`transfer` 步本身已有
   地图加载检测（`run_mapload_check`），无需重复添加
 * 老地图**不批量迁移**：字段可省略，缺省行为逐字节不变；谁改图谁顺手加
-* 阈值/采样参数是 `map_operations.py` 模块常量（`WAIT_FREEZES_DIFF/SAMPLE/WIDTH`），
-  游戏内实测后再调；schema 侧值域见 `WAIT_FREEZES_MAX`
+* 阈值/采样参数是 `map_operations.py` 模块常量（`WAIT_DIFF/SAMPLE/WIDTH`），
+  游戏内实测后再调；schema 侧值域见 `WAIT_MAX`
 * v1 文件出现该键报 error（提示加 `"v": 2`）；`map` 数组里报 error（只跟 img 步）
 
 ### 2.2 语义不变量（normalize 承诺）

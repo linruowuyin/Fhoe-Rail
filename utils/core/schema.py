@@ -139,9 +139,9 @@ def _is_number(value) -> bool:
 #: v2 步骤保留字段。v1 的合法键里没有它们，所以「v1 文件里出现即报错」不会误伤。
 RESERVED_KEYS = ("img", "delay", "rep", "c")
 
-#: v2 可选字段 wait_freezes 的值上限（秒）。只允许跟在 start 的 img 步上，
+#: v2 可选字段 wait 的值上限（秒）。只允许跟在 start 的 img 步上，
 #: 语义与 runner 侧常量见 utils/flows/map_operations.py 与 docs/MAP_FORMAT.md。
-WAIT_FREEZES_MAX = 30
+WAIT_MAX = 30
 
 #: 图片资源 stem 的形状（如 `transfer` / `map_4-3_point_5` / `fanhui_1`）：
 #: 不含路径分隔符、不含后缀。是否真的解析得到图片文件由 tools/validate_pictures.py 查。
@@ -228,7 +228,7 @@ def validate_map(data, filename: str = "") -> list:
     # v1 文件里出现 v2 保留字段 = 作者想把 v2 语法写进 v1：运行时会整条走错分支。
     # 命中保留字段的条目只报这一条专用错误，不再叠加单键/未知键的通用检查。
     def _has_reserved(entry):
-        return isinstance(entry, dict) and bool({"img", "rep", "c", "wait_freezes"} & set(entry))
+        return isinstance(entry, dict) and bool({"img", "rep", "c", "wait"} & set(entry))
 
     for array in ("start", "map"):
         for index, entry in enumerate(data[array]):
@@ -237,7 +237,7 @@ def validate_map(data, filename: str = "") -> list:
                     Issue(
                         "error",
                         f"{where}.{array}[{index}]",
-                        "出现了 v2 保留字段（img/rep/c/wait_freezes）—— 请在顶层加 \"v\": 2，或改回 v1 写法",
+                        "出现了 v2 保留字段（img/rep/c/wait）—— 请在顶层加 \"v\": 2，或改回 v1 写法",
                     )
                 )
 
@@ -401,14 +401,14 @@ def _check_reserved_values(entry, path) -> list:
         issues.append(
             Issue("error", f"{path}.delay", f"应为数字（点击后停顿秒数），实际是 {entry['delay']!r}")
         )
-    if "wait_freezes" in entry:
-        wf = entry["wait_freezes"]
-        if not _is_number(wf) or not 0 < wf <= WAIT_FREEZES_MAX:
+    if "wait" in entry:
+        wf = entry["wait"]
+        if not _is_number(wf) or not 0 < wf <= WAIT_MAX:
             issues.append(
                 Issue(
                     "error",
-                    f"{path}.wait_freezes",
-                    f"应为 (0, {WAIT_FREEZES_MAX}] 内的数字（画面静止检测秒数），实际是 {wf!r}",
+                    f"{path}.wait",
+                    f"应为 (0, {WAIT_MAX}] 内的数字（画面静止检测秒数），实际是 {wf!r}",
                 )
             )
     return issues
@@ -454,7 +454,7 @@ def _check_v2_start_entry(entry, path) -> list:
                 )
             )
 
-    if first_key in MODIFIER_KEYS or first_key in ("delay", "rep", "c", "wait_freezes"):
+    if first_key in MODIFIER_KEYS or first_key in ("delay", "rep", "c", "wait"):
         issues.append(
             Issue(
                 "error",
@@ -479,7 +479,7 @@ def _check_v2_start_entry(entry, path) -> list:
         issues.append(Issue("warning", f"{path}.{first_key}", "未知步骤键"))
 
     for extra in list(entry)[1:]:
-        if extra in RESERVED_KEYS or extra in MODIFIER_KEYS or extra == "wait_freezes":
+        if extra in RESERVED_KEYS or extra in MODIFIER_KEYS or extra == "wait":
             if extra == "click_offset":
                 issues += _check_click_offset(entry[extra], f"{path}.{extra}")
             continue
@@ -488,16 +488,16 @@ def _check_v2_start_entry(entry, path) -> list:
                 "error",
                 f"{path}.{extra}",
                 f"未知键（v2 条目只允许步骤键 + 保留字段 img/delay/rep/c + 修饰键 "
-                f"{sorted(MODIFIER_KEYS)} + wait_freezes）",
+                f"{sorted(MODIFIER_KEYS)} + wait）",
             )
         )
 
-    if "wait_freezes" in entry and first_key != "img":
+    if "wait" in entry and first_key != "img":
         issues.append(
             Issue(
                 "error",
-                f"{path}.wait_freezes",
-                "wait_freezes 只能跟在图片步（img）上 —— 它是点击后等画面静止的增强，"
+                f"{path}.wait",
+                "wait 只能跟在图片步（img）上 —— 它是点击后等画面静止的增强，"
                 "普通动作步没有对应的等待语义",
             )
         )
@@ -516,14 +516,14 @@ def _check_v2_map_entry(entry, path) -> list:
         return [Issue("error", path, "空步骤")]
 
     issues = _check_reserved_values(entry, path)
-    step_keys = [k for k in entry if k not in RESERVED_KEYS and k != "wait_freezes"]
+    step_keys = [k for k in entry if k not in RESERVED_KEYS and k != "wait"]
 
-    if "wait_freezes" in entry:
+    if "wait" in entry:
         issues.append(
             Issue(
                 "error",
-                f"{path}.wait_freezes",
-                "wait_freezes 只用于 start 的图片步（img），map 数组里不允许",
+                f"{path}.wait",
+                "wait 只用于 start 的图片步（img），map 数组里不允许",
             )
         )
 
