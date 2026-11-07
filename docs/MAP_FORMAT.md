@@ -96,9 +96,10 @@ StarRailAssistant 的地图互导契约不受影响。
 ×3、`process_single_map_handle` ×2）统一包 `normalize_map_data(...)`；
 `handle` 在首次加载后立即统计 `fighting_count`（用展开后的条数）。
 
-写盘**永远**是 v1 规范形（CLAUDE.md R22，`json_io.dumps_map`）—— webui 保存、
-录制器把 v2 步骤展开后落盘。地图文件在仓库里可以停留为 v2（人写人读），
-运行时内存里永远是 v1。
+写盘**唯一**出口是 `json_io.dumps_map`（CLAUDE.md R22），但落盘**格式跟随文件原貌**：
+录制器（record.py）只产出 v1；webui 编辑是「就地保真」—— 载入 v2 编辑保存后仍是
+v2（每个条目的键原序回写），保存前会过 `schema.validate_map` 拒掉 error 级写法。
+地图文件在仓库里可以停留为 v2（人写人读），运行时内存里永远是 v1。
 
 ## 4. 工具与 CI 门
 

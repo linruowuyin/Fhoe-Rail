@@ -556,7 +556,8 @@ ESC 会把确认框直接关掉，或者根本无响应，只按 ESC 会空转�
 - rep 必须**循环前**展开：`process_single_map_handle` 的 `prev_key`/`next_key` 与
   `fighting_count` 都按展开后的条数工作，原地循环会搞乱语义
 - 校验走 `utils/core/schema.py`（按 `v` 字段分支）；写盘唯一出口仍是 R22 的
-  `dumps_map`（webui/录制器落盘前把 v2 展开成 v1）
+  `dumps_map`，落盘格式跟随文件原貌：录制器只产出 v1，webui 就地保真（v2 编辑
+  保存后仍是 v2，保存前过 schema 拒 error）
 - 图片引用检查：`tools/validate_pictures.py` 会把 `img` stem 折算回
   `picture\<stem>.png` 解析；`img` 的 stem 全局唯一性沿用 R25
 - 批量迁移用 `tools/migrate_maps_v2.py`（默认干跑，`--write` 落盘，自带往返校验）

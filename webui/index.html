@@ -1875,7 +1875,7 @@ async function showMapDetail(file, version) {
 
 let currentMapData = null, currentMapFile = null, currentMapVersion = null, mapEditing = false, mapDirty = false;
 
-const START_CMDS = ["main","map","scene","await","floor","space","drag","drag_offset","view_set","view_reset","view_rotate","forbid_retry","need_allow_map_buy","need_allow_memory_token","need_allow_snack_buy","clicks","picture\\"];
+const START_CMDS = ["main","map","scene","await","floor","space","drag","drag_offset","view_set","view_reset","view_rotate","forbid_retry","need_allow_map_buy","need_allow_memory_token","need_allow_snack_buy","clicks","img","picture\\"];
 const MAP_CMDS = ["w","a","s","d","b","fighting","f","e","esc","check"];
 // 修饰键（core/schema.py 的 MODIFIER_KEYS）：和步骤键挤在同一条目里、必须写在步骤键之后，
 // 且只在 start 条目上合法 —— 行进（map）条目多带一个键会被校验器判 error。
@@ -1915,12 +1915,19 @@ function renderMapReadOnly() {
       : k === "check" ? `<span class="badge b-cyan" style="margin-left:6px">${v === 1 || (Array.isArray(v) && v.length === 7) ? "每日必检" : "周检"}</span>`
       : k === "normal_run" ? '<span class="badge b-red" style="margin-left:6px">禁疾跑</span>'
       : k === "blackscreen" ? '<span class="badge b-dim" style="margin-left:6px">黑屏检测</span>' : "";
+    const isImg = k === "img" && typeof v === "string" && v;
     const picMatch = k.match(/^picture\\(.+\.\w+)$/);
-    const picAttr = picMatch ? ` data-pic="${esc(picMatch[1])}"` : "";
-    // 修饰键要在界面上露出来：不然用户看不出某一步带修饰键，也发现不了保存会把它丢掉
+    const picAttr = isImg ? ` data-pic="${esc(v)}.png"`
+      : picMatch ? ` data-pic="${esc(picMatch[1])}"` : "";
+    const imgTag = isImg ? '<span class="badge b-cyan" style="margin-left:6px">图片</span>' : "";
+    // 修饰键要在界面上露出来：不然用户看不出某一步带修饰键，也发现不了保存会把它丢掉。
+    // v2（docs/MAP_FORMAT.md）：rep 显示 ×N、c 显示成备注，img 步的 delay 本来就是修饰键位。
+    const modStr = mk => mk === "rep" ? `×${valStr(s[mk])}`
+      : mk === "c" ? `备注：${valStr(s[mk])}`
+      : `${mk} ${valStr(s[mk])}`;
     const mods = keys.slice(1).map(mk =>
-      `<span class="badge b-dim" style="margin-left:6px">${esc(mk)} ${esc(valStr(s[mk]))}</span>`).join("");
-    return `<div class="step-row"><span class="k"${picAttr}>${esc(k)}</span><span class="v">${esc(valStr(v))}</span>${tag}${mods}</div>`;
+      `<span class="badge b-dim" style="margin-left:6px">${esc(modStr(mk))}</span>`).join("");
+    return `<div class="step-row"><span class="k"${picAttr}>${esc(k)}</span><span class="v">${esc(valStr(v))}</span>${tag}${imgTag}${mods}</div>`;
   };
   const startSteps = (data.start || []).map(stepRow).join("");
   const totalSteps = (data.map || []).length;
@@ -2067,7 +2074,12 @@ async function saveMapEdit() {
     $("#edit-" + sec).querySelectorAll(".edit-row").forEach(row => {
       const k = row.querySelector('[data-field="k"]').value.trim();
       if (!k) return;
-      const step = { [k]: parseVal(row.querySelector('[data-field="v"]').value) };
+      const rawV = row.querySelector('[data-field="v"]').value;
+      // img 的值必须是 stem 字符串（picture 资源名），不做数字转换 —— "123" 这种纯数字
+      // stem 也不能被 parseVal 变成数字，否则存盘后校验直接报错
+      const step = { [k]: (k === "img") ? rawV.trim() : parseVal(rawV) };
+      if (k === "img" && !/^[\w\-]+$/.test(step[k]))
+        badMods.push(`img = ${step[k] || "(空)"}（应为图片名 stem，如 transfer）`);
       // 修饰键按原始顺序写回。步骤键必须留在第一位：map_operations 用 keys[0] 取步骤键，
       // 顺序错了会把修饰键当成步骤键走错分支（core/schema.py 专门拦这个）。
       row.querySelectorAll(".emod").forEach(mod => {

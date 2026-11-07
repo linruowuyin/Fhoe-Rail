@@ -1574,6 +1574,19 @@ class Handler(BaseHTTPRequestHandler):
                     data["map"], list
                 ):
                     raise ValueError("start 和 map 必须是数组")
+                # 保存前过 schema（core/schema.py，按 v 字段分 v1/v2）—— 本地就拦下
+                # 会挂 CI 的写法（v2 文件里混 v1 picture\ 键、img 值不是 stem 等），
+                # error 级拒绝写入；warning 只提示不拦
+                from utils.core.schema import validate_map
+
+                issues = validate_map(data, filename=f"{version}/{file}")
+                errors = [str(i) for i in issues if i.level == "error"]
+                if errors:
+                    self._send(400, {
+                        "ok": False,
+                        "error": "地图校验未通过：" + " | ".join(errors[:5]),
+                    })
+                    return
                 _backup_if_changed(fpath, data, "map")
                 tmp = fpath + ".tmp"
                 with open(tmp, "w", encoding="utf-8") as f:
