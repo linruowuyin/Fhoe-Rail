@@ -1112,3 +1112,82 @@ class TestHandleStepDispatch:
         assert img.calls[0][0] == "click_target"
 
 
+class TestWaitFreezes:
+    """v2 可选字段 wait_freezes 的运行时行为（docs/MAP_FORMAT.md）。
+
+    只钉三件事：脏值零开销忽略、静止帧提前放行、检查点重跑请求被传播。
+    帧差阈值/采样间隔的真实数值要在游戏里调，这里一律桩掉。
+    """
+
+    def _map_stub(self, operations):
+        operations.map = SimpleNamespace(
+            check_allowlist_maps=lambda name: False,
+            check_forbidden_maps=lambda name: False,
+            planet_ids=[],
+            allow_map_drag=lambda start: None,
+            allow_scene_drag=lambda start: None,
+            allow_multi_click=lambda start: None,
+            allow_retry_in_map=lambda start: None,
+            allow_click_offset=lambda start: None,
+        )
+
+    def test_dirty_values_are_ignored_without_touching_screenshot(self, operations):
+        operations.img = SimpleNamespace(
+            take_screenshot=lambda *a, **k: pytest.fail("脏值不应触发截图")
+        )
+        for bad in ["2", True, 0, -1, 99, None]:
+            assert operations._wait_freezes({"wait_freezes": bad}, dev=False) is False, bad
+        assert operations._wait_freezes({}, dev=False) is False
+
+    def test_stable_frames_release_early(self, operations, monkeypatch):
+        monkeypatch.setattr(operations, "_freeze_frame", lambda: b"f")
+        monkeypatch.setattr(operations, "_frame_diff", lambda prev, cur: 0.0)
+        assert operations._wait_freezes({"wait_freezes": 0.6}, dev=False) is False
+
+    def test_moving_frames_hit_timeout_fallback(self, operations, monkeypatch):
+        monkeypatch.setattr(operations_module, "WAIT_FREEZES_TIMEOUT", 0.05)
+        monkeypatch.setattr(operations, "_freeze_frame", lambda: b"f")
+        monkeypatch.setattr(operations, "_frame_diff", lambda prev, cur: 50.0)
+        assert operations._wait_freezes({"wait_freezes": 0.6}, dev=False) is False
+
+    def test_rerun_request_propagates_from_pause_checkpoint(self, operations, monkeypatch):
+        monkeypatch.setattr(
+            operations, "_pause_checkpoint", lambda dev, last_point="": True
+        )
+        assert operations._wait_freezes({"wait_freezes": 0.6}, dev=False) is True
+
+    def test_plain_map_has_zero_wait_overhead(self, operations):
+        """没有 wait_freezes 字段的条目：一次 dict.get 就返回，不截图不等待。"""
+        operations.img = SimpleNamespace(
+            take_screenshot=lambda *a, **k: pytest.fail("无字段不应触发截图")
+        )
+        assert operations._wait_freezes({"picture\\x.png": 0.1}, dev=False) is False
+        assert operations._wait_freezes({"map": 1}, dev=False) is False
+
+    def test_start_loop_reruns_map_when_wait_freezes_requests(self, operations, monkeypatch):
+        self._map_stub(operations)
+        write_map(
+            operations.root,
+            "default",
+            "map_1-1_0.json",
+            basic_map_payload([{"picture\\x.png": 0.1, "wait_freezes": 0.6}]),
+        )
+        handler_calls = []
+
+        def fake_handler(pid):
+            def run(key, value, map_data):
+                handler_calls.append(key)
+                return "plain"
+
+            return run
+
+        answers = iter([True, False])  # 第一次等待中请求重跑，第二次正常放行
+        monkeypatch.setattr(operations, "_picture_step_handler", fake_handler)
+        monkeypatch.setattr(operations, "_wait_freezes", lambda entry, dev: next(answers))
+
+        operations.process_single_map_start(0, "map_1-1_0.json")
+
+        assert handler_calls == ["picture\\x.png", "picture\\x.png"]
+        assert operations.map_statu.skip_this_map is False
+
+

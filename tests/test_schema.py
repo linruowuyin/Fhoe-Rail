@@ -322,3 +322,50 @@ class TestV2MapEntries:
     def test_fighting_value_rule_still_applies(self):
         data = make_map(map_steps=[{"fighting": 9}], v=2)
         assert levels(validate_map(data)) == ["error"]
+
+
+class TestV2WaitFreezes:
+    """v2 可选字段 wait_freezes：画面静止检测（docs/MAP_FORMAT.md）。
+
+    只允许跟在 start 的 img 步上，值域 (0, 30]；map 数组与 v1 文件都报 error。
+    """
+
+    def test_img_step_with_wait_freezes_passes(self):
+        data = make_map(
+            start=[{"img": "transfer", "delay": 1.5, "wait_freezes": 2}], v=2
+        )
+        assert validate_map(data) == []
+
+    @pytest.mark.parametrize("wf", [0.5, 30])
+    def test_boundary_values_pass(self, wf):
+        data = make_map(start=[{"img": "x", "wait_freezes": wf}], v=2)
+        assert validate_map(data) == []
+
+    def test_on_action_step_is_an_error(self):
+        data = make_map(start=[{"a": 0.2, "wait_freezes": 1}], v=2)
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert "wait_freezes" in messages(issues)
+
+    def test_first_key_is_an_error(self):
+        data = make_map(start=[{"wait_freezes": 2, "img": "x"}], v=2)
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert "步骤键" in messages(issues)
+
+    @pytest.mark.parametrize("wf", [0, -1, 31, "2", True, None])
+    def test_bad_value_is_an_error(self, wf):
+        data = make_map(start=[{"img": "x", "wait_freezes": wf}], v=2)
+        assert levels(validate_map(data)) == ["error"], wf
+
+    def test_in_map_is_an_error(self):
+        data = make_map(map_steps=[{"a": 0.2, "wait_freezes": 1}], v=2)
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert "img" in messages(issues)
+
+    def test_v1_file_with_wait_freezes_is_an_error(self):
+        data = make_map(start=[{"wait_freezes": 2}])
+        issues = validate_map(data)
+        assert levels(issues) == ["error"]
+        assert '"v": 2' in messages(issues)

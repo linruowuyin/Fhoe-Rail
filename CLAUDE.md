@@ -553,6 +553,9 @@ ESC 会把确认框直接关掉，或者根本无响应，只按 ESC 会空转�
   注释键 `c`，顶层 `"v": 2`）；v1 = 没有任何 `v` 字段，原样透传。图片步的值语义
   是**点击后停顿秒数**，字段名是 `delay` 不是 threshold
 - `img` 只允许在 `start`；`map` 里 `fighting` 不许带 `rep`（打障碍物不可折叠）
+- 可选字段 `wait_freezes`（0 < N ≤ 30，秒）：只跟 `img` 步，点击收尾后截帧
+  等画面静止再走下一步，超时兜底强制继续；等待循环过暂停检查点。缺省 = 不
+  检测，老地图零行为变化，**不批量迁移**；参数是 `map_operations.py` 模块常量
 - rep 必须**循环前**展开：`process_single_map_handle` 的 `prev_key`/`next_key` 与
   `fighting_count` 都按展开后的条数工作，原地循环会搞乱语义
 - 校验走 `utils/core/schema.py`（按 `v` 字段分支）；写盘唯一出口仍是 R22 的
