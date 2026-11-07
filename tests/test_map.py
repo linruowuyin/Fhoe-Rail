@@ -243,18 +243,24 @@ class TestHandleOrientation:
         game_map.handle_orientation("picture\\orientation_1.png", map_data)
 
     def test_every_map_that_opens_the_star_map_has_a_planet_key(self, repo_root):
-        """全库核对 `handle_orientation` 的隐含前提：有 orientation_1 就必须有 2..7 之一。"""
+        """全库核对 `handle_orientation` 的隐含前提：有 orientation_1 就必须有 2..7 之一。
+
+        地图文件可能是 v1 或 v2 编写格式（docs/MAP_FORMAT.md），统一先过
+        normalize_steps 展开成 v1 规范形再收集键 —— 不变量对两种格式都成立。
+        """
         import json
         from pathlib import Path
+
+        from utils.core.map_format import normalize_steps
 
         checked = 0
         for path in Path("map").glob("*/*.json"):
             data = json.loads(path.read_text(encoding="utf-8"))
             keys = {
                 key
-                for item in data.get("start", [])
-                if isinstance(item, dict)
-                for key in item
+                for entry in normalize_steps(data.get("start", []))
+                if isinstance(entry, dict)
+                for key in entry
             }
             if "picture\\orientation_1.png" not in keys:
                 continue
