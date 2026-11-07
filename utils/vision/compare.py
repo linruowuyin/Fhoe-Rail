@@ -18,6 +18,33 @@ def _gray(image):
     return image
 
 
+def to_sample_frame(image, width=480):
+    """截图帧 → 降采样灰度图（帧稳定检测的采样形：减分辨率噪声，也算得快）。
+
+    :param image: take_screenshot 出来的 BGR ndarray（或 None/空帧）
+    :return: 灰度 ndarray；空输入返回 None（由调用方跳过该样本）
+    """
+    import cv2
+
+    if image is None or getattr(image, "size", 0) == 0:
+        return None
+    height, w = image.shape[:2]
+    scale = width / float(w)
+    small = cv2.resize(image, (width, max(1, int(height * scale))))
+    return cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+
+
+def frame_diff(prev, cur):
+    """两帧同尺寸灰度图的平均绝对差（0-255）。
+
+    帧稳定检测的度量：静止 = 低于调用方的阈值（map_operations 的
+    WAIT_FREEZES_DIFF），加载动画/转场会显著高于它。
+    """
+    import cv2
+
+    return float(cv2.absdiff(prev, cur).mean())
+
+
 def scene_score(reference, candidate):
     """比较两块**同尺寸**画面在固定位置的相似度。
 

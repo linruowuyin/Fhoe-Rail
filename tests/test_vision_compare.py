@@ -7,9 +7,11 @@ import pytest
 from utils.vision.compare import (
     equivalent_duration,
     estimate_shift,
+    frame_diff,
     projection,
     ratio_along,
     scene_score,
+    to_sample_frame,
 )
 
 
@@ -105,3 +107,25 @@ class TestProjection:
 
     def test_zero_direction(self):
         assert projection((3, 4), (0, 0)) == 0.0
+
+
+class TestSampleFrame:
+    """帧稳定检测的采样形（wait_freezes，docs/MAP_FORMAT.md §2.1.1）。"""
+
+    def test_downscales_to_target_width_and_grayscale(self):
+        frame = texture(size=(1080, 1920))
+        small = to_sample_frame(frame, width=480)
+        assert small.ndim == 2
+        assert small.shape[1] == 480
+        assert 0 < small.shape[0] <= 480
+
+    def test_none_and_empty_input_return_none(self):
+        assert to_sample_frame(None) is None
+        assert to_sample_frame(np.zeros((0, 0, 3), dtype=np.uint8)) is None
+
+    def test_static_frames_have_zero_diff_and_motion_is_large(self):
+        frame = texture(seed=1, size=(1080, 1920))
+        small = to_sample_frame(frame, width=480)
+        assert frame_diff(small, small) == pytest.approx(0.0)
+        moved = to_sample_frame(np.roll(frame, 40, axis=1), width=480)
+        assert frame_diff(small, moved) > 10.0

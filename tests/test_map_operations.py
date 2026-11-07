@@ -1141,13 +1141,13 @@ class TestWaitFreezes:
 
     def test_stable_frames_release_early(self, operations, monkeypatch):
         monkeypatch.setattr(operations, "_freeze_frame", lambda: b"f")
-        monkeypatch.setattr(operations, "_frame_diff", lambda prev, cur: 0.0)
+        monkeypatch.setattr(operations_module.compare, "frame_diff", lambda prev, cur: 0.0)
         assert operations._wait_freezes({"wait_freezes": 0.6}, dev=False) is False
 
     def test_moving_frames_hit_timeout_fallback(self, operations, monkeypatch):
         monkeypatch.setattr(operations_module, "WAIT_FREEZES_TIMEOUT", 0.05)
         monkeypatch.setattr(operations, "_freeze_frame", lambda: b"f")
-        monkeypatch.setattr(operations, "_frame_diff", lambda prev, cur: 50.0)
+        monkeypatch.setattr(operations_module.compare, "frame_diff", lambda prev, cur: 50.0)
         assert operations._wait_freezes({"wait_freezes": 0.6}, dev=False) is False
 
     def test_rerun_request_propagates_from_pause_checkpoint(self, operations, monkeypatch):

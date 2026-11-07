@@ -14,6 +14,7 @@ from utils.flows.handle import Handle
 from utils.drivers.keyboard_event import KeyboardEvent
 from utils.vision.img import Img
 from utils.vision import assets
+from utils.vision import compare
 from utils.vision import samples
 from utils.vision import recognition
 from utils.core.log import log
@@ -585,7 +586,7 @@ class MapOperations:
                 return True
             cur = self._freeze_frame()
             if prev is not None and cur is not None:
-                diff = self._frame_diff(prev, cur)
+                diff = compare.frame_diff(prev, cur)
                 if diff <= WAIT_FREEZES_DIFF:
                     stable += WAIT_FREEZES_SAMPLE
                     if stable >= seconds:
@@ -600,28 +601,15 @@ class MapOperations:
     def _freeze_frame(self):
         """截一帧降采样成灰度图供帧差比较；截图失败返回 None（该样本作废）。
 
-        cv2 惰性 import（compare.py 同款约定）：单测可以只测逻辑不装 cv2。
+        像素处理在 utils/vision/compare.py（架构棘轮：cv2 只进 vision/），
+        这里只负责截图与异常兜底。
         """
-        import cv2
-
         try:
             frame, *_ = self.img.take_screenshot()
         except Exception as e:  # noqa: BLE001 —— 截图层异常不该炸掉跑图主流程
             log.info(f"wait_freezes 截图失败，本样本作废：{e}")
             return None
-        if frame is None or getattr(frame, "size", 0) == 0:
-            return None
-        height, width = frame.shape[:2]
-        scale = WAIT_FREEZES_WIDTH / float(width)
-        small = cv2.resize(frame, (WAIT_FREEZES_WIDTH, max(1, int(height * scale))))
-        return cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
-
-    @staticmethod
-    def _frame_diff(prev, cur) -> float:
-        """两帧同尺寸灰度图的平均绝对差（0-255）。静止 = 低于 WAIT_FREEZES_DIFF。"""
-        import cv2
-
-        return float(cv2.absdiff(prev, cur).mean())
+        return compare.to_sample_frame(frame, WAIT_FREEZES_WIDTH)
 
     def process_single_map_handle(self, map_json, normal_run, dev=False, last_point=""):
         """
