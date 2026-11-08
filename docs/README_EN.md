@@ -173,9 +173,10 @@ The built-in local WebUI has **zero third-party dependencies** (Python standard 
 
 - **Launch:** Double-click `Start-WebUI.bat`; it auto-requests admin privileges and opens http://127.0.0.1:8666.
 - **Re-launch:** If the port is occupied by our own WebUI, the new instance lets the old one exit gracefully and takes over. If occupied by another program, it only reports an error and does not kill the process.
-- **Command Center:** Run status and statistics (battle count / total time / sprint savings / stutters).
+- **Command Center:** Run status and statistics (battle count / total time / sprint savings / stutters), plus an automatic per-run summary of maps cleared and time spent.
 - **Run Control:** Seven modes — default / whitelist / single map / range / developer single map / record / install dependencies — with real-time output.
 - **Map Catalog:** Browse all routes by version / planet; search by name, ID, or author.
+- **Map Editor:** Create and edit maps online — action keys and picture stems autocomplete; every save is validated first, invalid maps are rejected instead of being written.
 - **Settings:** Visually edit every config.json setting; supports save / copy / download.
 - **Voyage Log:** View real-time logs.
 - **New Map Notes:** View images with notes about new maps.
@@ -258,6 +259,7 @@ Maps are JSON files in `map/<version>/`, organized by version directory.
 | `technique` | No longer maintained (uses many purple techniques and techniques frequently in battle). |
 | `HuangQuan` | HuangQuan-specific; you must have enough technique snacks. |
 | `SilverWolfLv999` | SilverWolf LV.999-specific; converted from HuangQuan maps, does not use E technique. |
+| `reward` | Special item collection routes. |
 
 **Farming model classification:** A small number of characters may get stuck due to body size; ranged adult models with no-displacement attacks are preferred; girl (young female) models may get stuck.
 
@@ -275,13 +277,35 @@ Thanks to @AlisaCat for the contribution.
 
 **Finish:** Press F9 to stop and save, generating `output(时间).json`.
 
-**Output & configuration:** ① Rename to the target map JSON filename ② Rename the teleport point screenshot and save it to the `picture` folder ③ New maps can be submitted to the `map` branch or handed to an admin.
+**Output & configuration:** ① Rename to the target map JSON filename ② Rename the teleport point screenshot and save it to the `picture` folder ③ New maps can be submitted to the [Fhoe-Rail-Maps](https://github.com/linruowuyin/Fhoe-Rail-Maps) repository (merged automatically after CI validation) or handed to an admin.
 
 **Screenshot requirements:** Avoid repeated text (e.g. for 「支援舱段」「禁闭舱段」, only capture the support and the confinement parts, otherwise recognition may fail and mis-click); try not to capture text (for future multi-language adaptation); keep the capture area as small as possible.
 
 ### Map JSON Format
 
-Example:
+Maps support two authoring formats: **v1 (legacy)** and **v2 (recommended)**. A top-level `"v": 2` marks v2; without it the file is parsed as v1 (fully compatible). Both are equivalent at runtime and validated alike.
+
+**v2 (recommended)** — picture references become named fields, with inline comments and combo folding:
+
+```json
+{
+    "v": 2,
+    "name": "乌拉乌拉-1",
+    "author": "Starry-Wind",
+    "start": [
+        {"map": 1},                                   // action keys identical to v1
+        {"img": "orientation_1", "delay": 1.5},       // same as v1 {"picture\\orientation_1.jpg": 1.5}
+        {"img": "transfer", "delay": 1.5, "wait": 3}  // wait: after clicking, hold until the screen stays still for 3s (safer on slow loads)
+    ],
+    "map": [
+        {"a": 0.2, "rep": 3}                          // same as v1 {"a": 0.2} written 3 times
+    ]
+}
+```
+
+Fields: `img` picture resource name (no path/suffix, `start` only) · `delay` pause after click in seconds (default 0.8) · `rep` repeat count · `c` inline comment (ignored at runtime) · `wait` wait for the screen to freeze after clicking (seconds, 0-30, optional).
+
+**v1 (legacy, fully compatible):**
 
 ```json
 {
@@ -295,7 +319,9 @@ Example:
     {"picture\\transfer.jpg": 1.5},
     {"space": 1},
     {"b": 1},
-    {"await": 5}
+ 
+
+> Full field reference and validation rules: [docs/MAP_FORMAT.md](./docs/MAP_FORMAT.md). The WebUI editor validates both formats before saving.   {"await": 5}
   ]
 }
 ```
@@ -351,6 +377,7 @@ Before executing the `map` steps, the script always performs one `back_to_main` 
 | `tools/` | Dev helpers: map image validation and formatting scripts. |
 | `webui/` | Built-in WebUI server and frontend. |
 | `新图注意事项/` | Images with notes about new maps. |
+| `docs/` | Docs (MAP_FORMAT.md map format spec + localized READMEs). |
 | `CLAUDE.md` | Engineering rules and AI collaboration guide (dev order / layering / hard rules / testing). |
 | `requirements.txt` | Python dependencies. |
 | `LICENSE` | GPL-3.0. |
@@ -359,13 +386,14 @@ Before executing the `map` steps, the script always performs one `back_to_main` 
 
 The dependency direction is **one-way**: `core → drivers → vision → flows → ui` (enforced by `tests/test_architecture.py`).
 
-**Key constraints (CLAUDE.md §3):** Time / input / screen / state / structure / resource updates all have hard rules; there are dedicated cleanup conventions for presets and dead code; map execution contract and pre-ESC interface repair conventions are explicitly defined.
+**Key constraints (CLAUDE.md §3):** Time / input / screen / state / structure / resource updates all have hard rules; there are dedicated cleanup conventions for presets and dead code; map execution contract and pre-ESC interface repair conventions are explicitly defined; map JSON supports dual authoring formats v1/v2, normalized to v1 at runtime (docs/MAP_FORMAT.md).
 
 ### Testing and CI
 
 **Testing:** pytest (fully mocked, no game window; `xfail` marks known real defects) + three static validations:
 - `tools/validate_maps.py` — map JSON structure validation (exit code 1 on error).
 - `validate_pictures.py` — picture filenames globally unique + picture references resolvable.
+- `migrate_maps_v2.py` — v1 → v2 map format migration (dry-run by default, `--write` to apply).
 - `format_maps.py --base <ref>` — R22 write format validation, only checks current changes.
 
 **CI (`.github/workflows/run.yml`, windows-latest + Python 3.11.5):**
@@ -377,7 +405,7 @@ The dependency direction is **one-way**: `core → drivers → vision → flows 
 ### Contribution Guide
 
 Contributions of optimized/new routes and code improvements are welcome:
-- **New maps:** Record according to the recording rules, produce JSON + screenshots, submit to the `map` branch or hand to an admin.
+- **New maps:** Record according to the recording rules, produce JSON + screenshots, submit to the [Fhoe-Rail-Maps](https://github.com/linruowuyin/Fhoe-Rail-Maps) repository (CI validation) or hand to an admin.
 - **Code:** Follow the CLAUDE.md development order (feasibility probe → contract & resources → pure logic strict TDD → detector golden images → orchestration mock clock → replay end-to-end) and ensure local pytest + the three validation tools pass.
 - **Before submitting:** Run the full CI (locally reproducible with the `tools/` scripts).
 
