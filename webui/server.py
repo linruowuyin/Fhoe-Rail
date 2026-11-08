@@ -80,6 +80,7 @@ if BASE_DIR not in sys.path:
 # 地图写盘格式（CLAUDE.md R22）。放在这里而不是文件开头：按路径运行
 # `python webui/server.py` 时 sys.path[0] 是 webui/，得先补上仓库根才 import 得到。
 from utils.core.json_io import dumps_map
+from utils.core import schema as map_schema  # /api/schema：编辑器字段真相源
 # config.json 的唯一落盘口（4 空格 + 中文不转义 + 原子写）。同样要放在补完 sys.path 之后。
 from utils.config.config import ConfigurationManager
 # 展示名（版本 / 星球 / 区域）只有一处维护，见 CLAUDE.md R23 —— 以前这里有一份、
@@ -1353,6 +1354,22 @@ class Handler(BaseHTTPRequestHandler):
                 with open(fpath, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._send(200, data)
+            elif path == "/api/schema":
+                # 编辑器字段真相源：直接从 utils.core.schema 导出集合。
+                # 前端把它与内置 fallback 合并——schema 新增键时前端零改动。
+                self._send(
+                    200,
+                    {
+                        "start_keys": sorted(map_schema.START_KEYS),
+                        "map_keys": sorted(map_schema.MAP_KEYS),
+                        "movement_keys": sorted(map_schema.MOVEMENT_KEYS),
+                        "modifier_keys": sorted(map_schema.MODIFIER_KEYS),
+                        "reserved_keys": list(map_schema.RESERVED_KEYS),
+                        "wait_max": map_schema.WAIT_MAX,
+                        "img_stem": map_schema.IMG_STEM.pattern,
+                        "numeric_keys": sorted(map_schema.NUMERIC_KEYS),
+                    },
+                )
             elif path == "/api/pictures":
                 """图片库名字搜索（给编辑器的 img stem 选择器用）。
 

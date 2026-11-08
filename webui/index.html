@@ -1931,6 +1931,20 @@ const MAP_CMDS = ["w","a","s","d","b","fighting","f","e","esc","check"];
 // 且只在 start 条目上合法 —— 行进（map）条目多带一个键会被校验器判 error。
 const MOD_KEYS = ["click_offset", "drag", "drag_exact", "drag_offset", "scene", "clicks", "forbid_retry", "wait"];
 
+// 字段真相源：服务端 /api/schema 直接导出 utils/core/schema.py 的集合。
+// 这三个内置数组只是 fallback 基线——拉到 schema 后原地合并（const 数组可 push），
+// 以后 schema 新增键 webui 零改动；路由失败时退回基线，编辑器照常可用。
+let EDITOR_SCHEMA = null;
+fetch("/api/schema").then(r => r.json()).then(s => {
+  if (!s || !Array.isArray(s.start_keys)) return;
+  EDITOR_SCHEMA = s;
+  const add = (arr, keys) => { for (const k of keys) if (k && !arr.includes(k)) arr.push(k); };
+  // picture\\ 特例键（max/transfer）不进下拉——通配项 picture\\ 已覆盖图片步
+  add(START_CMDS, s.start_keys.filter(k => !k.startsWith("picture\\")));
+  add(MAP_CMDS, [...s.map_keys, ...s.movement_keys]);
+  add(MOD_KEYS, [...s.modifier_keys, ...(s.wait_max ? ["wait"] : [])]);
+}).catch(() => {});
+
 // 编辑态的「保存 / 取消」放弹窗头部：长地图要滚很久才到底，按钮跟在底部等于每次保存都要拉一趟
 const setEditBtns = on => {
   for (const id of ["#modal-save-btn", "#modal-cancel-btn"]) $(id).style.display = on ? "" : "none";
