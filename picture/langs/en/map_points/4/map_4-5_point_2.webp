@@ -1,0 +1,13 @@
+# 占位文件（不是图片）/ PLACEHOLDER (not an image)
+
+目标语言：English
+对应模板：map_points/4/map_4-5_point_2.webp
+
+请用English客户端截取 `picture/map_points/4/map_4-5_point_2.webp` 的同名模板替换本文件：
+- 文件名、扩展名不变（同名覆盖）
+- 分辨率与截图区域与 picture/ 对应模板一致（1080p）
+- 截取后实际跑通一张含该步骤的地图
+
+---
+Replace this file with the template captured from the English client
+(same name and extension, same resolution and crop region as `picture/map_points/4/map_4-5_point_2.webp`).

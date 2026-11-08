@@ -3,10 +3,26 @@
 非简体中文客户端的识图模板统一收在本目录下，按语言分目录管理：
 
 ```
+picture/langs/tw/   繁體中文客户端
 picture/langs/en/   英文客户端
-picture/langs/ja/   日文客户端（示例命名，按需建目录）
+picture/langs/ja/   日文客户端
 picture/langs/kr/   韩文客户端
 ```
+
+## ✅ 待替换清单已预置（占位文件）
+
+每个语言目录下已按 `picture/` 的结构**预置同名占位文件**（内容为说明文本，
+不是图片）。占位文件本身就是完整的待替换清单：
+
+- `picture/ui/confirm.webp` ↔ `picture/langs/en/ui/confirm.webp` —— 打开语言
+  目录即可看到**全部需要替换的文件**，贡献时用真图**同名覆盖占位文件**即可。
+- **需要替换的模板 = 115 张 / 372**：含中文文字的模板（地点名称、按钮文字、
+  界面提示等，其他语言客户端匹配会失败）。
+- **无需替换的 257 张**：纯图形模板（标记点图标、方向罗盘、数字楼层号等），
+  跨语言通用——它们不在占位清单里。
+- 判定方法：OCR 扫描 + 逐张人工复核。边缘个案（极小文字、艺术字）可能存在
+  误差，以对应语言客户端实际匹配效果为准：若某个不在清单里的模板匹配失败，
+  欢迎一并提交。
 
 ## ⚠️ 当前状态
 
@@ -37,8 +53,26 @@ picture/langs/kr/   韩文客户端
 # Multilingual recognition templates · reserved directory
 
 Templates captured from **non-Simplified-Chinese clients** are managed under
-this directory, one sub-directory per language (`picture/langs/en/`,
-`picture/langs/ja/`, ...).
+this directory, one sub-directory per language (`picture/langs/tw/`,
+`picture/langs/en/`, `picture/langs/ja/`, `picture/langs/kr/`).
+
+## ✅ Placeholder list is pre-built
+
+Each language directory already contains **same-path placeholder files**
+mirroring `picture/` (placeholders are text files, not images). The
+placeholders ARE the to-replace list:
+
+- `picture/ui/confirm.webp` ↔ `picture/langs/en/ui/confirm.webp` — open a
+  language directory to see **every file that needs replacing**; contribute by
+  overwriting the placeholder with the real capture (same name).
+- **Needs replacement = 115 / 372**: templates containing Chinese text
+  (location names, button labels, UI prompts) which will fail template
+  matching on other-language clients.
+- **Language-neutral 257**: pure graphics (map markers, compass arrows, numeric
+  floor labels) — not in the placeholder list.
+- Classification was done via OCR plus manual review of every candidate; tiny
+  or stylized text may have slipped through. If a template not in the list
+  fails to match on your client, please submit it too.
 
 ## ⚠️ Current status
 
