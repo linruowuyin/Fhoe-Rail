@@ -19,6 +19,8 @@ from pynput.mouse import Controller as mouseController
 
 from utils.config.config import ConfigurationManager
 from utils.core.json_io import dumps_map
+from utils.core.map_format import collapse_adjacent
+from utils.core.schema import validate_map
 
 def record_main():
     cfg = ConfigurationManager()
@@ -54,7 +56,8 @@ def record_main():
     print("中心点坐标", cen_mouse_pos)
     mouse_watch = True
 
-    key_list = ['w', 's', 'a', 'd', 'f', 'x', 'r', 'e', 'v']  # 匹配锄大地
+    key_list = ['w', 's', 'a', 'd', 'f', 'x', 'r', 'e', 'v',
+                '1', '2', '3', '4', '5']  # 匹配锄大地 + 切人
     # 输出列表
     event_list = []
     # 不同操作间延迟记录
@@ -109,6 +112,14 @@ def record_main():
                 {'key': 'esc', 'time_sleep': time.time() - last_time})
             last_time = time.time()
             print("捕捉: esc")
+
+        # 检查是否按下大写锁定（游戏内切换疾跑）
+        if key == keyboard.Key.caps_lock:
+            save_mouse_move_by_key()
+            event_list.append(
+                {'key': 'caps', 'time_sleep': time.time() - last_time})
+            last_time = time.time()
+            print("捕捉: caps")
 
 
     def on_release(key):
@@ -214,6 +225,22 @@ def record_main():
             elif 'mouse_move_dxy' in element_save:
                 normal_save_dict["map"].append(
                     {"mouse_move": round(element_save['mouse_move_dxy'][0], 2)})  # Round the mouse_move to 2 decimal places
+
+        # 收口：相邻同键同值的碎步合并成 rep（v2 改造的现成函数，fighting 豁免）；
+        # 录制产物以按住时长为值、很少出现同值相邻，这里属于零风险的顺带收口
+        collapsed = collapse_adjacent(normal_save_dict["map"])
+        if any("rep" in step for step in collapsed):
+            normal_save_dict = {"v": 2, **normal_save_dict, "map": collapsed}
+        else:
+            normal_save_dict["map"] = collapsed
+
+        # 产物自检：error 级当场提示（不拦写盘，人工决定改不改）
+        errors = [i for i in validate_map(normal_save_dict) if i.level == "error"]
+        if errors:
+            for issue in errors:
+                print(f"校验错误: {issue.path}: {issue.message}")
+        else:
+            print("产物校验通过")
 
         # newline=""：别让 Windows 把 \n 翻成 \r\n，录制产出的行尾符保持原样
         with open(f'output{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.json', 'w', encoding='utf-8', newline='') as f:
