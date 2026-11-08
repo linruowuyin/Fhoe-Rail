@@ -82,6 +82,9 @@ Fhoe-Rail is a **daily farming (clearing daily commissions / farming materials) 
 
 It does not read or modify any game files or game code. Instead, it operates like a real player: **captures the game screen → template matching (OpenCV) to identify teleport points / interaction points → simulates keyboard and mouse** to execute pre-recorded routes. All farming routes are manually recorded by the community and shared as open source.
 
+> **🌐 Language note:** The recognition templates (`picture/`) were all captured from the **Simplified Chinese client**. UI text differs between game languages, so template matching will fail on other-language clients — **only the Simplified Chinese client is currently supported**.
+> To support another language: re-capture **all same-named templates** under `picture/` with that client (filenames, resolution and capture regions must match the existing ones; filenames must not change), then verify with a complete run. PRs are welcome, or report in the [Fhoe-Rail-Maps](https://github.com/linruowuyin/Fhoe-Rail-Maps) discussions.
+
 **What this is not:**
 
 - ❌ Not a cheat/mod — does not inject processes, modify memory, or alter game files
