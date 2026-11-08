@@ -431,7 +431,6 @@ _LOGO_B64_DATA = base64.b64decode(_LOGO_B64)
 def get_logo(kind="png"):
     """读取项目 logo.ico：'ico' 原样返回，'png' 转为 PNG（取最大帧，带缓存）。
     兼容多种部署布局：项目根 / webui 目录 / 当前工作目录。"""
-    global _logo_cache
     if kind in _logo_cache:
         return _logo_cache[kind]
     data = None
@@ -715,7 +714,7 @@ def _backup_file(path, kind):
     try:
         os.makedirs(target_dir, exist_ok=True)
     except OSError as e:
-        log.warning(f"创建备份目录失败（{target_dir}）: {e}")
+        print(f"[备份] 创建备份目录失败（{target_dir}）: {e}")
         return None
 
     stem, ext = os.path.splitext(os.path.basename(path))
@@ -737,7 +736,7 @@ def _backup_file(path, kind):
     try:
         shutil.copy2(path, target)
     except OSError as e:
-        log.warning(f"备份失败（{path}）: {e}")
+        print(f"[备份] 备份失败（{path}）: {e}")
         return None
 
     _prune_backups(
@@ -1354,6 +1353,25 @@ class Handler(BaseHTTPRequestHandler):
                 with open(fpath, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._send(200, data)
+            elif path == "/api/pictures":
+                """图片库名字搜索（给编辑器的 img stem 选择器用）。
+
+                不走开发者模式门：图片名本来就会以缩略图形式出现在地图查看器里，
+                不算额外暴露。返回文件名（可直接喂 /api/picture），前端自己去后缀取 stem。
+                """
+                from urllib.parse import parse_qs
+
+                qs = parse_qs(parsed.query)
+                try:
+                    limit = int(qs.get("limit", ["12"])[0])
+                except ValueError:
+                    limit = 12
+                limit = max(1, min(limit, PROBE_IMAGE_LIMIT))
+                matches = list_probe_images(qs.get("q", [""])[0])
+                self._send(
+                    200,
+                    {"ok": True, "total": len(matches), "images": matches[:limit]},
+                )
             elif path == "/api/logs":
                 from urllib.parse import parse_qs
 
@@ -1618,9 +1636,18 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(400, {"ok": False, "error": "bad file"})
                     return
                 fpath = os.path.join(BASE_DIR, "map", version, file)
-                if not os.path.exists(fpath):
-                    self._send(404, {"ok": False, "error": "map not found"})
+                # create:true = 新建空白地图（编辑器「＋ 新建地图」入口）：文件已存在
+                # 直接 409 拒绝，绝不覆盖；不传 create 保持原语义（只能改已有文件）。
+                create = bool(body.get("create"))
+                exists = os.path.exists(fpath)
+                if exists and create:
+                    self._send(409, {"ok": False, "error": "同名地图已存在"})
                     return
+                if not exists:
+                    if not create:
+                        self._send(404, {"ok": False, "error": "map not found"})
+                        return
+                    os.makedirs(os.path.dirname(fpath), exist_ok=True)
                 # 校验 data 结构
                 if not isinstance(data, dict):
                     raise ValueError("data 必须是 JSON 对象")

@@ -613,6 +613,8 @@
   .edit-row .edel:hover { color: var(--red); background: rgba(255,0,0,.1); }
   /* 修饰键（drag / scene / click_offset…）：此前编辑器只认步骤键，保存时把它们整条丢掉 */
   .edit-row .emods { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .maps-new-btn { align-self: flex-start; cursor: pointer; background: transparent; border: 1px dashed var(--glass-border); color: var(--txt-dim); border-radius: 12px; padding: 10px 16px; font-size: 15px; transition: all .18s; }
+  .maps-new-btn:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(79,195,247,.08); }
   .edit-row .emod { display: flex; gap: 3px; align-items: center; background: var(--bg-1); border: 1px dashed var(--border); border-radius: 4px; padding: 1px 5px; }
   .edit-row .emod .mk { font-family: var(--font-mono); font-size: 14.5px; background: transparent; border: none; color: var(--cyan); padding: 2px 0; cursor: pointer; }
   .edit-row .emod .mv { width: 96px; font-family: var(--font-mono); font-size: 14.5px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 3px; padding: 2px 4px; color: var(--pink); }
@@ -751,6 +753,7 @@
         <div class="tabs" id="map-tabs"></div>
         <div class="tabs" id="planet-tabs"></div>
         <input type="text" id="map-search" placeholder="🔍 搜索地图名称 / 编号 / 作者" style="width:100%;max-width:440px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--txt);border-radius:12px;padding:10px 16px;font-size: 15px;outline:none">
+        <button id="map-new-btn" class="maps-new-btn" title="在当前版本目录下新建一张空白地图（v2 格式起步模板）">＋ 新建地图</button>
       </div>
       <div id="maps-content"><div class="loading">正在装载星图…</div></div>
     </section>
@@ -1862,6 +1865,47 @@ function renderMaps() {
 }
 $("#map-search")?.addEventListener("input", renderMaps);
 
+// 新建空白地图：填文件名 -> 服务端 create:true（已存在则 409，绝不覆盖）-> 打开编辑器
+$("#map-new-btn")?.addEventListener("click", async () => {
+  const raw = prompt(
+    "在「" + currentVersion + "」版本下新建空白地图\n输入文件名（格式 map_星球-区域_序号.json，如 map_3-7_5.json）："
+  );
+  if (!raw) return;
+  const file = raw.trim();
+  if (!/^map_\d+-\d+_\d+\.json$/.test(file)) {
+    toast("文件名格式应为 map_数字-数字_数字.json", true);
+    return;
+  }
+  // 先问一遍是否已存在（GET 404 = 可用），少一次徒劳的写请求
+  try {
+    const dup = await fetch("/api/map?file=" + encodeURIComponent(file) + "&version=" + encodeURIComponent(currentVersion));
+    if (dup.ok) { toast(`${currentVersion}/${file} 已存在`, true); return; }
+  } catch (e) { toast("检查重名失败：" + e.message, true); return; }
+  try {
+    const r = await fetch("/api/map", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        file, version: currentVersion, create: true,
+        data: { v: 2, name: file.replace(/\.json$/, ""), author: "", start: [], map: [] }
+      })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) { toast("新建失败：" + (j.error || r.status), true); return; }
+  } catch (e) { toast("新建失败：" + e.message, true); return; }
+  toast("✅ 已创建 " + file);
+  await loadMaps();
+  // 直接进编辑器：起手就是起始步骤，比只读视图再点一次编辑顺手
+  openModal();
+  $("#modal-title").textContent = "编辑地图（新建）";
+  $("#modal-id").textContent = (VERSION_NAMES[currentVersion] || currentVersion) + " / " + file;
+  $("#modal-author").textContent = "";
+  currentMapData = { v: 2, name: file.replace(/\.json$/, ""), author: "", start: [], map: [] };
+  currentMapFile = file;
+  currentMapVersion = currentVersion;
+  renderMapEditor();
+});
+
 async function showMapDetail(file, version) {
   openModal();
   $("#modal-title").textContent = "地图详情";
@@ -2028,11 +2072,39 @@ function renderMapEditor() {
     input.addEventListener("blur", () => { setTimeout(() => { box.style.display = "none"; }, 120); });
   };
   $$("#modal-body .edit-row .ek").forEach(attachCmdSuggest);
+  // img 步的值（stem）用图片库搜索：只在 start 段且键名为 img 时提示，点击填 stem（去后缀）
+  const attachPicSuggest = (ev, row) => {
+    const box = document.createElement("div");
+    box.className = "cmd-suggest";
+    ev.parentElement.style.position = "relative";
+    ev.parentElement.appendChild(box);
+    ev.addEventListener("input", async () => {
+      const k = row.querySelector('[data-field="k"]').value.trim();
+      if (row.dataset.sec !== "start" || k !== "img" || !ev.value.trim()) { box.style.display = "none"; return; }
+      try {
+        const r = await fetch("/api/pictures?q=" + encodeURIComponent(ev.value.trim()) + "&limit=8");
+        const j = await r.json();
+        if (!j.images || !j.images.length) { box.style.display = "none"; return; }
+        // /api/pictures 返回的是文件名（stem.后缀）；img 字段只要 stem —— 文件名里
+        // stem 不含点（schema 的 IMG_STEM 限制），所以 split(".")[0] 就是 stem
+        box.innerHTML = j.images.map(f => `<div data-stem="${esc(f.split(".")[0])}">${esc(f)}</div>`).join("");
+        box.style.display = "block";
+      } catch { box.style.display = "none"; }
+    });
+    box.addEventListener("mousedown", e => {
+      e.preventDefault();
+      const t = e.target.closest("[data-stem]");
+      if (t) { ev.value = t.dataset.stem; box.style.display = "none"; mapDirty = true; ev.focus(); }
+    });
+    ev.addEventListener("blur", () => { setTimeout(() => { box.style.display = "none"; }, 120); });
+  };
+  $$("#modal-body .edit-row .ev").forEach(ev => attachPicSuggest(ev, ev.closest(".edit-row")));
   const updateCount = sec => { const c = $("#cnt-" + sec); if (c) c.textContent = $("#edit-" + sec).children.length; };
   const addRow = sec => {
     $("#edit-" + sec).insertAdjacentHTML("beforeend", rowHTML(sec));
     const row = $("#edit-" + sec).lastElementChild;
     attachCmdSuggest(row.querySelector(".ek"));
+    attachPicSuggest(row.querySelector(".ev"), row);
     row.querySelector(".ek").focus();
     updateCount(sec);
     mapDirty = true;
