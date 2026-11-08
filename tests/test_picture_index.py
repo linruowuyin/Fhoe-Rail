@@ -70,6 +70,20 @@ class TestScanPictureFiles:
         assert index == {"transfer": str(tmp_path / "transfer.webp")}
         assert duplicates == {}
 
+    def test_langs_reserved_directory_is_skipped(self, tmp_path):
+        """picture/langs/<语言>/ 下的多语言预留模板不参与 stem 索引。
+
+        语言模板与中文模板同名（按目录区分语言），若被索引必然 stem 重名；
+        多语言加载支持落地前整个 langs/ 子树豁免。
+        """
+        write_image(tmp_path / "langs" / "en" / "transfer.webp")
+        write_image(tmp_path / "transfer.png")
+
+        index, duplicates = assets.scan_picture_files(tmp_path)
+
+        assert index == {"transfer": str(tmp_path / "transfer.png")}
+        assert duplicates == {}
+
     def test_same_stem_in_two_directories_is_a_duplicate(self, tmp_path):
         write_image(tmp_path / "a" / "point.webp")
         write_image(tmp_path / "b" / "point.png")

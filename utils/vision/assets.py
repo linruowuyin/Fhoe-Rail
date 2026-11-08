@@ -60,8 +60,12 @@ PICTURE_ROOT = "./picture"
 #: 解析前会先归一化）。用于判断"这是不是 picture/ 下的资源 ID"。
 PICTURE_REF_PREFIXES = ("picture/", "./picture/")
 
-#: 索引扫描时跳过的目录：`new_pic/` 是采样产物（按日期分目录，重名是设计使然）。
-SCAN_SKIP_DIRS = {"new_pic"}
+#: 索引扫描时跳过的目录：
+#: - `new_pic/` 是采样产物（按日期分目录，重名是设计使然）。
+#: - `langs/` 是多语言模板预留位（`picture/langs/en/` 等，语言由目录区分、
+#:   文件名与中文模板同名——按 stem 全局索引必然重名），加载支持落地前
+#:   不参与索引，见 picture/langs/README.md。
+SCAN_SKIP_DIRS = {"new_pic", "langs"}
 
 #: 索引只认这三种后缀，优先级与 `images.resolve_path` 一致。
 SCAN_EXT_PRIORITY = {"webp": 0, "png": 1, "jpg": 2}
