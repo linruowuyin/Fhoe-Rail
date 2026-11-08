@@ -39,6 +39,7 @@ class FakePynputKeyboard:
         space = "KEY_SPACE"
         esc = "KEY_ESC"
         f9 = "KEY_F9"
+        caps_lock = "KEY_CAPS_LOCK"
 
     def __init__(self):
         self.listener = None
@@ -227,6 +228,16 @@ class TestKeyboardCapture:
         recorder.release(FakePynputKeyboard.Key.f9)
         assert "space" in latest_output(recorder.root)["map"][0]
 
+    def test_caps_lock_is_recorded(self, recorder):
+        recorder.press(FakePynputKeyboard.Key.caps_lock)
+        recorder.release(FakePynputKeyboard.Key.f9)
+        assert "caps" in latest_output(recorder.root)["map"][0]
+
+    def test_num_key_becomes_a_num_entry(self, recorder):
+        press_and_release(recorder, "1")
+        recorder.release(FakePynputKeyboard.Key.f9)
+        assert "1" in latest_output(recorder.root)["map"][0]
+
     def test_unknown_keys_are_ignored(self, recorder):
         press_and_release(recorder, "z")
         recorder.release(FakePynputKeyboard.Key.f9)
@@ -237,7 +248,9 @@ class TestOutputFormat:
     def test_output_has_the_map_file_skeleton(self, recorder):
         recorder.release(FakePynputKeyboard.Key.f9)
         document = latest_output(recorder.root)
-        assert set(document) == {"name", "author", "start", "map"}
+        # 录制器统一产 v2（v1 只是对老格式的兼容兜底），所以骨架含版本字段
+        assert set(document) == {"v", "name", "author", "start", "map"}
+        assert document["v"] == 2
 
     def test_f9_writes_the_file(self, recorder):
         recorder.release(FakePynputKeyboard.Key.f9)

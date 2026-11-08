@@ -197,6 +197,7 @@ def record_main():
 
     def save_json():
         normal_save_dict = {
+            "v": 2,
             "name": "地图-编号",
             "author": "作者",
             "start": [],
@@ -228,11 +229,7 @@ def record_main():
 
         # 收口：相邻同键同值的碎步合并成 rep（v2 改造的现成函数，fighting 豁免）；
         # 录制产物以按住时长为值、很少出现同值相邻，这里属于零风险的顺带收口
-        collapsed = collapse_adjacent(normal_save_dict["map"])
-        if any("rep" in step for step in collapsed):
-            normal_save_dict = {"v": 2, **normal_save_dict, "map": collapsed}
-        else:
-            normal_save_dict["map"] = collapsed
+        normal_save_dict["map"] = collapse_adjacent(normal_save_dict["map"])
 
         # 产物自检：error 级当场提示（不拦写盘，人工决定改不改）
         errors = [i for i in validate_map(normal_save_dict) if i.level == "error"]
